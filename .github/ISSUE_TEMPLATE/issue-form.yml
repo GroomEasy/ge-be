@@ -44,7 +44,7 @@ body:
     id: branch
     attributes:
       label: '🌳브랜치 이름(Branch Name)'
-      description: '해당 issue로 생성될 branch 이름을 기입해주세요'
+      description: '해당 issue로 생성될 branch 이름을 소문자로 기입해주세요'
       placeholder: '[type]/[branch-name]'
     validations:
       required: true

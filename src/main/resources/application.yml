@@ -8,13 +8,18 @@ spring:
   h2:
     console:
       enabled: true
-      path: /h2-console  # http://localhost:8080/h2-console ? ?? ??
+      path: /h2-console  # http://localhost:8080/h2-console
       settings:
-        web-allow-others: true  # ?? ????? ?? ??
+        web-allow-others: true
   jpa:
     hibernate:
-      ddl-auto: create-drop  # ?? ? ??? ??, ?? ? ??
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity: 86400000 # 1일
+  refresh-token-validity: 604800000 # 7일

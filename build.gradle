@@ -58,6 +58,9 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    //env
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
     implementation 'com.h2database:h2'
 //    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 }

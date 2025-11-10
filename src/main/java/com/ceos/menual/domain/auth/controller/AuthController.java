@@ -1,0 +1,39 @@
+package com.ceos.menual.domain.auth.controller;
+
+import com.ceos.menual.domain.auth.dto.request.LoginRequestDTO;
+import com.ceos.menual.domain.auth.dto.response.LoginResponseDTO;
+import com.ceos.menual.domain.auth.service.AuthService;
+import com.ceos.menual.global.config.jwt.CookieUtil;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final CookieUtil cookieUtil;
+    private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(
+            @Valid @RequestBody LoginRequestDTO request,
+            HttpServletResponse response
+    ) {
+        LoginResponseDTO loginResponse = authService.login(request);
+
+        // Access Token을 httpOnly 쿠키로 설정
+        cookieUtil.addAccessTokenCookie(response, loginResponse.getAccessToken());
+
+        // Refresh Token을 httpOnly 쿠키로 설정
+        cookieUtil.addRefreshTokenCookie(response, loginResponse.getRefreshToken());
+
+        return ResponseEntity.ok(loginResponse);
+    }
+}

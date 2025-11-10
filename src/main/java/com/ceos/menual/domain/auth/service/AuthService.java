@@ -1,14 +1,25 @@
 package com.ceos.menual.domain.auth.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.ceos.menual.domain.auth.api.KakaoOauthClient;
 import com.ceos.menual.domain.auth.dto.request.LoginRequestDTO;
+import com.ceos.menual.domain.auth.dto.response.KakaoUserResponseDTO;
 import com.ceos.menual.domain.auth.dto.response.LoginResponseDTO;
 import com.ceos.menual.domain.auth.exception.AuthErrorCode;
 import com.ceos.menual.domain.auth.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.enums.AuthProvider;
+import com.ceos.menual.entity.enums.UserType;
+import com.ceos.menual.global.config.jwt.CookieUtil;
 import com.ceos.menual.global.config.jwt.JwtProvider;
 import com.ceos.menual.global.config.jwt.JwtValidator;
 import com.ceos.menual.global.exception.GlobalException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +34,8 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final JwtValidator jwtValidator;
+    private final CookieUtil cookieUtil;
+    private final KakaoOauthClient kakaoOauthClient;
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         // 사용자 조회
@@ -45,6 +58,52 @@ public class AuthService {
                 .refreshToken(refreshToken)
                 .build();
     }
+
+    @Transactional
+    public User socialLogin(String code, String provider, HttpServletResponse response) {
+
+        String nickname;
+        String email;
+
+        if(provider.equalsIgnoreCase("KAKAO")){
+            // 인가코드로 카카오 access token 발급
+            String accessToken = kakaoOauthClient.getAccessToken(code);
+
+            // accessToken으로 사용자 정보 요청
+            KakaoUserResponseDTO kakaoUser = kakaoOauthClient.getUserInfo(accessToken);
+            nickname = kakaoUser.getKakao_account().getProfile().getNickname();
+
+            email = "kakao_" + UUID.randomUUID().toString().substring(0, 10) + "@kakao.user";
+        }
+        //else if(provider.equalsIgnoreCase("GOOGLE")){
+        //
+        // }
+        else{
+            throw new GlobalException(AuthErrorCode.INVALID_PROVIDER);
+        }
+
+        // DB 저장 또는 조회
+        User user = userRepository.findByEmail(email)
+            .orElseGet(() -> userRepository.save(
+                User.builder()
+                    .email(email)
+                    .nickname(nickname)
+                    .password("")
+                    .userType(UserType.TMP_USER)
+                    .provider(AuthProvider.valueOf(provider.toUpperCase()))
+                    .agreeTerms(false)
+                    .agreePrivacy(false)
+                    .build()
+            ));
+
+        String jwtAccessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId());
+        cookieUtil.addAccessTokenCookie(response, jwtAccessToken);
+        cookieUtil.addRefreshTokenCookie(response, refreshToken);
+
+        return user;
+    }
+
 
     public String refresh(String refreshToken) {
         // Refresh Token 검증

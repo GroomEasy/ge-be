@@ -1,5 +1,6 @@
 package com.ceos.menual.entity;
 
+import com.ceos.menual.entity.enums.AuthProvider;
 import com.ceos.menual.entity.enums.UserType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -34,6 +35,9 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserType userType;
+
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider;
 
     @Column(nullable = false)
     private Boolean agreeTerms;

@@ -3,7 +3,7 @@ package com.ceos.menual.domain.auth.service;
 import com.ceos.menual.domain.auth.dto.request.LoginRequestDTO;
 import com.ceos.menual.domain.auth.dto.response.LoginResponseDTO;
 import com.ceos.menual.domain.auth.exception.AuthErrorCode;
-import com.ceos.menual.domain.auth.exception.UserErrorCode;
+import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.global.config.jwt.JwtProvider;

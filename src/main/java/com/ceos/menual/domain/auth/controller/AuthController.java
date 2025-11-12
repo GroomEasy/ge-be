@@ -5,6 +5,8 @@ import com.ceos.menual.domain.auth.dto.response.LoginResponseDTO;
 import com.ceos.menual.domain.auth.service.AuthService;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.global.config.jwt.CookieUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "인증 API", description = "인증 관련 엔드포인트")
 public class AuthController {
 
     private final CookieUtil cookieUtil;
@@ -26,6 +29,10 @@ public class AuthController {
     일반 사용자 login API 엔드포인트
     loginResponse에서 AccessToken과 RefreshToken을 꺼내 httpOnly 쿠키로 전송
      */
+    @Operation(
+            summary = "일반 사용자 로그인",
+            description = "사용자 이메일과 비밀번호를 이용해 로그인하고, 발급된 AccessToken과 RefreshToken을 httpOnly 쿠키로 전송한다."
+    )
     @PostMapping("/login")
     public ResponseEntity<CommonResponse<LoginResponseDTO>> login(
             @Valid @RequestBody LoginRequestDTO request,

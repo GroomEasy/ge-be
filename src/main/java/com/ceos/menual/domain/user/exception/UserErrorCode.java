@@ -1,4 +1,4 @@
-package com.ceos.menual.domain.auth.exception;
+package com.ceos.menual.domain.user.exception;
 
 import com.ceos.menual.global.exception.ResultCode;
 import lombok.Getter;

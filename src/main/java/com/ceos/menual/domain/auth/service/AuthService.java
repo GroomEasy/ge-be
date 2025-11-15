@@ -62,6 +62,7 @@ public class AuthService {
     @Transactional
     public User socialLogin(String code, String provider, HttpServletResponse response) {
 
+        Long providerId;
         String nickname;
         String email;
 
@@ -71,6 +72,7 @@ public class AuthService {
 
             // accessToken으로 사용자 정보 요청
             KakaoUserResponseDTO kakaoUser = kakaoOauthClient.getUserInfo(accessToken);
+            providerId = kakaoUser.getId();
             nickname = kakaoUser.getKakao_account().getProfile().getNickname();
 
             email = "kakao_" + UUID.randomUUID().toString().substring(0, 10) + "@kakao.user";
@@ -83,7 +85,7 @@ public class AuthService {
         }
 
         // DB 저장 또는 조회
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByProviderAndProviderId(AuthProvider.valueOf(provider.toUpperCase()), providerId.toString())
             .orElseGet(() -> userRepository.save(
                 User.builder()
                     .email(email)
@@ -91,6 +93,7 @@ public class AuthService {
                     .password("")
                     .userType(UserType.TMP_USER)
                     .provider(AuthProvider.valueOf(provider.toUpperCase()))
+                    .providerId(providerId.toString())
                     .agreeTerms(false)
                     .agreePrivacy(false)
                     .build()

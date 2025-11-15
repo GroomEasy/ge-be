@@ -37,7 +37,11 @@ public class User extends BaseEntity {
     private UserType userType;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private AuthProvider provider;
+
+    @Column
+    private String providerId;
 
     @Column(nullable = false)
     private Boolean agreeTerms;

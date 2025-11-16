@@ -4,6 +4,8 @@ import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.enums.AuthProvider;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class UserService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .birth(parseBirthDate(request.getBirth()))
                 .userType(request.getUserType())
+                .provider(AuthProvider.LOCAL)
                 .agreeTerms(request.getAgreeTerms())
                 .agreePrivacy(request.getAgreePrivacy())
                 .build();

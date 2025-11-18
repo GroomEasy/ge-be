@@ -14,11 +14,8 @@ import java.util.Date;
 
 @Slf4j
 @Component
-@Getter
 public class JwtProvider {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
 
     @Getter
     @Value("${jwt.access-token-validity}")
@@ -69,6 +66,10 @@ public class JwtProvider {
                 .expiration(validity)
                 .signWith(key)
                 .compact();
+    }
+
+    SecretKey getKey() {
+        return this.key;
     }
 
 }

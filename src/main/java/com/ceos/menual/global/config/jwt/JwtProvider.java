@@ -28,7 +28,7 @@ public class JwtProvider {
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
 
-    private SecretKey key;
+    private final SecretKey key;
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
         // 최소 32바이트(256비트) 검증

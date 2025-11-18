@@ -1,8 +1,10 @@
 package com.ceos.menual.domain.user.controller;
 
+import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,11 +21,17 @@ public class UserController {
 
     private final UserService userService;
 
+    /*
+    회원가입 API 엔드포인트
+     */
+    @Operation(
+            summary = "회원가입",
+            description = "사용자의 정보를 입력받아 검증한 후 DB에 저장한다."
+    )
     @PostMapping("/signup")
-    public ResponseEntity<SignUpResponseDTO> signUp(@Valid @RequestBody SignUpRequestDTO request) {
+    public ResponseEntity<CommonResponse<SignUpResponseDTO>> signUp(@Valid @RequestBody SignUpRequestDTO request) {
         SignUpResponseDTO response = userService.signUp(request);
 
-        // TODO: API Response 생성 후 적용
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

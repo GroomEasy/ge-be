@@ -2,10 +2,12 @@ package com.ceos.menual.domain.user.service;
 
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
+import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.AuthProvider;
 
+import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,11 +27,9 @@ public class UserService {
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
         // 비밀번호 일치 검증
         if (!request.isPasswordMatch()) {
-            // TODO: Error Code 추가
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new GlobalException(UserErrorCode.INVALID_PASSWORD);
         }
 
-        //TODO: 예외처리
         // 이메일 중복 검사
         validateDuplicateEmail(request.getEmail());
 
@@ -66,14 +66,14 @@ public class UserService {
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
             // TODO: Error Code 추가
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new GlobalException(UserErrorCode.DUPLICATE_EMAIL);
         }
     }
 
     private void validateDuplicateNickname(String nickname) {
         if (userRepository.existsByNickname(nickname)) {
             // TODO: Error Code 추가
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
         }
     }
 

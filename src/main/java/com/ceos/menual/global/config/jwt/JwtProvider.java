@@ -16,8 +16,6 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
 
     @Getter
     @Value("${jwt.access-token-validity}")
@@ -27,7 +25,7 @@ public class JwtProvider {
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
 
-    private SecretKey key;
+    private final SecretKey key;
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
         // 최소 32바이트(256비트) 검증
@@ -68,6 +66,10 @@ public class JwtProvider {
                 .expiration(validity)
                 .signWith(key)
                 .compact();
+    }
+
+    SecretKey getKey() {
+        return this.key;
     }
 
 }

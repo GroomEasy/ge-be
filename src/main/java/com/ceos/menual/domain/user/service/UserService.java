@@ -65,14 +65,12 @@ public class UserService {
 
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
-            // TODO: Error Code 추가
             throw new GlobalException(UserErrorCode.DUPLICATE_EMAIL);
         }
     }
 
     private void validateDuplicateNickname(String nickname) {
         if (userRepository.existsByNickname(nickname)) {
-            // TODO: Error Code 추가
             throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
         }
     }

@@ -13,7 +13,8 @@ public enum UserErrorCode implements ResultCode {
     INVALID_EMAIL(HttpStatus.NOT_FOUND, 1101, "이메일이 일치하지 않습니다."),
     INVALID_PASSWORD(HttpStatus.CONFLICT, 1102, "비밀번호가 일치하지 않습니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, 1103, "이미 사용 중인 아이디입니다."),
-    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 1104, "이미 사용 중인 이메일입니다.");
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 1104, "이미 사용 중인 이메일입니다."),
+    INVALID_BIRTH_FORMAT(HttpStatus.BAD_REQUEST, 1105, "올바르지 않은 생년월일 형식입니다.");
 
     private final HttpStatus status;
     private final int code;

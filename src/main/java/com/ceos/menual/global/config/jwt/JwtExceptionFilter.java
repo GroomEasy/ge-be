@@ -40,7 +40,8 @@ public class JwtExceptionFilter extends OncePerRequestFilter {
         } catch (SecurityException e) {
             setErrorResponse(response, "잘못된 JWT 서명입니다.", HttpServletResponse.SC_UNAUTHORIZED);
         } catch (Exception e) {
-            setErrorResponse(response, "인증 처리 중 오류가 발생했습니다.", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log.error("JWT 외 예외 발생, 필터 밖으로 전달합니다.", e);
+            throw e;
         }
     }
 

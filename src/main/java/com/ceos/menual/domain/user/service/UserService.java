@@ -83,7 +83,7 @@ public class UserService {
             String day = birth.substring(6, 8);
             return LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
         } catch (Exception e) {
-            throw new IllegalArgumentException("올바르지 않은 생년월일 형식입니다.");
+            throw new GlobalException(UserErrorCode.INVALID_BIRTH_FORMAT);
         }
     }
 

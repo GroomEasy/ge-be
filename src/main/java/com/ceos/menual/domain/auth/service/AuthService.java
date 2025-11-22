@@ -73,7 +73,7 @@ public class AuthService {
             // accessToken으로 사용자 정보 요청
             KakaoUserResponseDTO kakaoUser = kakaoOauthClient.getUserInfo(accessToken);
             providerId = kakaoUser.getId();
-            nickname = kakaoUser.getKakao_account().getProfile().getNickname();
+            nickname = "kakao_" + UUID.randomUUID().toString().substring(0, 10);
 
             email = "kakao_" + UUID.randomUUID().toString().substring(0, 10) + "@kakao.user";
         }

@@ -33,6 +33,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 클라이언트에서 accessToken 쿠키 추출
         String accessToken = getTokenFromCookie(request, "accessToken");
 
+        // Swagger 테스트용 Bearer Token 지원
+        if (accessToken == null) {
+            String header = request.getHeader("Authorization");
+            if (header != null && header.startsWith("Bearer ")) {
+                accessToken = header.substring(7);
+            }
+        }
 
         if (accessToken != null) {
             try {

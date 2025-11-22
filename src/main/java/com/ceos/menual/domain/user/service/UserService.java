@@ -1,12 +1,15 @@
 package com.ceos.menual.domain.user.service;
 
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
+import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
+import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.AuthProvider;
 
+import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,7 +45,7 @@ public class UserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .birth(parseBirthDate(request.getBirth()))
-                .userType(request.getUserType())
+                .userType(UserType.MENUAL)
                 .provider(AuthProvider.LOCAL)
                 .agreeTerms(request.getAgreeTerms())
                 .agreePrivacy(request.getAgreePrivacy())
@@ -59,6 +62,34 @@ public class UserService {
                 .userType(savedUser.getUserType())
                 .createdAt(savedUser.getCreatedAt())
                 .build();
+    }
+
+    @Transactional
+    public SocialSignUpResponseDTO socialSignUp(Long userId, SocialSignUpRequestDTO request) {
+        // 소셜 로그인 시 생성된 유저인지 검증
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 이메일 중복 검사
+        validateDuplicateEmail(request.getEmail());
+
+        // 닉네임 중복 검사
+        validateDuplicateNickname(request.getNickname());
+
+        // 사용자 정보 업데이트
+        user.updateSocialExtraInfo(
+            request.getNickname(),
+            parseBirthDate(request.getBirth()),
+            request.getEmail(),
+            request.getAgreeTerms(),
+            request.getAgreePrivacy()
+        );
+
+        // 저장 후 응답 반환
+        return SocialSignUpResponseDTO.builder()
+            .nickname(user.getNickname())
+            .userType(user.getUserType())
+            .build();
     }
 
     // 관련 메서드

@@ -26,8 +26,6 @@ public class SignUpRequestDTO {
     @NotBlank(message = "비밀번호 확인을 입력해주세요.")
     private String passwordConfirm;
 
-    private UserType userType;
-
     @NotNull(message = "이용약관 동의는 필수입니다.")
     @AssertTrue(message = "이용약관에 동의해야 합니다.")
     private Boolean agreeTerms;

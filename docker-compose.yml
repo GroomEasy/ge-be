@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  app:
+    image: danaggero/menual-spring:latest
+    container_name: menual-spring
+    env_file:
+      - .env
+    networks:
+      - menual-net
+
+  nginx:
+    image: nginx:latest
+    container_name: menual-nginx
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - menual-net
+
+networks:
+  menual-net:
+    driver: bridge

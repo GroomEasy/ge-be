@@ -35,15 +35,19 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/user/signup",
 
                                 // Swagger
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs.yaml"
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                "/configuration/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -62,7 +66,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-            "http://localhost:3000"
+            "http://localhost:5173",
+            "https://ge-fe-pi.vercel.app",
+            "http://ec2-3-25-140-21.ap-southeast-2.compute.amazonaws.com"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowCredentials(true);

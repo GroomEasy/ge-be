@@ -52,6 +52,8 @@ jobs:
           script: |
             cd ~/menual
 
+            export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+  
             # 최신 이미지 가져오기
             docker-compose pull
 

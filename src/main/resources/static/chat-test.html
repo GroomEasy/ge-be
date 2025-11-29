@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Test (HttpOnly Cookie)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #333; }
+        .box { padding: 15px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fafafa; }
+        input[type="text"], input[type="number"] { padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        ul { list-style-type: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #eee; background: white; }
+        li { padding: 8px 10px; border-bottom: 1px solid #f1f1f1; }
+        li:nth-child(even) { background-color: #f9f9f9; }
+        .status { font-weight: bold; margin-left: 10px; }
+        .info { color: #666; font-size: 0.9em; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>💬 HttpOnly Cookie 채팅 테스트</h2>
+        
+        <div class="box" style="background-color: #e8f4ff; border-color: #b6d4fe;">
+            <strong>ℹ️ 중요:</strong> 이 페이지를 열기 전에, 같은 브라우저에서 
+            <strong>로그인 API를 먼저 호출</strong>하여 쿠키(access_token)가 발급된 상태여야 합니다.
+        </div>
+
+        <div class="box">
+            <h4>1. 서버 연결</h4>
+            <div class="info">HttpOnly 쿠키 방식이므로 토큰 입력란이 없습니다. (브라우저가 자동 전송)</div>
+            <input type="text" id="serverUrl" value="http://localhost:8080/ws/chat" style="width: 70%;">
+            <button id="btnConnect" onclick="connect()">🔌 연결하기</button>
+            <button id="btnDisconnect" onclick="disconnect()" disabled>❌ 종료</button>
+            <span id="status" class="status" style="color: red;">(연결 끊김)</span>
+        </div>
+
+        <div class="box">
+            <h4>2. 메시지 전송</h4>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="roomId" placeholder="방 번호" value="1" style="width: 80px;">
+                <input type="text" id="senderId" placeholder="보내는 사람 ID" value="1" style="width: 100px;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <input type="text" id="msgContent" placeholder="메시지 내용을 입력하세요" style="width: 100%;">
+                <button id="btnSend" onclick="sendMessage()" disabled>🚀 전송</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4>3. 수신된 메시지 로그</h4>
+            <ul id="messages"></ul>
+        </div>
+    </div>
+
+    <script>
+        var stompClient = null;
+
+        function setConnected(connected) {
+            document.getElementById('btnConnect').disabled = connected;
+            document.getElementById('btnDisconnect').disabled = !connected;
+            document.getElementById('btnSend').disabled = !connected;
+            
+            var statusSpan = document.getElementById("status");
+            if(connected) {
+                statusSpan.innerText = "✅ 연결됨";
+                statusSpan.style.color = "green";
+            } else {
+                statusSpan.innerText = "🔴 연결 끊김";
+                statusSpan.style.color = "red";
+            }
+        }
+
+        function connect() {
+            var url = document.getElementById("serverUrl").value;
+            
+            // SockJS 연결 생성
+            var socket = new SockJS(url);
+            stompClient = Stomp.over(socket);
+
+            // [중요] HttpOnly Cookie 방식에서는 헤더에 토큰을 넣지 않습니다.
+            // connect({}, callback, errorCallback) -> 빈 객체 {} 전달
+            stompClient.connect({}, function (frame) {
+                setConnected(true);
+                console.log('Connected: ' + frame);
+                
+                // 구독 설정 (예: 1번 방)
+                var roomId = document.getElementById("roomId").value;
+                stompClient.subscribe('/sub/chat/room/' + roomId, function (message) {
+                    showOutput(JSON.parse(message.body));
+                });
+                
+                alert("연결 성공! (쿠키 인증 완료)\n" + roomId + "번 방을 구독합니다.");
+
+            }, function(error) {
+                console.log("Connection Error:", error);
+                alert("연결 실패!\n1. 로그인은 하셨나요?\n2. 쿠키 이름이 'access_token'이 맞나요?\n\n에러 내용: " + error);
+                setConnected(false);
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log("Disconnected");
+        }
+
+        function sendMessage() {
+            var roomId = document.getElementById("roomId").value;
+            var senderId = document.getElementById("senderId").value;
+            var content = document.getElementById("msgContent").value;
+
+            if (!content) {
+                alert("내용을 입력하세요.");
+                return;
+            }
+
+            // DTO 구조에 맞춰 전송
+            var chatMessage = {
+                'chatroomId': roomId,       // 기존 roomId -> chatroomId
+                'senderId': senderId,       // (서버에서 세션 값으로 덮어쓰겠지만 형식상 유지)
+                'messageType': 'TEXT',      // 기존 type -> messageType
+                'content': content
+            };
+
+            stompClient.send("/pub/chat/message", {}, JSON.stringify(chatMessage));
+            document.getElementById("msgContent").value = ''; // 입력창 초기화
+        }
+
+        function showOutput(messageOutput) {
+            var ul = document.getElementById("messages");
+            var li = document.createElement("li");
+            
+            var time = new Date().toLocaleTimeString();
+            var typeBadge = messageOutput.type === 'TEXT' ? '💬' : '🔔';
+            
+            li.innerHTML = `
+                <span style="color:#888; font-size:0.8em;">[${time}]</span>
+                <strong>User ${messageOutput.senderId}</strong> ${typeBadge}: 
+                <span>${messageOutput.content}</span>
+            `;
+            
+            ul.prepend(li);
+        }
+    </script>
+</body>
+</html>

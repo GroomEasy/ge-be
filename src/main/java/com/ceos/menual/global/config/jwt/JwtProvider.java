@@ -1,5 +1,6 @@
 package com.ceos.menual.global.config.jwt;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
 import io.jsonwebtoken.security.Keys;
@@ -70,6 +71,15 @@ public class JwtProvider {
 
     SecretKey getKey() {
         return this.key;
+    }
+
+    public Long getUserId(String token) {
+        return Long.parseLong(Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject());
     }
 
 }

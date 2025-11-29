@@ -53,12 +53,12 @@ jobs:
             cd ~/menual
 
             export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
-  
+            
             # 최신 이미지 가져오기
-            docker-compose pull
+            docker compose pull
 
             # 컨테이너 재기동 (변경사항 반영)
-            docker-compose up -d
+            docker compose up -d
 
             # 안 쓰는 이미지 정리
             docker image prune -f

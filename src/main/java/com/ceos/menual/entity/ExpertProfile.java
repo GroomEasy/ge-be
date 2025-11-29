@@ -39,6 +39,9 @@ public class ExpertProfile extends BaseEntity {
 	@OneToOne(mappedBy = "expertProfile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private ExpertBankAccount expertBankAccount;
 
+	//프로필이미지
+	private String profileImage;
+
 	//전문분야
 	private String speciality;
 

@@ -2,6 +2,7 @@ package com.ceos.menual.entity;
 
 import java.time.LocalDateTime;
 
+import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.PaymentStatus;
 
@@ -42,6 +43,9 @@ public class Consultation extends BaseEntity {
 
 	@Enumerated(EnumType.STRING)
 	private ConsultationType type;
+
+	@Enumerated(EnumType.STRING)
+	private ConsultationStatus status;
 
 	private LocalDateTime scheduleTime;
 

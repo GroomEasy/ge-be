@@ -1,0 +1,80 @@
+package com.ceos.menual.domain.expert.repository;
+
+import java.util.List;
+
+import org.springframework.stereotype.Repository;
+
+import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
+import com.ceos.menual.entity.QConsultation;
+import com.ceos.menual.entity.QExpertProfile;
+import com.ceos.menual.entity.enums.ConsultationStatus;
+import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+
+import lombok.RequiredArgsConstructor;
+
+@Repository
+@RequiredArgsConstructor
+public class ExpertRepositoryImpl implements ExpertRepository {
+	private final JPAQueryFactory queryFactory;
+
+	QExpertProfile ep = QExpertProfile.expertProfile;
+	QConsultation c = QConsultation.consultation;
+
+	@Override
+	public List<ExpertRankingResponseDTO> findTop3Overall() {
+		return queryFactory
+			.select(Projections.constructor(
+				ExpertRankingResponseDTO.class,
+				ep.user.nickname,
+				ep.category.name,
+				ep.profileImage,
+				ep.introduction
+			))
+			.from(ep)
+			.leftJoin(c)
+				.on(c.expertProfile.id.eq(ep.id)
+					.and(c.status.eq(ConsultationStatus.COMPLETED)))
+			.join(ep.user)
+			.join(ep.category)
+			.groupBy(
+				ep.id,
+				ep.user.nickname,
+				ep.category.name,
+				ep.profileImage,
+				ep.introduction
+			)
+			.orderBy(c.id.count().desc())
+			.limit(3)
+			.fetch();
+	}
+
+	@Override
+	public List<ExpertRankingResponseDTO> findTop3ByCategory(Long categoryId) {
+		return queryFactory
+			.select(Projections.constructor(
+				ExpertRankingResponseDTO.class,
+				ep.user.nickname,
+				ep.category.name,
+				ep.profileImage,
+				ep.introduction
+			))
+			.from(ep)
+			.leftJoin(c)
+				.on(c.expertProfile.id.eq(ep.id)
+					.and(c.status.eq(ConsultationStatus.COMPLETED)))
+			.join(ep.user)
+			.join(ep.category)
+			.where(ep.category.id.eq(categoryId))
+			.groupBy(
+				ep.id,
+				ep.user.nickname,
+				ep.category.name,
+				ep.profileImage,
+				ep.introduction
+			)
+			.orderBy(c.id.count().desc())
+			.limit(3)
+			.fetch();
+	}
+}

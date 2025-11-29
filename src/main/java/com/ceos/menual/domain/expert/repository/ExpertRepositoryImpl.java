@@ -18,8 +18,8 @@ import lombok.RequiredArgsConstructor;
 public class ExpertRepositoryImpl implements ExpertRepository {
 	private final JPAQueryFactory queryFactory;
 
-	QExpertProfile ep = QExpertProfile.expertProfile;
-	QConsultation c = QConsultation.consultation;
+	private static final QExpertProfile ep = QExpertProfile.expertProfile;
+	private static final QConsultation c = QConsultation.consultation;
 
 	@Override
 	public List<ExpertRankingResponseDTO> findTop3Overall() {

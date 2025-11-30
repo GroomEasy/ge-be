@@ -8,7 +8,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @AllArgsConstructor
-@Schema(description = "후기 요약 응닫 DTO")
+@Schema(description = "후기 요약 응답 DTO")
 public class ReviewSummaryResponseDTO {
 
 	@Schema(description = "리뷰 ID")

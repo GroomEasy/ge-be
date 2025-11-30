@@ -43,13 +43,17 @@ public class Review extends BaseEntity {
 	private Integer likeCount = 0;
 
 	public void incrementLikeCount() {
+		if(this.likeCount == null){
+			this.likeCount = 0;
+		}
 		this.likeCount++;
 	}
 
 	public void decrementLikeCount() {
-		if(this.likeCount > 0){
-			this.likeCount--;
+		if(this.likeCount == null || this.likeCount == 0){
+			return;
 		}
+		this.likeCount--;
 	}
 
 }

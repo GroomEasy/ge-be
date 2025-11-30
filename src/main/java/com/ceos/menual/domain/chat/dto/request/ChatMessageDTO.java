@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.chat.dto.request;
 
+import com.ceos.menual.entity.enums.MessageType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -8,9 +9,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class ChatMessageDTO {
-    public enum MessageType {
-        TEXT, IMAGE, QUESTION, SOLUTION, SYSTEM
-    }
 
     private Long chatroomId;
     private Long senderId;

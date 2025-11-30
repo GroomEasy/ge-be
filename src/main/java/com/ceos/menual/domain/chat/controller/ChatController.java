@@ -1,8 +1,13 @@
 package com.ceos.menual.domain.chat.controller;
 
+import com.ceos.menual.domain.auth.exception.AuthErrorCode;
 import com.ceos.menual.domain.chat.dto.request.ChatMessageDTO;
 import com.ceos.menual.domain.chat.dto.response.SocketResponse;
+import com.ceos.menual.domain.chat.exception.ChatErrorCode;
 import com.ceos.menual.domain.chat.service.ChatService;
+import com.ceos.menual.domain.common.dto.response.CommonResponse;
+import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -21,33 +26,39 @@ public class ChatController {
     private final ChatService chatService;
 
     // 클라이언트가 /pub/chat/message 로 보낸 메시지를 처리
-    // (Config에서 prefix를 /pub으로 했으므로 여기선 /chat/message만 씀)
     @MessageMapping("/chat/message")
     public void message(ChatMessageDTO message, SimpMessageHeaderAccessor headerAccessor) {
 
         // 세션에서 userId(senderId) 추출
         Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
-        Long senderId = (Long) sessionAttributes.get("userId");
+        Object userIdObj = sessionAttributes.get("userId");
 
-        if (senderId == null) {
+        if (userIdObj == null) {
             log.error("세션에 userId가 없습니다. (인증 실패)");
-            return;
+            throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
         }
+
+        Long senderId = Long.parseLong(String.valueOf(userIdObj));
 
         // DTO에 보낸 사람 ID 주입
         message.setSenderId(senderId);
 
         // 메시지 타입에 따른 시스템 로직
-         if (ChatMessageDTO.MessageType.SYSTEM.equals(message.getMessageType())) {
-             message.setContent("시스템 알림: " + message.getContent());
-         }
+        if ("SYSTEM".equals(message.getMessageType())) {
+            message.setContent("시스템 알림: " + message.getContent());
+        }
 
-        // DB에 메시지 저장
-        chatService.saveMessage(message);
+        try {
+            // DB 저장
+            chatService.saveMessage(message);
 
-        SocketResponse<ChatMessageDTO> response = SocketResponse.message(message.getChatroomId(), message);
+            // 성공 시 응답 객체 생성 및 발송
+            SocketResponse<ChatMessageDTO> response = SocketResponse.message(message.getChatroomId(), message);
+            messagingTemplate.convertAndSend("/sub/chatrooms/" + message.getChatroomId(), response);
 
-        // 구독자들에게 전송 (/sub/chatrooms/{id})
-        messagingTemplate.convertAndSend("/sub/chatrooms/" + message.getChatroomId(), response);
+        } catch (Exception e) {
+            log.error("메시지 처리 실패: {}", e.getMessage(), e);
+            throw new GlobalException(ChatErrorCode.ERROR_SAVING_MESSAGE);
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.ceos.menual.entity;
 
 import com.ceos.menual.domain.chat.dto.request.ChatMessageDTO;
+import com.ceos.menual.entity.enums.MessageType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,7 +30,7 @@ public class Message extends BaseEntity{
 
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type")
-    private ChatMessageDTO.MessageType type;
+    private MessageType messageType;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -41,7 +42,7 @@ public class Message extends BaseEntity{
         Message msg = new Message();
         msg.setChatroomId(dto.getChatroomId());
         msg.setSenderId(dto.getSenderId());
-        msg.setType(dto.getMessageType());
+        msg.setMessageType(dto.getMessageType());
         msg.setContent(dto.getContent());
         return msg;
     }

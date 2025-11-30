@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum ChatErrorCode  implements ResultCode {
 
-    ERROR_SAVING_MESSAGE(HttpStatus.BAD_REQUEST, 4001, "메시지 저장 중 오류가 발생했습니다.");
+    ERROR_SAVING_MESSAGE(HttpStatus.INTERNAL_SERVER_ERROR, 5001, "메시지 저장 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final int code;

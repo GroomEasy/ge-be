@@ -1,5 +1,6 @@
 package com.ceos.menual.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -34,5 +35,25 @@ public class Review extends BaseEntity {
 	private String content;
 
 	private String mediaUrls;
+
+	// 카테고리 ID 캐싱
+	private Long categoryId;
+
+	@Builder.Default
+	private Integer likeCount = 0;
+
+	public void incrementLikeCount() {
+		if(this.likeCount == null){
+			this.likeCount = 0;
+		}
+		this.likeCount++;
+	}
+
+	public void decrementLikeCount() {
+		if(this.likeCount == null || this.likeCount == 0){
+			return;
+		}
+		this.likeCount--;
+	}
 
 }

@@ -45,7 +45,7 @@ public class UserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .birth(parseBirthDate(request.getBirth()))
-                .userType(UserType.MENUAL)
+                .userType(UserType.MEMBER)
                 .provider(AuthProvider.LOCAL)
                 .agreeTerms(request.getAgreeTerms())
                 .agreePrivacy(request.getAgreePrivacy())

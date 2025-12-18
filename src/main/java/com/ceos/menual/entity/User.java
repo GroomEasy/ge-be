@@ -57,7 +57,7 @@ public class User extends BaseEntity {
         this.agreePrivacy = agreePrivacy;
 
         if(this.userType == UserType.TMP_USER){
-            this.userType = UserType.MENUAL;
+            this.userType = UserType.MEMBER;
         }
     }
 }

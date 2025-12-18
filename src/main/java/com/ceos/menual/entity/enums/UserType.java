@@ -1,7 +1,7 @@
 package com.ceos.menual.entity.enums;
 
 public enum UserType {
-    MENUAL,
+    MEMBER,
     TMP_USER,
     EXPERT
 }

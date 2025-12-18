@@ -48,4 +48,17 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean agreePrivacy;
+
+    public void updateSocialExtraInfo(String nickname, LocalDate birth, String email, Boolean agreeTerms, Boolean agreePrivacy) {
+        this.nickname = nickname;
+        this.birth = birth;
+        this.email = email;
+        this.agreeTerms = agreeTerms;
+        this.agreePrivacy = agreePrivacy;
+
+        if(this.userType == UserType.TMP_USER){
+            this.userType = UserType.MEMBER;
+        }
+    }
 }
+

@@ -31,8 +31,9 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "message_type")
-    private MessageType messageType; // Enum으로 관리한다면 MessageType으로 변경 권장
+    private MessageType messageType;
 
     @Column(name = "is_read")
     private boolean isRead;

@@ -22,6 +22,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws/chat")
                 .setAllowedOrigins(
                         "http://localhost:5173",
+                        "http://localhost:3000",
                         "https://ge-fe-pi.vercel.app"
                 )
                 .addInterceptors(authHandshakeInterceptor) // 핸드셰이크 인터셉터 등록

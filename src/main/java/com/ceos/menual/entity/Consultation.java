@@ -33,12 +33,12 @@ public class Consultation extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "expert_profile_id")
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "expert_profile_id", nullable = false)
 	private ExpertProfile expertProfile;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "general_profile_id")
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "general_profile_id", nullable = false)
 	private GeneralProfile generalProfile;
 
 	@Enumerated(EnumType.STRING)

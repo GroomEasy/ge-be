@@ -1,11 +1,9 @@
 package com.ceos.menual.domain.chat.controller;
 
-import com.ceos.menual.domain.auth.exception.AuthErrorCode;
 import com.ceos.menual.domain.chat.dto.request.ChatMessageDTO;
-import com.ceos.menual.domain.chat.dto.response.SocketResponse;
+import com.ceos.menual.domain.chat.dto.response.SocketResponseDTO;
 import com.ceos.menual.domain.chat.exception.ChatErrorCode;
 import com.ceos.menual.domain.chat.service.ChatService;
-import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +51,7 @@ public class ChatController {
             chatService.saveMessage(message);
 
             // 성공 시 응답 객체 생성 및 발송
-            SocketResponse<ChatMessageDTO> response = SocketResponse.message(message.getChatroomId(), message);
+            SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(message.getChatroomId(), message);
             messagingTemplate.convertAndSend("/sub/chatrooms/" + message.getChatroomId(), response);
 
         } catch (Exception e) {

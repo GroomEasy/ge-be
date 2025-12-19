@@ -54,6 +54,8 @@ public class UserService {
         // 저장
         User savedUser = userRepository.save(user);
 
+        // TODO: profile 만들기
+
         // 응답 생성
         return SignUpResponseDTO.builder()
                 .userId(savedUser.getId())

@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,33 +19,33 @@ public class CookieUtil {
     private static final String REFRESH_TOKEN_NAME = "refreshToken";
 
     public void addAccessTokenCookie(HttpServletResponse response, String token) {
-        Cookie cookie = createCookie(
+        ResponseCookie cookie = createResponseCookie(
                 ACCESS_TOKEN_NAME,
                 token,
-                (int) (jwtProvider.getAccessTokenValidity() / 1000),
+                jwtProvider.getAccessTokenValidity() / 1000,
                 "/"
         );
-        response.addCookie(cookie);
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public void addRefreshTokenCookie(HttpServletResponse response, String token) {
-        Cookie cookie = createCookie(
+        ResponseCookie cookie = createResponseCookie(
                 REFRESH_TOKEN_NAME,
                 token,
-                (int) (jwtProvider.getRefreshTokenValidity() / 1000),
+                jwtProvider.getRefreshTokenValidity() / 1000,
                 "/api/auth/refresh"
         );
-        response.addCookie(cookie);
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public void deleteAccessTokenCookie(HttpServletResponse response) {
-        Cookie cookie = createCookie(ACCESS_TOKEN_NAME, null, 0, "/");
-        response.addCookie(cookie);
+        ResponseCookie cookie = createResponseCookie(ACCESS_TOKEN_NAME, "", 0, "/");
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public void deleteRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = createCookie(REFRESH_TOKEN_NAME, null, 0, "/api/auth/refresh");
-        response.addCookie(cookie);
+        ResponseCookie cookie = createResponseCookie(REFRESH_TOKEN_NAME, "", 0, "/api/auth/refresh");
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public String getRefreshTokenFromCookie(HttpServletRequest request) {
@@ -59,13 +60,13 @@ public class CookieUtil {
         throw new GlobalException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND);
     }
 
-    private Cookie createCookie(String name, String value, int maxAge, String path) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);
-//        cookie.setSecure(true); // HTTPS 환경에서만 전송
-        cookie.setPath(path);
-        cookie.setMaxAge(maxAge);
-        // cookie.setSameSite("Strict"); // Spring Boot 3.x에서는 별도 설정 필요
-        return cookie;
+    private ResponseCookie createResponseCookie(String name, String value, long maxAge, String path) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(true)
+                .path(path)
+                .maxAge(maxAge)
+                .sameSite("None")
+                .build();
     }
 }

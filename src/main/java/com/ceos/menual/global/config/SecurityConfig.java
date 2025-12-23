@@ -37,6 +37,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
+                                // health check
+                                "/actuator/health",
+
+
                                 "/api/auth/**",
                                 "/api/user/signup",
 
@@ -69,7 +73,10 @@ public class SecurityConfig {
             "http://localhost:3000",
             "http://localhost:5173",
             "https://ge-fe-pi.vercel.app",
-            "http://ec2-3-25-140-21.ap-southeast-2.compute.amazonaws.com"
+            "http://ec2-3-25-140-21.ap-southeast-2.compute.amazonaws.com",
+            "https://api.menual.site",
+            "https://menual.site",
+            "https://www.menual.site"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowCredentials(true);

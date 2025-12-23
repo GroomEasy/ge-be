@@ -27,12 +27,12 @@
         <strong>ℹ️ 체크리스트:</strong><br>
         1. <strong>로그인 API</strong> 호출 완료 (accessToken 쿠키 생성됨)<br>
         2. 이 파일을 <strong>src/main/resources/static</strong>에 넣고 서버 실행<br>
-        3. 브라우저로 <strong>http://localhost:8080/chat-test.html</strong> 접속
+        3. 브라우저로 <strong>http://ec2-3-25-140-21.ap-southeast-2.compute.amazonaws.com/ws/chat</strong> 접속
     </div>
 
     <div class="box">
         <h4>1. 서버 연결</h4>
-        <input type="text" id="serverUrl" value="http://localhost:8080/ws/chat" style="width: 70%;">
+        <input type="text" id="serverUrl" value="http://ec2-3-25-140-21.ap-southeast-2.compute.amazonaws.com/ws/chat" style="width: 70%;">
         <button id="btnConnect" onclick="connect()">🔌 연결하기</button>
         <button id="btnDisconnect" onclick="disconnect()" disabled>❌ 종료</button>
         <span id="status" class="status" style="color: red;">(연결 끊김)</span>

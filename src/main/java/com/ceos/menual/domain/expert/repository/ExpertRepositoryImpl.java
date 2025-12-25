@@ -29,7 +29,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				ExpertRankingResponseDTO.class,
 				ep.user.nickname,
 				ep.category,
-				ep.profileImage,
+				ep.user.profileImage,
 				ep.introduction
 			))
 			.from(ep)
@@ -41,7 +41,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				ep.id,
 				ep.user.nickname,
 				ep.category,
-				ep.profileImage,
+				ep.user.profileImage,
 				ep.introduction
 			)
 			.orderBy(c.id.count().desc())
@@ -56,7 +56,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				ExpertRankingResponseDTO.class,
 				ep.user.nickname,
 				ep.category,
-				ep.profileImage,
+				ep.user.profileImage,
 				ep.introduction
 			))
 			.from(ep)
@@ -69,7 +69,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				ep.id,
 				ep.user.nickname,
 				ep.category,
-				ep.profileImage,
+				ep.user.profileImage,
 				ep.introduction
 			)
 			.orderBy(c.id.count().desc())

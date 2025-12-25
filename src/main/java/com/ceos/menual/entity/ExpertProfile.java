@@ -19,7 +19,7 @@ public class ExpertProfile extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@OneToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
@@ -28,9 +28,6 @@ public class ExpertProfile extends BaseEntity {
 
 	@OneToOne(mappedBy = "expertProfile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private ExpertBankAccount expertBankAccount;
-
-	//프로필이미지
-	private String profileImage;
 
 	//전문분야
 	private String speciality;

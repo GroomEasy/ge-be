@@ -23,7 +23,7 @@ public class ChatroomService {
     private final ConsultationRepository consultationRepository;
 
     /*
-     채팅방 생성 메서드
+     * 채팅방 생성 메서드
      */
     @Transactional
     public ChatroomResponseDTO createChatroom(Long consultationId, ChatroomCreateRequestDTO request) {
@@ -71,11 +71,24 @@ public class ChatroomService {
         return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
     }
 
-//    /*
-//    채팅방 목록(리스트) 조회 메서드
-//     */
+    /*
+     * 채팅방 목록(리스트) 조회 메서드
+     */
 //    public List<ChatroomListResponseDTO> getChatroomList(Long memberId) {
 //
+//        // memberId로 chatroom 목록 가져오기
+//        List<Chatroom> chatrooms = chatroomRepository.findAllByParticipantId(memberId);
 //
+//        // 가져온 방들을 DTO로 변환하고 최신순으로 정렬
+//        return chatrooms.stream()
+//                .map(chatroom -> toChatroomListResponseDTO(chatroom, memberId)) // 아래 헬퍼 메서드 호출
+//                .sorted((c1, c2) -> {
+//                    // 정렬 로직: 마지막 메시지 시간(lastMessageAt) 내림차순
+//                    if (c1.getLastMessageAt() == null) return 1;  // 메시지 없으면 맨 뒤로
+//                    if (c2.getLastMessageAt() == null) return -1;
+//                    return c2.getLastMessageAt().compareTo(c1.getLastMessageAt());
+//                })
+//                .collect(Collectors.toList());
 //    }
+
 }

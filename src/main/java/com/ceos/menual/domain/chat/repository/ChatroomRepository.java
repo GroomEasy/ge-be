@@ -15,6 +15,11 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
     Optional<Chatroom> findByConsultationIdAndChatroomType(Long consultationId, ChatroomType type);
 
     // memberId나 expertId에 해당하는 id에 해당하는 채팅방 리스트 조회
-    @Query("SELECT c FROM Chatroom c WHERE c.member.id = :id OR c.expert.id = :id")
+    @Query("SELECT c FROM Chatroom c " +
+            "JOIN FETCH c.member m " +
+            "JOIN FETCH c.expert e " +
+            "LEFT JOIN FETCH e.expertProfile ep " +
+            "LEFT JOIN FETCH ep.category " +
+            "WHERE c.member.id = :id OR c.expert.id = :id")
     List<Chatroom> findAllByParticipantId(@Param("id") Long id);
 }

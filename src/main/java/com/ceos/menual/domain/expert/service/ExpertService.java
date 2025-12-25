@@ -2,6 +2,7 @@ package com.ceos.menual.domain.expert.service;
 
 import java.util.List;
 
+import com.ceos.menual.entity.enums.Category;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +24,8 @@ public class ExpertService {
 		return new PopularExpertsResponseDTO(top3);
 	}
 
-	public PopularExpertsResponseDTO getTop3ByCategory(Long categoryId) {
-		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3ByCategory(categoryId);
+	public PopularExpertsResponseDTO getTop3ByCategory(Category category) {
+		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3ByCategory(category);
 		return new PopularExpertsResponseDTO(top3);
 	}
 }

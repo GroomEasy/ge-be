@@ -22,27 +22,29 @@ public class Chatroom extends BaseEntity {
     @Column(nullable = false)
     private ChatroomType chatroomType;
 
-    // 채팅방 참여자(MEMBER)
-    @Column(name = "member_id", nullable = false)
-    private Long memberId;
+    // 채팅방 참여자 (회원)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private User member;
 
-    // 채팅방 참여자(EXPERT)
-    @Column(name = "expert_id", nullable = false)
-    private Long expertId;
+    // 채팅방 참여자 (전문가)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "expert_id", nullable = false)
+    private User expert;
 
     @Column(nullable = false)
     private Long consultationId;
 
-    // 채팅방 활성화 여부: 상담 종료 시 false
+    // 채팅방 활성화 여부
     @Column(name = "is_active")
     private boolean isActive;
 
     @Builder
-    public Chatroom(Long consultationId, ChatroomType chatroomType, Long memberId, Long expertId) {
-        this.memberId = memberId;
+    public Chatroom(Long consultationId, ChatroomType chatroomType, User member, User expert) {
+        this.member = member; // 객체를 받아서 저장
+        this.expert = expert;
         this.chatroomType = chatroomType;
-        this.expertId = expertId;
-        this.isActive = true; // 생성 시 기본 활성화
-        this.consultationId = consultationId; // 여기!
+        this.consultationId = consultationId;
+        this.isActive = true;
     }
 }

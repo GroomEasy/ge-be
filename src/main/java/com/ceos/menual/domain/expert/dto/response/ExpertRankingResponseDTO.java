@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.expert.dto.response;
 
+import com.ceos.menual.entity.enums.Category;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +16,7 @@ public class ExpertRankingResponseDTO {
 	private String name;
 
 	@Schema(description = "전문가 카테고리명", example = "헤어")
-	private String category;
+	private Category category;
 
 	@Schema(description = "프로필 이미지", example = "http://image.png")
 	private String profileImage;

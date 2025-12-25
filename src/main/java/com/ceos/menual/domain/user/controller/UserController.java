@@ -32,7 +32,7 @@ public class UserController {
      */
     @Operation(
             summary = "회원가입",
-            description = "사용자의 정보를 입력받아 검증한 후 DB에 저장한다."
+            description = "사용자의 정보를 입력받아 검증한 후 DB에 저장합니다."
     )
     @PostMapping("/signup")
     public ResponseEntity<CommonResponse<SignUpResponseDTO>> signUp(@Valid @RequestBody SignUpRequestDTO request) {
@@ -46,7 +46,7 @@ public class UserController {
      */
     @Operation(
         summary = "소셜 로그인 회원가입 (추가 정보 입력)",
-        description = "사용자의 정보를 입력받아 검증한 후 DB에 저장한다."
+        description = "사용자의 정보를 입력받아 검증한 후 DB에 저장합니다."
     )
     @PostMapping("/social-signup")
     public ResponseEntity<CommonResponse<SocialSignUpResponseDTO>> socialSignUp(

@@ -2,6 +2,7 @@ package com.ceos.menual.domain.expert.repository;
 
 import java.util.List;
 
+import com.ceos.menual.entity.enums.Category;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
@@ -27,7 +28,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 			.select(Projections.constructor(
 				ExpertRankingResponseDTO.class,
 				ep.user.nickname,
-				ep.category.name,
+				ep.category,
 				ep.profileImage,
 				ep.introduction
 			))
@@ -36,11 +37,10 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.on(c.expertProfile.id.eq(ep.id)
 					.and(c.status.eq(ConsultationStatus.COMPLETED)))
 			.join(ep.user)
-			.join(ep.category)
 			.groupBy(
 				ep.id,
 				ep.user.nickname,
-				ep.category.name,
+				ep.category,
 				ep.profileImage,
 				ep.introduction
 			)
@@ -50,12 +50,12 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	}
 
 	@Override
-	public List<ExpertRankingResponseDTO> findTop3ByCategory(Long categoryId) {
+	public List<ExpertRankingResponseDTO> findTop3ByCategory(Category category) {
 		return queryFactory
 			.select(Projections.constructor(
 				ExpertRankingResponseDTO.class,
 				ep.user.nickname,
-				ep.category.name,
+				ep.category,
 				ep.profileImage,
 				ep.introduction
 			))
@@ -64,12 +64,11 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.on(c.expertProfile.id.eq(ep.id)
 					.and(c.status.eq(ConsultationStatus.COMPLETED)))
 			.join(ep.user)
-			.join(ep.category)
-			.where(ep.category.id.eq(categoryId))
+			.where(ep.category.eq(category))
 			.groupBy(
 				ep.id,
 				ep.user.nickname,
-				ep.category.name,
+				ep.category,
 				ep.profileImage,
 				ep.introduction
 			)

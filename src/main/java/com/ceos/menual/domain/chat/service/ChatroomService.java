@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.chat.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
+import com.ceos.menual.domain.chat.dto.response.ChatroomListResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
 import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -19,10 +22,13 @@ public class ChatroomService {
     private final ChatroomRepository chatroomRepository;
     private final ConsultationRepository consultationRepository;
 
+    /*
+     채팅방 생성 메서드
+     */
     @Transactional
     public ChatroomResponseDTO createChatroom(Long consultationId, ChatroomCreateRequestDTO request) {
 
-        // 상담 정보 조회 (모든 연관관계 한 번에 로딩)
+        // 상담 정보 조회
         Consultation consultation = consultationRepository.findByIdWithAllRelations(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
 
@@ -33,20 +39,19 @@ public class ChatroomService {
         User expertUser = expertProfile.getUser();
         User memberUser = generalProfile.getUser();
 
-        // Category 엔티티에 'name' 필드가 있다고 가정 (없으면 필드명에 맞게 수정: getName(), getCategoryName() 등)
-        String categoryName = expertProfile.getCategory().getName();
+        String categoryName = expertProfile.getCategory().getDescription();
 
         Long expertId = expertUser.getId();
         Long memberId = memberUser.getId();
 
-        // 채팅방 존재 여부 확인 및 생성 (Find or Create)
+        // 채팅방 존재 여부 확인 및 생성
         Chatroom chatroom = chatroomRepository.findByConsultationIdAndChatroomType(consultationId, request.getChatroomType())
                 .orElseGet(() -> {
                     Chatroom newRoom = Chatroom.builder()
                             .consultationId(consultationId)
                             .chatroomType(request.getChatroomType())
-                            .memberId(memberId)
-                            .expertId(expertId)
+                            .member(memberUser)
+                            .expert(expertUser)
                             .build();
                     return chatroomRepository.save(newRoom);
                 });
@@ -65,4 +70,12 @@ public class ChatroomService {
 
         return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
     }
+
+//    /*
+//    채팅방 목록(리스트) 조회 메서드
+//     */
+//    public List<ChatroomListResponseDTO> getChatroomList(Long memberId) {
+//
+//
+//    }
 }

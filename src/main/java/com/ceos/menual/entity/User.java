@@ -34,11 +34,22 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserType userType;
+    private UserType userType; // EXPERT, MEMBER, TMP_USER
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider provider;
+
+    //프로필이미지
+    private String profileImage;
+
+    // 회원 프로필
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private GeneralProfile generalProfile;
+
+    // 전문가 프로필 (회원은 null)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private ExpertProfile expertProfile; // 전문가만 존재
 
     @Column
     private String providerId;
@@ -60,5 +71,14 @@ public class User extends BaseEntity {
             this.userType = UserType.MEMBER;
         }
     }
+
+    public boolean isExpert() {
+        return this.userType == UserType.EXPERT && this.expertProfile != null;
+    }
+
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
 }
 

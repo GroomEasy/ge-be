@@ -26,8 +26,8 @@ public class ReviewSummaryResponseDTO {
 	@Schema(description = "좋아요 수")
 	private Integer likeCount;
 
-	@Schema(description = "카테고리 ID")
-	private Long categoryId;
+	@Schema(description = "카테고리")
+	private String category;
 
 	@Schema(description = "작성 시간")
 	private String createdAt;

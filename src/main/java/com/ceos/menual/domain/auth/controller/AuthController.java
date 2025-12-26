@@ -34,7 +34,7 @@ public class AuthController {
      */
     @Operation(
             summary = "일반 사용자 로그인",
-            description = "사용자 이메일과 비밀번호를 이용해 로그인하고, 발급된 AccessToken과 RefreshToken을 httpOnly 쿠키로 전송한다."
+            description = "사용자 이메일과 비밀번호를 이용해 로그인하고, 발급된 AccessToken과 RefreshToken을 httpOnly 쿠키로 전송합니다."
     )
     @PostMapping("/login")
     public ResponseEntity<CommonResponse<LoginResponseDTO>> socialLogin(

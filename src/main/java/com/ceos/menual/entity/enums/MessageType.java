@@ -1,5 +1,9 @@
 package com.ceos.menual.entity.enums;
 
 public enum MessageType {
-    TEXT, IMAGE, QUESTION, SOLUTION, SYSTEM
+    TEXT,
+    IMAGE,
+    QUESTION,
+    SOLUTION,
+    SYSTEM
 }

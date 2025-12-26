@@ -40,9 +40,18 @@ public class SecurityConfig {
                                 // health check
                                 "/actuator/health",
 
-
+                                // 인증 관련
                                 "/api/auth/**",
                                 "/api/user/signup",
+
+                                // TODO: http GET 메소드만 허용
+                                // 전문가 관련
+                                "/api/expert",
+                                "/api/expert/**",
+
+                                // 리뷰 관련
+                                "/api/review",
+                                "/api/review/**",
 
                                 // Swagger
                                 "/v3/api-docs",

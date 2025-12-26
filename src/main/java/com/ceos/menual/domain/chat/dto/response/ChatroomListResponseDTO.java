@@ -34,7 +34,6 @@ public class ChatroomListResponseDTO {
     private String opponentNickname;
 
     @Schema(description = "전문가 카테고리 이름 (헤어, 패션 등)", example = "헤어")
-    @Enumerated(EnumType.STRING)
     private String expertCategory;
 
     @Schema(description = "상대방 프로필 이미지 URL", example = "https://s3.../profile.jpg")

@@ -30,7 +30,7 @@ public class ChatroomListResponseDTO {
     @Schema(description = "상대방 ID (회원 또는 멘토 ID)", example = "3")
     private Long opponentId;
 
-    @Schema(description = "상대방 닉네임", example = "최영인")
+    @Schema(description = "상대방 닉네임", example = "스완")
     private String opponentNickname;
 
     @Schema(description = "전문가 카테고리 이름 (헤어, 패션 등)", example = "헤어")

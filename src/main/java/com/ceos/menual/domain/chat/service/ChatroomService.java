@@ -56,6 +56,7 @@ public class ChatroomService {
 
         String categoryName = expertProfile.getCategory().getDescription();
 
+        // TODO: 채팅방 이미 존재하면 예외처리
         // 채팅방 존재 여부 확인 및 생성
         Chatroom chatroom = chatroomRepository.findByConsultationIdAndChatroomType(consultationId, request.getChatroomType())
                 .orElseGet(() -> {
@@ -72,7 +73,7 @@ public class ChatroomService {
         ChatroomResponseDTO.ExpertInfo expertInfo = ChatroomResponseDTO.ExpertInfo.builder()
                 .userId(expertId)
                 .nickname(expertUser.getNickname())
-                .categoryName(categoryName) // 조회한 카테고리 이름
+                .category(expertProfile.getCategory().getDescription())
                 .build();
 
         ChatroomResponseDTO.MemberInfo memberInfo = ChatroomResponseDTO.MemberInfo.builder()
@@ -125,10 +126,6 @@ public class ChatroomService {
 
     /**
      * Chatroom 엔티티를 DTO로 변환
-     * @param chatroom 채팅방 엔티티
-     * @param memberId 현재 사용자 ID
-     * @param lastMessage 마지막 메시지
-     * @param unreadCount 읽지 않은 메시지 수
      */
     private ChatroomListResponseDTO toChatroomListResponseDTO(
             Chatroom chatroom,

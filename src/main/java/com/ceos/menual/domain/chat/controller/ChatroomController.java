@@ -7,12 +7,14 @@ import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/chat/room")
@@ -26,9 +28,7 @@ public class ChatroomController {
             @AuthenticationPrincipal Long memberId,
             @RequestBody ChatroomCreateRequestDTO request
     ) {
-
-        ChatroomResponseDTO response = chatroomService.createChatroom(memberId, request);
-
+        ChatroomResponseDTO response = chatroomService.createChatroom(memberId, request.getConsultationId(), request);
         return CommonResponse.success(response);
     }
 

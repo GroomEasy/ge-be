@@ -10,6 +10,7 @@ import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -32,11 +34,18 @@ public class ChatroomService {
      * 채팅방 생성 메서드
      */
     @Transactional
-    public ChatroomResponseDTO createChatroom(Long consultationId, ChatroomCreateRequestDTO request) {
+    public ChatroomResponseDTO createChatroom(Long memberId, Long consultationId, ChatroomCreateRequestDTO request) {
 
         // 상담 정보 조회
         Consultation consultation = consultationRepository.findByIdWithAllRelations(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
+
+        Long expertId = consultation.getExpertProfile().getUser().getId();
+        Long generalId = consultation.getGeneralProfile().getUser().getId();
+
+        if (!memberId.equals(expertId) && !memberId.equals(generalId)) {
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_ACCESS_DENIED);
+        }
 
         // 데이터 추출
         ExpertProfile expertProfile = consultation.getExpertProfile();
@@ -46,9 +55,6 @@ public class ChatroomService {
         User memberUser = generalProfile.getUser();
 
         String categoryName = expertProfile.getCategory().getDescription();
-
-        Long expertId = expertUser.getId();
-        Long memberId = memberUser.getId();
 
         // 채팅방 존재 여부 확인 및 생성
         Chatroom chatroom = chatroomRepository.findByConsultationIdAndChatroomType(consultationId, request.getChatroomType())
@@ -70,7 +76,7 @@ public class ChatroomService {
                 .build();
 
         ChatroomResponseDTO.MemberInfo memberInfo = ChatroomResponseDTO.MemberInfo.builder()
-                .userId(memberId)
+                .userId(memberUser.getId())
                 .nickname(memberUser.getNickname())
                 .build();
 

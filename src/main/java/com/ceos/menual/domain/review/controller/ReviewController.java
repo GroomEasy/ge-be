@@ -2,6 +2,7 @@ package com.ceos.menual.domain.review.controller;
 
 import java.util.List;
 
+import com.ceos.menual.entity.enums.Category;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,9 +30,9 @@ public class ReviewController {
 	@Operation(summary = "실시간 후기 조회", description = "최신 순으로 후기 목록을 조회합니다.")
 	@GetMapping("/recent")
 	public ResponseEntity<CommonResponse<List<ReviewSummaryResponseDTO>>> getRecentReviews(
-		@RequestParam(required = false) Long categoryId
+			@RequestParam(required = false) Category category
 	) {
-		List<ReviewSummaryResponseDTO> response = reviewService.getRecentReviews(categoryId);
+		List<ReviewSummaryResponseDTO> response = reviewService.getRecentReviews(category);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
@@ -42,9 +43,9 @@ public class ReviewController {
 	@Operation(summary = "베스트 후기 조회", description = "좋아요 수가 많은 후기 목록을 조회합니다.")
 	@GetMapping("/best")
 	public ResponseEntity<CommonResponse<List<ReviewSummaryResponseDTO>>> getBestReviews(
-		@RequestParam(required = false) Long categoryId
+		@RequestParam(required = false) Category category
 	){
-		List<ReviewSummaryResponseDTO> response = reviewService.getBestReviews(categoryId);
+		List<ReviewSummaryResponseDTO> response = reviewService.getBestReviews(category);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

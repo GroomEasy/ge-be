@@ -3,9 +3,10 @@ package com.ceos.menual.domain.review.repository;
 import java.util.List;
 
 import com.ceos.menual.domain.review.dto.response.ReviewSummaryResponseDTO;
+import com.ceos.menual.entity.enums.Category;
 
 public interface ReviewRepository {
-	List<ReviewSummaryResponseDTO> findRecentReviews(Long categoryId);
+	List<ReviewSummaryResponseDTO> findRecentReviews(Category category);
 
-	List<ReviewSummaryResponseDTO> findBestReviews(Long categoryId);
+	List<ReviewSummaryResponseDTO> findBestReviews(Category category);
 }

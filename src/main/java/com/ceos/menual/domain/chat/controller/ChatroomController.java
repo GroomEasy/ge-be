@@ -32,12 +32,12 @@ public class ChatroomController {
         return CommonResponse.success(response);
     }
 
-//    @Operation(summary = "내 채팅방 목록 조회", description = "내가 참여 중인 채팅방 목록을 최신 메시지 순으로 조회합니다.")
-//    @GetMapping
-//    public CommonResponse<List<ChatroomListResponseDTO>> getChatroomList(
-//            @AuthenticationPrincipal Long memberId
-//    ) {
-//        List<ChatroomListResponseDTO> response = chatroomService.getChatroomList(memberId);
-//        return CommonResponse.success(response);
-//    }
+    @Operation(summary = "내 채팅방 목록 조회", description = "내가 참여 중인 채팅방 목록을 최신 메시지 순으로 조회합니다.")
+    @GetMapping
+    public CommonResponse<List<ChatroomListResponseDTO>> getChatroomList(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        List<ChatroomListResponseDTO> response = chatroomService.getChatroomList(memberId);
+        return CommonResponse.success(response);
+    }
 }

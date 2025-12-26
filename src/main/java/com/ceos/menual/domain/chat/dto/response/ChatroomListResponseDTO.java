@@ -35,7 +35,7 @@ public class ChatroomListResponseDTO {
 
     @Schema(description = "전문가 카테고리 이름 (헤어, 패션 등)", example = "헤어")
     @Enumerated(EnumType.STRING)
-    private Category expertCategory;
+    private String expertCategory;
 
     @Schema(description = "상대방 프로필 이미지 URL", example = "https://s3.../profile.jpg")
     private String opponentProfileImage;
@@ -48,4 +48,6 @@ public class ChatroomListResponseDTO {
 
     @Schema(description = "안 읽은 메시지 개수", example = "3")
     private Long unreadCount;
+
+    private LocalDateTime createdAt;
 }

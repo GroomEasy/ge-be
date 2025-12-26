@@ -2,6 +2,7 @@ package com.ceos.menual.domain.review.service;
 
 import java.util.List;
 
+import com.ceos.menual.entity.enums.Category;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +18,11 @@ public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
 
-	public List<ReviewSummaryResponseDTO> getRecentReviews(Long categoryId) {
-		return reviewRepository.findRecentReviews(categoryId);
+	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category) {
+		return reviewRepository.findRecentReviews(category);
 	}
 
-	public List<ReviewSummaryResponseDTO> getBestReviews(Long categoryId) {
-		return reviewRepository.findBestReviews(categoryId);
+	public List<ReviewSummaryResponseDTO> getBestReviews(Category category) {
+		return reviewRepository.findBestReviews(category);
 	}
 }

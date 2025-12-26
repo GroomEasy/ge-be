@@ -15,7 +15,7 @@ public class ExpertRankingResponseDTO {
 	@Schema(description = "전문가 이름", example = "김철수")
 	private String name;
 
-	@Schema(description = "전문가 카테고리명", example = "헤어")
+	@Schema(description = "전문가 카테고리명", example = "HAIR")
 	private Category category;
 
 	@Schema(description = "프로필 이미지", example = "http://image.png")

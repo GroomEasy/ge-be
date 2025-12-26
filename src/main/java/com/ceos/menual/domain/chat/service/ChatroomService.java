@@ -141,8 +141,8 @@ public class ChatroomService {
 
         // 전문가 카테고리 추출
         String expertCategoryName = null;
-        if (opponent.isExpert()) {
-            expertCategoryName = opponent.getExpertProfile().getCategory().getDescription();
+        if (chatroom.getExpert() != null) {
+            expertCategoryName = chatroom.getExpert().getExpertProfile().getCategory().getDescription();
         }
 
         // DTO 빌드

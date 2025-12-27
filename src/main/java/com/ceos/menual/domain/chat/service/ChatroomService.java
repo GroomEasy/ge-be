@@ -192,7 +192,6 @@ public class ChatroomService {
                 .expertCategory(expertCategoryName)
                 // 메시지 정보
                 .lastMessage(lastMessageText)
-                .lastMessage(lastMessage != null ? lastMessage.getContent() : null)
                 .lastMessageAt(lastMessage != null ? lastMessage.getCreatedAt() : null)
                 .lastMessageType(lastMessageType)
                 .unreadCount(unreadCount)
@@ -203,6 +202,7 @@ public class ChatroomService {
     /**
      * 특정 채팅방의 메시지 목록 조회
      */
+    @Transactional
     public List<ChatMessageResponseDTO> getChatroomMessages(Long memberId, Long chatroomId) {
         // 채팅방 존재 여부 및 권한 확인
         Chatroom chatroom = chatroomRepository.findById(chatroomId)

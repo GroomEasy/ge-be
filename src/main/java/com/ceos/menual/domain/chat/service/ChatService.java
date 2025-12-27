@@ -18,6 +18,9 @@ public class ChatService {
         // DTO -> Entity 변환
         Message message = Message.create(messageDto);
 
+
+        //TODO: Redis 도입 후 스케줄러로 DB에 주기적 저장
+
         // DB 저장
         messageRepository.save(message);
     }

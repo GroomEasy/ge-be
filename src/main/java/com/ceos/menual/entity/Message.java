@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "Messages")
-public class Message {
+public class Message extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,8 +28,13 @@ public class Message {
     @Column(name = "user_id")
     private Long senderId;
 
+    // 텍스트 내용
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    // 이미지 url
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type")
@@ -41,15 +46,13 @@ public class Message {
     @Column(name = "related_id")
     private Long relatedId; // 고민지/솔루션지 ID 등
 
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
 
     @Builder
-    public Message(Long chatroomId, Long senderId, String content, MessageType messageType, Long relatedId) {
+    public Message(Long chatroomId, Long senderId, String content, String imageUrl, MessageType messageType, Long relatedId) {
         this.chatroomId = chatroomId;
         this.senderId = senderId;
         this.content = content;
+        this.imageUrl = imageUrl;
         this.messageType = messageType;
         this.relatedId = relatedId;
         this.isRead = false; // 기본값 false
@@ -61,6 +64,7 @@ public class Message {
                 .chatroomId(dto.getChatroomId())
                 .senderId(dto.getSenderId())
                 .content(dto.getContent())
+                .imageUrl(dto.getImageUrl())
                 .messageType(dto.getMessageType())
                 .relatedId(dto.getRelatedId())
                 .build();

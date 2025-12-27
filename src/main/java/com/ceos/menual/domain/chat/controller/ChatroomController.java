@@ -1,8 +1,10 @@
 package com.ceos.menual.domain.chat.controller;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
+import com.ceos.menual.domain.chat.dto.response.ChatMessageResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomListResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.dto.response.MessageReadResponseDTO;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +40,26 @@ public class ChatroomController {
             @AuthenticationPrincipal Long memberId
     ) {
         List<ChatroomListResponseDTO> response = chatroomService.getChatroomList(memberId);
+        return CommonResponse.success(response);
+    }
+
+    @Operation(summary = "채팅방 메시지 조회", description = "특정 채팅방의 모든 메시지를 시간순으로 조회합니다.")
+    @GetMapping("/{chatroomId}/messages")
+    public CommonResponse<List<ChatMessageResponseDTO>> getChatroomMessages(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable Long chatroomId
+    ) {
+        List<ChatMessageResponseDTO> response = chatroomService.getChatroomMessages(memberId, chatroomId);
+        return CommonResponse.success(response);
+    }
+
+    @Operation(summary = "채팅방 메시지 읽음 처리", description = "채팅방의 읽지 않은 모든 메시지를 읽음 상태로 변경합니다.")
+    @PatchMapping("/{chatroomId}/messages/read")
+    public CommonResponse<MessageReadResponseDTO> markMessagesAsRead(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable Long chatroomId
+    ) {
+        MessageReadResponseDTO response = chatroomService.markAllMessagesAsRead(memberId, chatroomId);
         return CommonResponse.success(response);
     }
 }

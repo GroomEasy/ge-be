@@ -1,13 +1,18 @@
 package com.ceos.menual.domain.chat.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
+import com.ceos.menual.domain.chat.dto.response.ChatMessageResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomListResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.dto.response.MessageReadResponseDTO;
+import com.ceos.menual.domain.chat.exception.ChatErrorCode;
 import com.ceos.menual.domain.chat.repository.ChatMessageRepository;
 import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
+import com.ceos.menual.entity.enums.MessageType;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,6 +34,7 @@ public class ChatroomService {
     private final ChatroomRepository chatroomRepository;
     private final ConsultationRepository consultationRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final UserRepository userRepository;
 
 
     /*
@@ -142,6 +149,37 @@ public class ChatroomService {
             expertCategoryName = chatroom.getExpert().getExpertProfile().getCategory().getDescription();
         }
 
+        // 마지막 메시지 표시 텍스트
+        String lastMessageText = null;
+        MessageType lastMessageType = null;
+
+        String memberNickname = chatroom.getMember().getNickname();
+
+        if (lastMessage != null) {
+            lastMessageType = lastMessage.getMessageType();
+
+            switch (lastMessage.getMessageType()) {
+                case TEXT:
+                    lastMessageText = lastMessage.getContent();
+                    break;
+                case IMAGE:
+                    lastMessageText = "사진을 보냈습니다";
+                    break;
+                case MIXED:
+                    lastMessageText = lastMessage.getContent();  // 텍스트만 표시
+                    break;
+                case QUESTION:
+                    lastMessageText = memberNickname + "님을 위한 고민지가 도착했어요.";
+                    break;
+                case SOLUTION:
+                    lastMessageText = memberNickname + "님을 위한 솔루션지가 도착했어요.";
+                    break;
+                case SYSTEM:
+                    lastMessageText = lastMessage.getContent();
+                    break;
+            }
+        }
+
         // DTO 빌드
         return ChatroomListResponseDTO.builder()
                 .chatroomId(chatroom.getId())
@@ -152,12 +190,105 @@ public class ChatroomService {
                 .opponentNickname(opponent.getNickname())
                 .opponentProfileImage(opponent.getProfileImage())
                 .expertCategory(expertCategoryName)
-                // 메시지 정보 (파라미터로 받은 값 사용)
-                .lastMessage(lastMessage != null ? lastMessage.getContent() : null)
+                // 메시지 정보
+                .lastMessage(lastMessageText)
                 .lastMessageAt(lastMessage != null ? lastMessage.getCreatedAt() : null)
+                .lastMessageType(lastMessageType)
                 .unreadCount(unreadCount)
                 .createdAt(chatroom.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * 특정 채팅방의 메시지 목록 조회
+     */
+    @Transactional
+    public List<ChatMessageResponseDTO> getChatroomMessages(Long memberId, Long chatroomId) {
+        // 채팅방 존재 여부 및 권한 확인
+        Chatroom chatroom = chatroomRepository.findById(chatroomId)
+                .orElseThrow(() -> new GlobalException(ChatErrorCode.CHATROOM_NOT_FOUND));
+
+        // 채팅방 참여자인지 확인
+        if (!chatroom.getMember().getId().equals(memberId) &&
+                !chatroom.getExpert().getId().equals(memberId)) {
+            throw new GlobalException(ChatErrorCode.CHATROOM_ACCESS_DENIED);
+        }
+
+        // 메시지 목록 조회 (오래된 순)
+        List<Message> messages = chatMessageRepository.findByChatroomIdOrderByCreatedAtAsc(chatroomId);
+
+        if (messages.isEmpty()) {
+            return List.of();
+        }
+
+        // 발신자 정보를 한 번에 조회 (N+1 문제 방지)
+        Set<Long> senderIds = messages.stream()
+                .map(Message::getSenderId)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userRepository.findAllById(senderIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+
+        // DTO 변환
+        List<ChatMessageResponseDTO> responseDTOs = messages.stream()
+                .map(message -> {
+                    User sender = userMap.get(message.getSenderId());
+                    String senderNickname = sender != null ? sender.getNickname() : "알 수 없음";
+
+                    // senderRole 결정: EXPERT 또는 MEMBER
+                    String senderRole = determineSenderRole(chatroom, message.getSenderId());
+
+                    return ChatMessageResponseDTO.from(message, senderNickname, senderRole);
+                })
+                .collect(Collectors.toList());
+
+        // 읽지 않은 메시지 읽음 처리 (현재 사용자가 받은 메시지만)
+        markMessagesAsRead(messages, memberId);
+
+        return responseDTOs;
+    }
+
+    /**
+     * 채팅방의 모든 메시지를 읽음 처리
+     */
+    @Transactional
+    public MessageReadResponseDTO markAllMessagesAsRead(Long memberId, Long chatroomId) {
+        // 채팅방 존재 여부 및 권한 확인
+        Chatroom chatroom = chatroomRepository.findById(chatroomId)
+                .orElseThrow(() -> new GlobalException(ChatErrorCode.CHATROOM_NOT_FOUND));
+
+        if (!chatroom.getMember().getId().equals(memberId) &&
+                !chatroom.getExpert().getId().equals(memberId)) {
+            throw new GlobalException(ChatErrorCode.CHATROOM_ACCESS_DENIED);
+        }
+
+        // 채팅방의 모든 읽지 않은 메시지 읽음 처리 (내가 보낸 메시지 제외)
+        int readCount = chatMessageRepository.markAllMessagesAsReadInChatroom(chatroomId, memberId);
+
+        return MessageReadResponseDTO.of(readCount);
+    }
+
+    /**
+     * 발신자의 역할 결정 (EXPERT or MEMBER)
+     */
+    private String determineSenderRole(Chatroom chatroom, Long senderId) {
+        if (chatroom.getExpert().getId().equals(senderId)) {
+            return "EXPERT";
+        } else if (chatroom.getMember().getId().equals(senderId)) {
+            return "MEMBER";
+        }
+        return "UNKNOWN";
+    }
+
+    /**
+     * 메시지 읽음 처리
+     */
+    @Transactional
+    public void markMessagesAsRead(List<Message> messages, Long memberId) {
+        messages.stream()
+                .filter(message -> !message.getSenderId().equals(memberId))
+                .filter(message -> !message.isRead())
+                .forEach(Message::markAsRead);
     }
 
     /**

@@ -14,5 +14,6 @@ public class ChatMessageDTO {
     private Long senderId;
     private MessageType messageType;
     private String content;
+    private String imageUrl;
     private Long relatedId; // 연관 리소스, 일반 텍스트면 null
 }

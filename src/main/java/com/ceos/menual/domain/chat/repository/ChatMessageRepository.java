@@ -2,6 +2,7 @@ package com.ceos.menual.domain.chat.repository;
 
 import com.ceos.menual.entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,9 +15,10 @@ import java.util.stream.Collectors;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<Message, Long> {
 
+    List<Message> findByChatroomIdOrderByCreatedAtAsc(Long chatroomId);
+
     /**
      * 특정 채팅방의 마지막 메시지 조회
-     * (Message 엔티티에 chatroomId 필드가 있다고 가정)
      */
     Optional<Message> findFirstByChatroomIdOrderByCreatedAtDesc(Long chatroomId);
 
@@ -77,4 +79,14 @@ public interface ChatMessageRepository extends JpaRepository<Message, Long> {
                         arr -> (Long) arr[1]   // count
                 ));
     }
+
+    /**
+     * 특정 채팅방의 모든 읽지 않은 메시지를 읽음 처리
+     */
+    @Modifying
+    @Query("UPDATE Message m SET m.isRead = true " +
+            "WHERE m.chatroomId = :chatroomId " +
+            "AND m.senderId != :memberId " +
+            "AND m.isRead = false")
+    int markAllMessagesAsReadInChatroom(@Param("chatroomId") Long chatroomId, @Param("memberId") Long memberId);
 }

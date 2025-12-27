@@ -2,6 +2,7 @@ package com.ceos.menual.domain.chat.dto.response;
 
 import com.ceos.menual.entity.enums.ChatroomType;
 import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.entity.enums.MessageType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -44,6 +45,10 @@ public class ChatroomListResponseDTO {
 
     @Schema(description = "마지막 메시지 전송 시간", example = "2025-12-25T15:30:00")
     private LocalDateTime lastMessageAt;
+
+    // 메시지 타입
+    @Schema(description = "메시지 타입", example = "MESSAGE")
+    private MessageType lastMessageType;
 
     @Schema(description = "안 읽은 메시지 개수", example = "3")
     private Long unreadCount;

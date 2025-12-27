@@ -1,7 +1,7 @@
 package com.ceos.menual.domain.chat.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatMessageDTO;
-import com.ceos.menual.domain.chat.repository.MessageRepository;
+import com.ceos.menual.domain.chat.repository.ChatMessageRepository;
 import com.ceos.menual.entity.Message;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatService {
 
-    private final MessageRepository messageRepository;
+    private final ChatMessageRepository messageRepository;
 
     @Transactional
     public void saveMessage(ChatMessageDTO messageDto) {

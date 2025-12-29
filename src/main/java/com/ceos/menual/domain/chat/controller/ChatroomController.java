@@ -7,6 +7,7 @@ import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
 import com.ceos.menual.domain.chat.dto.response.MessageReadResponseDTO;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
+import com.ceos.menual.entity.enums.ChatroomType;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,7 @@ public class ChatroomController {
         return CommonResponse.success(response);
     }
 
-    @Operation(summary = "내 채팅방 목록 조회", description = "내가 참여 중인 채팅방 목록을 최신 메시지 순으로 조회합니다.")
+    @Operation(summary = "내 전체 채팅방 목록 조회", description = "내가 참여 중인 채팅방 목록을 최신 메시지 순으로 조회합니다.")
     @GetMapping
     public CommonResponse<List<ChatroomListResponseDTO>> getChatroomList(
             @AuthenticationPrincipal Long memberId
@@ -42,6 +43,34 @@ public class ChatroomController {
         List<ChatroomListResponseDTO> response = chatroomService.getChatroomList(memberId);
         return CommonResponse.success(response);
     }
+
+    @Operation(summary = "내 메시지 상담 채팅방 목록 조회", description = "MESSAGE 타입 채팅방 목록을 최신 메시지 순으로 조회합니다.")
+    @GetMapping("/message")
+    public CommonResponse<List<ChatroomListResponseDTO>> getMessageChatroomList(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        List<ChatroomListResponseDTO> response = chatroomService.getChatroomListByType(memberId, ChatroomType.MESSAGE);
+        return CommonResponse.success(response);
+    }
+
+    @Operation(summary = "내 화상 상담 채팅방 목록 조회", description = "VIDEO 타입 채팅방 목록을 최신 메시지 순으로 조회합니다.")
+    @GetMapping("/video")
+    public CommonResponse<List<ChatroomListResponseDTO>> getVideoChatroomList(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        List<ChatroomListResponseDTO> response = chatroomService.getChatroomListByType(memberId, ChatroomType.VIDEO);
+        return CommonResponse.success(response);
+    }
+
+    @Operation(summary = "안 읽은 메시지가 있는 채팅방 목록 조회", description = "안 읽은 메시지가 1개 이상 있는 채팅방 목록을 조회합니다.")
+    @GetMapping("/unread")
+    public CommonResponse<List<ChatroomListResponseDTO>> getUnreadChatroomList(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        List<ChatroomListResponseDTO> response = chatroomService.getChatroomsWithUnreadMessages(memberId);
+        return CommonResponse.success(response);
+    }
+
 
     @Operation(summary = "채팅방 메시지 조회", description = "특정 채팅방의 모든 메시지를 시간순으로 조회합니다.")
     @GetMapping("/{chatroomId}/messages")

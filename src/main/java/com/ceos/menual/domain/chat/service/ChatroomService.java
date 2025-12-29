@@ -12,6 +12,7 @@ import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
+import com.ceos.menual.entity.enums.ChatroomType;
 import com.ceos.menual.entity.enums.MessageType;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class ChatroomService {
     private final UserRepository userRepository;
 
 
-    /*
+    /**
      * 채팅방 생성 메서드
      */
     @Transactional
@@ -91,17 +92,72 @@ public class ChatroomService {
         return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
     }
 
-    /*
+    /**
      * 채팅방 목록(리스트) 조회 메서드
      */
     public List<ChatroomListResponseDTO> getChatroomList(Long memberId) {
 
-        // memberId로 chatroom 목록 가져오기
         List<Chatroom> chatrooms = chatroomRepository.findAllByParticipantId(memberId);
 
         if (chatrooms.isEmpty()) {
             return List.of();
         }
+
+        return buildChatroomListResponse(chatrooms, memberId);
+    }
+
+    /**
+     * 특정 타입의 채팅방 목록 조회
+     */
+    public List<ChatroomListResponseDTO> getChatroomListByType(Long memberId, ChatroomType chatroomType) {
+
+        // 특정 타입의 채팅방만 조회
+        List<Chatroom> chatrooms = chatroomRepository.findAllByParticipantIdAndType(memberId, chatroomType);
+
+        if (chatrooms.isEmpty()) {
+            return List.of();
+        }
+
+        return buildChatroomListResponse(chatrooms, memberId);
+    }
+
+    /**
+     * 안읽은 메시지가 있는 채팅방 목록 조회
+     */
+    public List<ChatroomListResponseDTO> getChatroomsWithUnreadMessages(Long memberId) {
+
+        // 모든 채팅방 조회
+        List<Chatroom> chatrooms = chatroomRepository.findAllByParticipantId(memberId);
+
+        if (chatrooms.isEmpty()) {
+            return List.of();
+        }
+
+        // 채팅방 ID 리스트 추출
+        List<Long> chatroomIds = chatrooms.stream()
+                .map(Chatroom::getId)
+                .collect(Collectors.toList());
+
+        // 읽지 않은 메시지 수 조회
+        Map<Long, Long> unreadCountMap = chatMessageRepository
+                .countUnreadMessagesByChatroomIds(chatroomIds, memberId);
+
+        // 안읽은 메시지가 있는 채팅방만 필터링
+        List<Chatroom> unreadChatrooms = chatrooms.stream()
+                .filter(chatroom -> unreadCountMap.getOrDefault(chatroom.getId(), 0L) > 0)
+                .collect(Collectors.toList());
+
+        if (unreadChatrooms.isEmpty()) {
+            return List.of();
+        }
+
+        return buildChatroomListResponse(unreadChatrooms, memberId);
+    }
+
+    /**
+     * 채팅방 리스트를 DTO로 변환하는 공통 메서드
+     */
+    private List<ChatroomListResponseDTO> buildChatroomListResponse(List<Chatroom> chatrooms, Long memberId) {
 
         // 채팅방 ID 리스트 추출
         List<Long> chatroomIds = chatrooms.stream()
@@ -130,6 +186,7 @@ public class ChatroomService {
                 ))
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Chatroom 엔티티를 DTO로 변환

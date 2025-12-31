@@ -3,7 +3,10 @@ package com.ceos.menual.domain.review.controller;
 import java.util.List;
 
 import com.ceos.menual.entity.enums.Category;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/review")
 @RequiredArgsConstructor
+@Validated
 public class ReviewController {
 
 	private final ReviewService reviewService;
@@ -31,8 +35,8 @@ public class ReviewController {
 	@GetMapping("/recent")
 	public ResponseEntity<CommonResponse<List<ReviewSummaryResponseDTO>>> getRecentReviews(
 			@RequestParam(required = false) Category category,
-			@RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "5") int size  // 기본 5개
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "5") @Positive int size  // 기본 5개
 	) {
 		List<ReviewSummaryResponseDTO> response = reviewService.getRecentReviews(category, page, size);
 		return ResponseEntity.ok(CommonResponse.success(response));

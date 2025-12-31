@@ -27,7 +27,7 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	private static final QExpertProfile ep = QExpertProfile.expertProfile;
 
 	@Override
-	public List<ReviewSummaryResponseDTO> findRecentReviews(Category category) {
+	public List<ReviewSummaryResponseDTO> findRecentReviews(Category category, int page, int size) {
 		return queryFactory
 				.select(Projections.constructor(
 						ReviewSummaryResponseDTO.class,
@@ -42,9 +42,10 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 				.from(r)
 				.join(r.consultation, c)         // Review -> Consultation 조인
 				.join(c.expertProfile, ep)       // Consultation -> ExpertProfile 조인
-				.where(categoryEq(category))     // [수정] 동적 쿼리 메서드 사용
+				.where(categoryEq(category))
 				.orderBy(r.createdAt.desc())
-				.limit(10)
+				.offset((long) page * size)  // 추가
+				.limit(size)                  // 수정
 				.fetch();
 	}
 

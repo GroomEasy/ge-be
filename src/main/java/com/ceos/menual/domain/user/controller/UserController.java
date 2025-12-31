@@ -27,8 +27,8 @@ public class UserController {
 
     private final UserService userService;
 
-    /*
-    회원가입(기본 로그인 회원) API 엔드포인트
+    /**
+     * 회원가입(기본 로그인 회원) API 엔드포인트
      */
     @Operation(
             summary = "회원가입",

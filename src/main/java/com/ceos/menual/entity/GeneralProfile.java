@@ -22,7 +22,6 @@ public class GeneralProfile extends BaseEntity {
 	@JoinColumn(name = "user_id")
 	private User user;
 
-	// 포인트 mvp에서 제외
-//	@Column(nullable = false)
-//	private Integer totalPoints;
+	@Column(nullable = false)
+	private Integer totalPoints;
 }

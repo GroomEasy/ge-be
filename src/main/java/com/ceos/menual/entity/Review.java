@@ -1,14 +1,7 @@
 package com.ceos.menual.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import com.ceos.menual.entity.enums.Category;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,8 +29,10 @@ public class Review extends BaseEntity {
 
 	private String mediaUrls;
 
-	// 카테고리 ID 캐싱
-	private Long categoryId;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "category")
+	private Category category;
+
 
 	@Builder.Default
 	private Integer likeCount = 0;

@@ -22,9 +22,9 @@ public class ExpertController {
 
 	private final ExpertService expertService;
 
-	/*
-	* 전체 카테고리의 인기 전문가 TOP3 조회 API
-	*/
+	/**
+	 * 전체 카테고리의 인기 전문가 TOP3 조회 API
+	 */
 	@Operation(
 		summary = "전체 인기 전문가 TOP3 조회",
 		description = "전체 카테고리에서 상담 완료 수 기준 TOP3 전문가를 조회합니다."
@@ -35,7 +35,7 @@ public class ExpertController {
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
-	/*
+	/**
 	 * 카테고리별 인기 전문가 TOP3 조회 API
 	 */
 	@Operation(

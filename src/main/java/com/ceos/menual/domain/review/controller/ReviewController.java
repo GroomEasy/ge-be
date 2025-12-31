@@ -30,9 +30,11 @@ public class ReviewController {
 	@Operation(summary = "실시간 후기 조회", description = "최신 순으로 후기 목록을 조회합니다.")
 	@GetMapping("/recent")
 	public ResponseEntity<CommonResponse<List<ReviewSummaryResponseDTO>>> getRecentReviews(
-			@RequestParam(required = false) Category category
+			@RequestParam(required = false) Category category,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "5") int size  // 기본 5개
 	) {
-		List<ReviewSummaryResponseDTO> response = reviewService.getRecentReviews(category);
+		List<ReviewSummaryResponseDTO> response = reviewService.getRecentReviews(category, page, size);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

@@ -18,8 +18,8 @@ public class ReviewService {
 
 	private final ReviewRepository reviewRepository;
 
-	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category) {
-		return reviewRepository.findRecentReviews(category);
+	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category, int page, int size) {
+		return reviewRepository.findRecentReviews(category, page, size);
 	}
 
 	public List<ReviewSummaryResponseDTO> getBestReviews(Category category) {

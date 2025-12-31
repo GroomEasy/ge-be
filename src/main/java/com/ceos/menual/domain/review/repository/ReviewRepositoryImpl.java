@@ -46,7 +46,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 				.orderBy(r.createdAt.desc())
 				.offset((long) page * size)  // 추가
 				.limit(size)                  // 수정
-				.limit(10)
 				.fetch();
 	}
 

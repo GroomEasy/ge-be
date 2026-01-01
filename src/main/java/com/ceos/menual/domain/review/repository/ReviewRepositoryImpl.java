@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.review.repository;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	@Override
 	public List<ReviewSummaryResponseDTO> findRecentReviews(Category category, int page, int size) {
 
-		// 리뷰 기본 정보 조회
 		List<Tuple> results = queryFactory
 				.select(
 						r.id,
@@ -55,20 +55,20 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 			return Collections.emptyList();
 		}
 
-		// 리뷰 ID 추출
 		List<Long> reviewIds = results.stream()
 				.map(t -> t.get(r.id))
 				.collect(Collectors.toList());
 
-		// 이미지 배치 조회
 		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
 
-		// DTO 조립
 		return results.stream()
 				.map(tuple -> {
 					List<String> images = imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList());
-					// List를 쉼표로 구분된 String으로 변환 (DTO가 String 타입이므로)
 					String mediaUrls = images.isEmpty() ? null : String.join(",", images);
+
+					// NPE 방지
+					Category cat = tuple.get(ep.category);
+					LocalDateTime createdAt = tuple.get(r.createdAt);
 
 					return ReviewSummaryResponseDTO.builder()
 							.reviewId(tuple.get(r.id))
@@ -76,8 +76,8 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)
 							.likeCount(tuple.get(r.likeCount))
-							.category(tuple.get(ep.category).name())
-							.createdAt(tuple.get(r.createdAt).toString())
+							.category(cat != null ? cat.name() : null)
+							.createdAt(createdAt != null ? createdAt.toString() : null)
 							.build();
 				})
 				.collect(Collectors.toList());
@@ -86,7 +86,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	@Override
 	public List<ReviewSummaryResponseDTO> findBestReviews(Category category) {
 
-		// 리뷰 기본 정보 조회 (베스트순)
 		List<Tuple> results = queryFactory
 				.select(
 						r.id,
@@ -108,19 +107,19 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 			return Collections.emptyList();
 		}
 
-		// 리뷰 ID 추출
 		List<Long> reviewIds = results.stream()
 				.map(t -> t.get(r.id))
 				.collect(Collectors.toList());
 
-		// 이미지 배치 조회
 		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
 
-		// DTO 조립
 		return results.stream()
 				.map(tuple -> {
 					List<String> images = imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList());
 					String mediaUrls = images.isEmpty() ? null : String.join(",", images);
+
+					Category cat = tuple.get(ep.category);
+					LocalDateTime createdAt = tuple.get(r.createdAt);
 
 					return ReviewSummaryResponseDTO.builder()
 							.reviewId(tuple.get(r.id))
@@ -128,16 +127,13 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)
 							.likeCount(tuple.get(r.likeCount))
-							.category(tuple.get(ep.category).name())
-							.createdAt(tuple.get(r.createdAt).toString())
+							.category(cat != null ? cat.name() : null)
+							.createdAt(createdAt != null ? createdAt.toString() : null)
 							.build();
 				})
 				.collect(Collectors.toList());
 	}
 
-	/**
-	 * 여러 리뷰의 이미지를 배치로 조회
-	 */
 	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> reviewIds) {
 
 		List<Tuple> images = queryFactory
@@ -153,7 +149,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 				)
 				.fetch();
 
-		// 리뷰별로 그룹핑
 		Map<Long, List<String>> result = new LinkedHashMap<>();
 
 		for (Tuple tuple : images) {

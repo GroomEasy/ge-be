@@ -5,6 +5,7 @@ import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/expert")
 @RequiredArgsConstructor

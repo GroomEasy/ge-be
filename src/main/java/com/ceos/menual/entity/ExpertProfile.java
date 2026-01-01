@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,8 @@ public class ExpertProfile extends BaseEntity {
 			joinColumns = @JoinColumn(name = "expert_profile_id")
 	)
 	@Column(name = "speciality")
+	@BatchSize(size = 100)
+	@Builder.Default
 	private List<String> specialities = new ArrayList<>();
 
 	//한줄소개

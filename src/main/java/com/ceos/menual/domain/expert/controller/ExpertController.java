@@ -51,4 +51,10 @@ public class ExpertController {
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
+	/**
+	 * 카테고리별 전문가 조회 API
+	 */
+
+//	@GetMapping("/")
+
 }

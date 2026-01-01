@@ -40,12 +40,12 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						r.createdAt.stringValue()
 				))
 				.from(r)
-				.join(r.consultation, c)         // Review -> Consultation 조인
-				.join(c.expertProfile, ep)       // Consultation -> ExpertProfile 조인
+				.join(r.consultation, c)
+				.join(c.expertProfile, ep)
 				.where(categoryEq(category))
 				.orderBy(r.createdAt.desc())
-				.offset((long) page * size)  // 추가
-				.limit(size)                  // 수정
+				.offset((long) page * size)
+				.limit(size)
 				.fetch();
 	}
 

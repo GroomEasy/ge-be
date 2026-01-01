@@ -6,6 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -29,8 +33,16 @@ public class ExpertProfile extends BaseEntity {
 	@OneToOne(mappedBy = "expertProfile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private ExpertBankAccount expertBankAccount;
 
-	//전문분야
-	private String speciality;
+	// 전문 분야
+	@ElementCollection(fetch = FetchType.LAZY)
+	@CollectionTable(
+			name = "expert_speciality",
+			joinColumns = @JoinColumn(name = "expert_profile_id")
+	)
+	@Column(name = "speciality")
+	@BatchSize(size = 100)
+	@Builder.Default
+	private List<String> specialities = new ArrayList<>();
 
 	//한줄소개
 	private String introduction;

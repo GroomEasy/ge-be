@@ -2,6 +2,7 @@ package com.ceos.menual.domain.expert.service;
 
 import java.util.List;
 
+import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,5 +28,12 @@ public class ExpertService {
 	public PopularExpertsResponseDTO getTop3ByCategory(Category category) {
 		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3ByCategory(category);
 		return new PopularExpertsResponseDTO(top3);
+	}
+
+	/**
+	 * 전문가 조회 (Review API와 동일하게 List만 반환)
+	 */
+	public List<ExpertSummaryResponseDTO> getExpertList(Category category, int page, int size) {
+		return expertRepository.findExpertList(category, page, size);
 	}
 }

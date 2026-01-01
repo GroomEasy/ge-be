@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum ExpertErrorCode  implements ResultCode {
+    ;
 
 
 

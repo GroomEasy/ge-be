@@ -1,13 +1,12 @@
 package com.ceos.menual.domain.expert.repository;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
-import com.ceos.menual.entity.QReview;
-import com.ceos.menual.entity.QUser;
+import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
+import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
@@ -15,8 +14,6 @@ import com.querydsl.jpa.JPAExpressions;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
-import com.ceos.menual.entity.QConsultation;
-import com.ceos.menual.entity.QExpertProfile;
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -32,6 +29,8 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	private static final QExpertProfile ep = QExpertProfile.expertProfile;
 	private static final QConsultation c = QConsultation.consultation;
 	private static final QReview r = QReview.review;
+	private static final QReviewImage ri = QReviewImage.reviewImage;
+
 
 	@Override
 	public List<ExpertRankingResponseDTO> findTop3Overall() {
@@ -91,74 +90,100 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	@Override
 	public List<ExpertSummaryResponseDTO> findExpertList(Category category, int page, int size) {
 
-		List<ExpertSummaryResponseDTO> results = queryFactory
-				.select(Projections.constructor(
-						ExpertSummaryResponseDTO.class,
+		// 전문가 조회
+		List<Tuple> results = queryFactory
+				.select(
 						ep.id,
 						u.nickname,
-						ep.category.stringValue(),
+						ep.category,
 						u.profileImage,
 						ep.introduction,
-
-						// 평점 평균
-						ExpressionUtils.as(
-								JPAExpressions.select(r.rating.avg())
-										.from(r)
-										.join(r.consultation, c)
-										.where(c.expertProfile.eq(ep)),
-								"ratingAverage"
-						),
-
-						// 리뷰 개수
-						ExpressionUtils.as(
-								JPAExpressions.select(r.count())
-										.from(r)
-										.join(r.consultation, c)
-										.where(c.expertProfile.eq(ep)),
-								"reviewCount"
-						),
-
-						Expressions.nullExpression()
-				))
+						r.rating.avg().coalesce(0.0),
+						r.count()
+				)
 				.from(ep)
 				.join(ep.user, u)
+				.leftJoin(c).on(c.expertProfile.eq(ep))
+				.leftJoin(r).on(r.consultation.eq(c))
 				.where(categoryEq(category))
+				.groupBy(ep.id, u.nickname, ep.category, u.profileImage, ep.introduction)
 				.orderBy(ep.id.desc())
 				.offset((long) page * size)
 				.limit(size)
 				.fetch();
 
-		// 조회된 각 전문가마다 최신 리뷰 이미지 3개를 조회해서 채워 넣음
-		results.forEach(dto -> {
-			List<String> images = getTop3ReviewImages(dto.getExpertId());
-			dto.setImages(images);
-		});
+		// 아무것도 없으면 그냥 반환
+		if (results.isEmpty()) {
+			return Collections.emptyList();
+		}
 
-		return results;
+		// 전문가 ID 추출
+		List<Long> expertIds = results.stream()
+				.map(t -> t.get(ep.id))
+				.collect(Collectors.toList());
+
+		// 전문가 ID로 이미지 조회
+		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(expertIds);
+
+		// DTO 조립
+		return results.stream()
+				.map(tuple -> ExpertSummaryResponseDTO.builder()
+						.expertId(tuple.get(ep.id))
+						.nickname(tuple.get(u.nickname))
+						.category(tuple.get(ep.category).name())
+						.profileImage(tuple.get(u.profileImage))
+						.introduction(tuple.get(ep.introduction))
+						.ratingAverage(tuple.get(r.rating.avg().coalesce(0.0)))
+						.reviewCount(tuple.get(r.count()))
+						.representativeReviewImages(
+								imagesMap.getOrDefault(tuple.get(ep.id), Collections.emptyList())
+						)
+						.build())
+				.collect(Collectors.toList());
 	}
 
-	// 전문가 ID로 최신 리뷰 이미지 3개를 가져오는 메서드
-	private List<String> getTop3ReviewImages(Long expertProfileId) {
-		// 최근 리뷰들의 이미지 문자열들을 가져옴
-		List<String> rawUrls = queryFactory
-				.select(r.mediaUrls)
-				.from(r)
+	/**
+	 * 여러 전문가의 리뷰 이미지를 배치로 조회
+	 * 각 전문가당 최신 리뷰 이미지 3개까지
+	 */
+	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> expertProfileIds) {
+
+		List<Tuple> images = queryFactory
+				.select(
+						c.expertProfile.id,
+						ri.imageUrl,
+						r.createdAt
+				)
+				.from(ri)
+				.join(ri.review, r)
 				.join(r.consultation, c)
-				.where(c.expertProfile.id.eq(expertProfileId)
-						.and(r.mediaUrls.isNotNull()))
-				.orderBy(r.createdAt.desc())
-				.limit(3)
+				.where(c.expertProfile.id.in(expertProfileIds))
+				.orderBy(
+						c.expertProfile.id.asc(),
+						r.createdAt.desc(),
+						ri.displayOrder.asc()
+				)
 				.fetch();
 
-		// 콤마로 쪼개고 리스트로 합치고 최대 3개까지만 자르기
-		return rawUrls.stream()
-				.flatMap(urls -> Arrays.stream(urls.split(",")))
-				.limit(3)
-				.collect(Collectors.toList());
+		// 전문가별로 그룹핑 (최대 3개)
+		Map<Long, List<String>> result = new LinkedHashMap<>();
+
+		for (Tuple tuple : images) {
+			Long expertId = tuple.get(c.expertProfile.id);
+			String imageUrl = tuple.get(ri.imageUrl);
+
+			result.computeIfAbsent(expertId, k -> new ArrayList<>());
+
+			List<String> expertImages = result.get(expertId);
+			if (expertImages.size() < 3) {
+				expertImages.add(imageUrl);
+			}
+		}
+
+		return result;
 	}
 
 	private BooleanExpression categoryEq(Category category) {
 		return category != null ? ep.category.eq(category) : null;
 	}
-
 }

@@ -9,6 +9,6 @@ import com.ceos.menual.entity.enums.Category;
 public interface ExpertRepository {
 	List<ExpertRankingResponseDTO> findTop3Overall();
 	List<ExpertRankingResponseDTO> findTop3ByCategory(Category category);
-	// 전문가 조회
+	// 전문가 조회용
 	List<ExpertSummaryResponseDTO> findExpertList(Category category, int page, int size);
 }

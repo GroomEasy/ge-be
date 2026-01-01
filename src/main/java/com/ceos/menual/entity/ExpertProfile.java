@@ -38,7 +38,7 @@ public class ExpertProfile extends BaseEntity {
 			name = "expert_speciality",
 			joinColumns = @JoinColumn(name = "expert_profile_id")
 	)
-	@Column(name = "speciality", nullable = false)
+	@Column(name = "speciality")
 	private List<String> specialities = new ArrayList<>();
 
 	//한줄소개

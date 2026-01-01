@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor
@@ -27,7 +30,10 @@ public class Review extends BaseEntity {
 
 	private String content;
 
-	private String mediaUrls;
+	@OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("displayOrder ASC")
+	@Builder.Default
+	private List<ReviewImage> images = new ArrayList<>();
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "category")
@@ -49,6 +55,15 @@ public class Review extends BaseEntity {
 			return;
 		}
 		this.likeCount--;
+	}
+
+	public void addImage(ReviewImage image) {
+		images.add(image);
+		image.setReview(this);
+	}
+
+	public void removeImage(ReviewImage image) {
+		images.remove(image);
 	}
 
 }

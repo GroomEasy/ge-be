@@ -41,7 +41,6 @@ public class ExpertProfile extends BaseEntity {
 	@Column(name = "speciality", nullable = false)
 	private List<String> specialities = new ArrayList<>();
 
-
 	//한줄소개
 	private String introduction;
 

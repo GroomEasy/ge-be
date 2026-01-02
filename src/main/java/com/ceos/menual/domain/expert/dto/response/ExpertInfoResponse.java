@@ -1,8 +1,10 @@
 package com.ceos.menual.domain.expert.dto.response;
 
+import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.entity.ExpertProfile;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.global.exception.GlobalException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,6 +32,10 @@ public class ExpertInfoResponse {
 
     public static ExpertInfoResponse from(User user) {
         ExpertProfile expertProfile = user.getExpertProfile();
+
+        if (expertProfile == null) {
+            throw new GlobalException(ExpertErrorCode.);
+        }
 
         return ExpertInfoResponse.builder()
                 .userId(user.getId())

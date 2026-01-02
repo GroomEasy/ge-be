@@ -8,7 +8,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum ExpertErrorCode  implements ResultCode {
-    ;
+
+    USER_NOT_EXPERT(HttpStatus.FORBIDDEN, 6001, "전문가가 아닙니다.");
+
 
 
 

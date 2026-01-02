@@ -34,7 +34,7 @@ public class ExpertInfoResponse {
         ExpertProfile expertProfile = user.getExpertProfile();
 
         if (expertProfile == null) {
-            throw new GlobalException(ExpertErrorCode.);
+            throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
         }
 
         return ExpertInfoResponse.builder()

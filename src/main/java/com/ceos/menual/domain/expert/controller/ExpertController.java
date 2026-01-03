@@ -2,10 +2,12 @@ package com.ceos.menual.domain.expert.controller;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
+import com.ceos.menual.domain.expert.service.ExpertLikeService;
 import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +28,7 @@ import java.util.List;
 public class ExpertController {
 
 	private final ExpertService expertService;
+	private final ExpertLikeService expertLikeService;
 
 	/**
 	 * 전체 카테고리의 인기 전문가 TOP3 조회 API
@@ -92,5 +95,39 @@ public class ExpertController {
 	) {
 		ExpertInfoResponseDTO response = expertService.getExpertInfo(userId);
 		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 찜하기 API
+	 */
+	@Operation(
+			summary = "전문가 찜하기",
+			description = "특정 전문가를 찜 목록에 추가합니다."
+	)
+	@PostMapping("/{userId}/like")
+	public ResponseEntity<CommonResponse<Void>> likeExpert(
+			@Parameter(description = "찜할 전문가의 User ID", required = true)
+			@PathVariable Long userId,
+			@Parameter(hidden = true) @AuthenticationPrincipal Long currentUserId
+	) {
+		expertLikeService.likeExpert(currentUserId, userId);
+		return ResponseEntity.ok(CommonResponse.success(null));
+	}
+
+	/**
+	 * 전문가 찜 취소 API
+	 */
+	@Operation(
+			summary = "전문가 찜 취소",
+			description = "찜한 전문가를 찜 목록에서 제거합니다."
+	)
+	@DeleteMapping("/{userId}/like")
+	public ResponseEntity<CommonResponse<Void>> unlikeExpert(
+			@Parameter(description = "찜 취소할 전문가의 User ID", required = true)
+			@PathVariable Long userId,
+			@Parameter(hidden = true) @AuthenticationPrincipal Long currentUserId
+	) {
+		expertLikeService.unlikeExpert(currentUserId, userId);
+		return ResponseEntity.ok(CommonResponse.success(null));
 	}
 }

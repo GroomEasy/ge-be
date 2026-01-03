@@ -2,7 +2,7 @@ package com.ceos.menual.domain.expert.service;
 
 import java.util.List;
 
-import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponse;
+import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
@@ -47,7 +47,7 @@ public class ExpertService {
 	/**
 	 * 전문가 정보 조회
 	 */
-	public ExpertInfoResponse getExpertInfo(Long userId) {
+	public ExpertInfoResponseDTO getExpertInfo(Long userId) {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
@@ -56,6 +56,6 @@ public class ExpertService {
 			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
 		}
 
-		return ExpertInfoResponse.from(user);
+		return ExpertInfoResponseDTO.from(user);
 	}
 }

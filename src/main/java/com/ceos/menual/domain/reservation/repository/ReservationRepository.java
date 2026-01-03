@@ -13,15 +13,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /**
      * 특정 전문가의 특정 시간에 예약 중복 체크
-     * UNPAID, PAID 상태만 체크
+     * UNPAID, PAID 상태만 체크 -> 다른 상태들은 예약이 아님 (REFUND_REQUESTED, REFUNDED)
      */
     @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
             "WHERE r.expertProfile.id = :expertProfileId " +
             "AND r.scheduledDateTime = :scheduledDateTime " +
-            "AND r.reservationStatus IN ('UNPAID', 'PAID')") // UNPAID, PAID 만 예약 완료 상태임
+            "AND r.reservationStatus IN (:unpaid, :paid)") // UNPAID, PAID 만 예약 완료 상태임
     boolean existsByExpertProfileIdAndScheduledDateTime(
             @Param("expertProfileId") Long expertProfileId,
-            @Param("scheduledDateTime") LocalDateTime scheduledDateTime
+            @Param("scheduledDateTime") LocalDateTime scheduledDateTime,
+            @Param("unpaid") ReservationStatus unpaid,
+            @Param("paid") ReservationStatus paid
     );
 
     /**

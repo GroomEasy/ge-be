@@ -32,15 +32,16 @@ public class TempReservationResponseDTO {
     @Schema(description = "고민 내용 JSON (임시 예약 시점에는 null)", example = "null")
     private String concernsJson;
 
+    // TODO: 상담 유형 조회 API 조회 개발 후 삭제
     @Schema(description = "상담 가격", example = "40000")
     private Integer price;
 
-    @Schema(description = "예약 상태", example = "WAITING_FOR_PAYMENT")
+    @Schema(description = "예약 상태", example = "UNPAID")
     private ReservationStatus reservationStatus;
 
     public static TempReservationResponseDTO from(Reservation reservation) {
         return TempReservationResponseDTO.builder()
-                .expertId(reservation.getExpertProfile().getId())
+                .expertId(reservation.getExpertProfile().getUser().getId())
                 .category(reservation.getCategory())
                 .consultationType(reservation.getConsultationType())
                 .scheduledDateTime(reservation.getScheduledDateTime())

@@ -5,6 +5,8 @@ import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.ReservationStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -39,7 +41,8 @@ public class Reservation extends BaseEntity {
     @Column(name = "scheduled_date_time")
     private LocalDateTime scheduledDateTime;
 
-    @Column(columnDefinition = "JSON")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "concerns_json", columnDefinition = "json")
     private String concernsJson;
 
     @Column(nullable = false)

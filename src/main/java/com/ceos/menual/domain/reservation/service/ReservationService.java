@@ -30,7 +30,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
 
-    private static final int PAYMENT_WAITING_MINUTES = 30;
+    private static final int PAYMENT_WAITING_MINUTES = 60; // 60분 후에 만료
 
     @Transactional
     public TempReservationResponseDTO createTempReservation(
@@ -107,7 +107,9 @@ public class ReservationService {
     private void checkTimeAvailability(Long expertProfileId, LocalDateTime scheduledDateTime) {
         boolean isBooked = reservationRepository.existsByExpertProfileIdAndScheduledDateTime(
                 expertProfileId,
-                scheduledDateTime
+                scheduledDateTime,
+                ReservationStatus.UNPAID,
+                ReservationStatus.PAID
         );
 
         if (isBooked) {

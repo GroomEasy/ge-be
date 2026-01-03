@@ -22,6 +22,6 @@ public class GeneralProfile extends BaseEntity {
 	@JoinColumn(name = "user_id")
 	private User user;
 
-//	@Column(nullable = false)
-//	private Integer totalPoints;
+	@Column(nullable = false)
+	private Integer totalPoints;
 }

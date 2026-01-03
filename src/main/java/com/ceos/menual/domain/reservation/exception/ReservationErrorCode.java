@@ -16,7 +16,10 @@ public enum ReservationErrorCode implements ResultCode {
     MISSING_SCHEDULED_TIME(HttpStatus.BAD_REQUEST, 4005, "화상 상담은 날짜와 시간 선택이 필수입니다."),
     INVALID_MESSAGE_CONSULTATION(HttpStatus.BAD_REQUEST, 4006, "메시지 상담은 날짜와 시간을 선택할 수 없습니다."),
     EXPERT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 4007, "전문가 프로필이 존재하지 않습니다."),
-    GENERAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 4008, "일반 회원 프로필이 존재하지 않습니다.");
+    GENERAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 4008, "일반 회원 프로필이 존재하지 않습니다."),
+    CONSULTATION_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, 4009, "해당 전문가가 제공하지 않는 상담 유형입니다."),
+    INVALID_PRICE(HttpStatus.BAD_REQUEST, 4010, "잘못된 가격입니다.");
+
 
     private final HttpStatus status;
     private final int code;

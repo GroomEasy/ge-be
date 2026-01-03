@@ -33,6 +33,11 @@ public class ExpertProfile extends BaseEntity {
 	@OneToOne(mappedBy = "expertProfile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private ExpertBankAccount expertBankAccount;
 
+	// 전문가가 제공하는 상담 서비스들
+	@OneToMany(mappedBy = "expertProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<ConsultationSchedule> consultationSchedules = new ArrayList<>();
+
 	// 전문 분야
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(
@@ -54,6 +59,15 @@ public class ExpertProfile extends BaseEntity {
 	private String careerInfo;
 
 
+	// 비즈니스 메서드
+	public void addConsultationSchedule(ConsultationSchedule schedule) {
+		this.consultationSchedules.add(schedule);
+		schedule.setExpertProfile(this);
+	}
 
+	public void removeConsultationSchedule(ConsultationSchedule schedule) {
+		this.consultationSchedules.remove(schedule);
+		schedule.setExpertProfile(null);
+	}
 
 }

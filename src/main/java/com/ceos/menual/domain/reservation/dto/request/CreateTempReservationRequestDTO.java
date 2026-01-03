@@ -2,6 +2,7 @@ package com.ceos.menual.domain.reservation.dto.request;
 
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
@@ -32,8 +33,8 @@ public class CreateTempReservationRequestDTO {
     @NotNull(message = "상담 유형은 필수입니다")
     private ConsultationType consultationType;
 
-    @Schema(description = "예약 날짜 및 시간 (VIDEO 상담인 경우 필수)", example = "2026-01-28T11:30:00")
-    @Future(message = "예약 시간은 미래여야 합니다")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @Schema(description = "예약 날짜 및 시간 (VIDEO 상담인 경우 필수)", example = "2026-01-28T11:30:00", type = "string")
     private LocalDateTime scheduledDateTime;
 
     @Schema(description = "상담 가격", example = "40000", required = true)

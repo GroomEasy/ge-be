@@ -10,9 +10,8 @@ import java.util.Optional;
 public interface ExpertLikeRepository extends JpaRepository<ExpertLike, Long> {
 
     // 전문가 찜 API 용
-    boolean existsByGeneralProfileIdAndExpertProfileId(Long generalProfileId, Long expertProfileId);
+    boolean existsByGeneralProfileAndExpertProfile(GeneralProfile generalProfile, ExpertProfile expertProfile);
 
-    Boolean existsByGeneralProfileAndExpertProfile(GeneralProfile generalProfile, ExpertProfile expertProfile);
     Optional<ExpertLike> findByGeneralProfileAndExpertProfile(GeneralProfile generalProfile, ExpertProfile expertProfile);
 
     long countByExpertProfileId(Long expertProfileId);

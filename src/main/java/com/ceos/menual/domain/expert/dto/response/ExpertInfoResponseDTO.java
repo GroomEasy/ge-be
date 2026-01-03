@@ -27,10 +27,9 @@ public class ExpertInfoResponseDTO {
     private String profileLink;
     private String careerInfo;
 
-    //TODO: 찜 목록 구현
-//    private Integer likes;
+    private Integer likes;
 
-    public static ExpertInfoResponseDTO from(User user) {
+    public static ExpertInfoResponseDTO from(User user, Integer likes) {
         ExpertProfile expertProfile = user.getExpertProfile();
 
         if (expertProfile == null) {
@@ -46,6 +45,7 @@ public class ExpertInfoResponseDTO {
                 .introduction(expertProfile.getIntroduction())
                 .profileLink(expertProfile.getProfileLink())
                 .careerInfo(expertProfile.getCareerInfo())
+                .likes(likes)
                 .build();
     }
 }

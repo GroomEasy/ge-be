@@ -33,7 +33,7 @@ public class ExpertLikeService {
 
         GeneralProfile generalProfile = currentUser.getGeneralProfile();
         if (generalProfile == null) {
-            throw new IllegalStateException("일반 회원 프로필이 존재하지 않습니다.");
+            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
         }
 
         // 전문가 사용자 조회
@@ -76,7 +76,7 @@ public class ExpertLikeService {
 
         GeneralProfile generalProfile = currentUser.getGeneralProfile();
         if (generalProfile == null) {
-            throw new IllegalStateException("일반 회원 프로필이 존재하지 않습니다.");
+            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
         }
 
         // 전문가 사용자 조회

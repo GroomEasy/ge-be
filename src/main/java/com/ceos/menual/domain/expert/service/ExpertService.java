@@ -5,8 +5,10 @@ import java.util.List;
 import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
+import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
+import com.ceos.menual.entity.ExpertProfile;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.global.exception.GlobalException;
@@ -19,6 +21,8 @@ import com.ceos.menual.domain.expert.repository.ExpertRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import static com.ceos.menual.entity.QExpertProfile.expertProfile;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,6 +30,7 @@ public class ExpertService {
 
 	private final ExpertRepository expertRepository;
 	private final UserRepository userRepository;
+	private final ExpertLikeRepository expertLikeRepository;
 
 	public PopularExpertsResponseDTO getTop3Overall() {
 		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3Overall();
@@ -56,6 +61,10 @@ public class ExpertService {
 			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
 		}
 
-		return ExpertInfoResponseDTO.from(user);
+		ExpertProfile expertProfile = user.getExpertProfile();
+
+		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());
+
+		return ExpertInfoResponseDTO.from(user, likeCount.intValue());
 	}
 }

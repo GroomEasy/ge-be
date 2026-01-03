@@ -1,6 +1,6 @@
 package com.ceos.menual.domain.expert.controller;
 
-import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponse;
+import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.constraints.Max;
@@ -86,11 +86,11 @@ public class ExpertController {
 			description = "특정 전문가의 상세 정보를 조회합니다."
 	)
 	@GetMapping("/{userId}")
-	public ResponseEntity<CommonResponse<ExpertInfoResponse>> getExpertInfo(
+	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> getExpertInfo(
 			@Parameter(description = "전문가 ID (User ID)", required = true)
 			@PathVariable Long userId
 	) {
-		ExpertInfoResponse response = expertService.getExpertInfo(userId);
+		ExpertInfoResponseDTO response = expertService.getExpertInfo(userId);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 }

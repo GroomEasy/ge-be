@@ -16,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ExpertInfoResponse {
+public class ExpertInfoResponseDTO {
 
     private Long userId;  // 전문가 ID
     private String nickname;
@@ -30,14 +30,14 @@ public class ExpertInfoResponse {
     //TODO: 찜 목록 구현
 //    private Integer likes;
 
-    public static ExpertInfoResponse from(User user) {
+    public static ExpertInfoResponseDTO from(User user) {
         ExpertProfile expertProfile = user.getExpertProfile();
 
         if (expertProfile == null) {
             throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
         }
 
-        return ExpertInfoResponse.builder()
+        return ExpertInfoResponseDTO.builder()
                 .userId(user.getId())
                 .nickname(user.getNickname())
                 .profileImage(user.getProfileImage())

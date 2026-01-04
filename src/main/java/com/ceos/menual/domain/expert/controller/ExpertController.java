@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.expert.controller;
 
+import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.domain.expert.service.ExpertLikeService;
@@ -90,7 +91,7 @@ public class ExpertController {
 	)
 	@GetMapping("/{userId}")
 	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> getExpertInfo(
-			@Parameter(description = "전문가 ID (User ID)", required = true)
+			@Parameter(description = "전문가 UserId", required = true)
 			@PathVariable Long userId
 	) {
 		ExpertInfoResponseDTO response = expertService.getExpertInfo(userId);
@@ -106,7 +107,7 @@ public class ExpertController {
 	)
 	@PostMapping("/{userId}/like")
 	public ResponseEntity<CommonResponse<Void>> likeExpert(
-			@Parameter(description = "찜할 전문가의 User ID", required = true)
+			@Parameter(description = "찜할 전문가의 UserId", required = true)
 			@PathVariable Long userId,
 			@Parameter(hidden = true) @AuthenticationPrincipal Long currentUserId
 	) {
@@ -123,11 +124,32 @@ public class ExpertController {
 	)
 	@DeleteMapping("/{userId}/like")
 	public ResponseEntity<CommonResponse<Void>> unlikeExpert(
-			@Parameter(description = "찜 취소할 전문가의 User ID", required = true)
+			@Parameter(description = "찜 취소할 전문가의 UserId", required = true)
 			@PathVariable Long userId,
 			@Parameter(hidden = true) @AuthenticationPrincipal Long currentUserId
 	) {
 		expertLikeService.unlikeExpert(currentUserId, userId);
 		return ResponseEntity.ok(CommonResponse.success(null));
+	}
+
+	/**
+	 * 전문가 상담 스케줄 목록 조회 API
+	 */
+	@Operation(
+			summary = "전문가 상담 스케줄 목록 조회",
+			description = "특정 전문가가 제공하는 상담 스케줄 목록을 조회합니다."
+
+	)
+	@GetMapping("/{userId}/schedules")
+	public ResponseEntity<CommonResponse<List<ConsultationScheduleResponseDTO>>> getConsultationSchedules(
+			@Parameter(
+					description = "전문가 UserId",
+					required = true,
+					example = "3"
+			)
+			@PathVariable Long userId
+	) {
+		List<ConsultationScheduleResponseDTO> response = expertService.getConsultationSchedules(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 }

@@ -10,6 +10,7 @@ import com.ceos.menual.domain.chat.repository.ChatMessageRepository;
 import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.ChatroomType;

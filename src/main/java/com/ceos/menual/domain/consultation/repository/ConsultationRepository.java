@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
 
+
     @Query("SELECT c FROM Consultation c " +
             "LEFT JOIN FETCH c.expertProfile ep " +
             "LEFT JOIN FETCH ep.user u1 " +         // ExpertProfile 안의 User

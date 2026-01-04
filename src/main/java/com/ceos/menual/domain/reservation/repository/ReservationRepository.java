@@ -27,6 +27,21 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     );
 
     /**
+     * 특정 전문가의 특정 기간 내 예약된 시간 조회
+     */
+    @Query("SELECT r.scheduledDateTime FROM Reservation r " +
+            "WHERE r.expertProfile.id = :expertProfileId " +
+            "AND r.scheduledDateTime BETWEEN :startDateTime AND :endDateTime " +
+            "AND r.reservationStatus IN :statuses " +
+            "ORDER BY r.scheduledDateTime")
+    List<LocalDateTime> findBookedTimesByExpertProfileIdAndDateRange(
+            @Param("expertProfileId") Long expertProfileId,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
+
+    /**
      * 만료된 미입금 예약 조회 (스케줄러용)
      */
     List<Reservation> findByReservationStatusAndExpiresAtBefore(

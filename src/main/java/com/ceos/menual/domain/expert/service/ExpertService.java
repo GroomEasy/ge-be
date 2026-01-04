@@ -88,7 +88,7 @@ public class ExpertService {
 		User expertUser = userRepository.findById(userId)
 				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
-		if (expertUser.getUserType() != UserType.EXPERT || expertUser.getExpertProfile() == null) {
+		if (!expertUser.isExpert() || expertUser.getExpertProfile() == null) {
 			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
 		}
 

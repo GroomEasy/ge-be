@@ -89,7 +89,7 @@ public class ExpertService {
 				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
 		if (expertUser.getUserType() != UserType.EXPERT || expertUser.getExpertProfile() == null) {
-			throw new GlobalException(ReservationErrorCode.EXPERT_PROFILE_NOT_FOUND);
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
 		}
 
 		Long expertProfileId = expertUser.getExpertProfile().getId();

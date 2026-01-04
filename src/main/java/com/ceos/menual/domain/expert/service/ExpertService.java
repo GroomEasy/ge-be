@@ -81,11 +81,11 @@ public class ExpertService {
 	/**
 	 * 전문가가 제공하는 상담 스케줄 목록 조회 API
 	 */
-	public List<ConsultationScheduleResponseDTO> getConsultationSchedules(Long UserId) {
-		log.info("상담 스케줄 목록 조회 - 전문가 UserId: {}", UserId);
+	public List<ConsultationScheduleResponseDTO> getConsultationSchedules(Long userId) {
+		log.info("상담 스케줄 목록 조회 - 전문가 UserId: {}", userId);
 
 		// 전문가 조회 및 검증
-		User expertUser = userRepository.findById(UserId)
+		User expertUser = userRepository.findById(userId)
 				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
 		if (expertUser.getUserType() != UserType.EXPERT || expertUser.getExpertProfile() == null) {
@@ -98,7 +98,7 @@ public class ExpertService {
 		List<ConsultationSchedule> schedules = consultationScheduleRepository
 				.findActiveSchedulesByExpertProfileId(expertProfileId);
 
-		log.info("상담 스케줄 조회 완료 - 전문가 UserId: {}, 스케줄 개수: {}", UserId, schedules.size());
+		log.info("상담 스케줄 조회 완료 - 전문가 UserId: {}, 스케줄 개수: {}", userId, schedules.size());
 
 		return schedules.stream()
 				.map(ConsultationScheduleResponseDTO::from)

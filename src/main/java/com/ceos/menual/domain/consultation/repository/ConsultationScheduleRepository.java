@@ -10,23 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface ConsultationScheduleRepository extends JpaRepository<Consultation, Long> {
-
-    @Query("SELECT c FROM Consultation c " +
-            "LEFT JOIN FETCH c.expertProfile ep " +
-            "LEFT JOIN FETCH ep.user u1 " +         // ExpertProfile 안의 User
-            "LEFT JOIN FETCH c.generalProfile gp " +
-            "LEFT JOIN FETCH gp.user u2 " +         // GeneralProfile 안의 User
-            "WHERE c.id = :id")
-    Optional<Consultation> findByIdWithProfiles(@Param("id") Long id);
-
-    @Query("SELECT c FROM Consultation c " +
-            "LEFT JOIN FETCH c.expertProfile ep " +
-            "LEFT JOIN FETCH ep.user u1 " +         // 전문가의 User 정보
-            "LEFT JOIN FETCH c.generalProfile gp " +
-            "LEFT JOIN FETCH gp.user u2 " +         // 의뢰인의 User 정보
-            "WHERE c.id = :id")
-    Optional<Consultation> findByIdWithAllRelations(@Param("id") Long id);
+public interface ConsultationScheduleRepository extends JpaRepository<ConsultationSchedule, Long> {
 
     /**
      * 전문가가 제공하는 활성화된 상담 스케줄 목록 조회

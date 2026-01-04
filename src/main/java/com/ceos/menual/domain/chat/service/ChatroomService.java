@@ -9,6 +9,7 @@ import com.ceos.menual.domain.chat.exception.ChatErrorCode;
 import com.ceos.menual.domain.chat.repository.ChatMessageRepository;
 import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
+import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
@@ -33,7 +34,7 @@ import java.util.stream.Collectors;
 public class ChatroomService {
 
     private final ChatroomRepository chatroomRepository;
-    private final ConsultationScheduleRepository consultationRepository;
+    private final ConsultationRepository consultationRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
 

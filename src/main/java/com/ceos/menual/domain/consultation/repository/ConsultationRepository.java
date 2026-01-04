@@ -1,0 +1,28 @@
+package com.ceos.menual.domain.consultation.repository;
+
+import com.ceos.menual.entity.Consultation;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+
+public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
+
+
+    @Query("SELECT c FROM Consultation c " +
+            "LEFT JOIN FETCH c.expertProfile ep " +
+            "LEFT JOIN FETCH ep.user u1 " +         // ExpertProfile 안의 User
+            "LEFT JOIN FETCH c.generalProfile gp " +
+            "LEFT JOIN FETCH gp.user u2 " +         // GeneralProfile 안의 User
+            "WHERE c.id = :id")
+    Optional<Consultation> findByIdWithProfiles(@Param("id") Long id);
+
+    @Query("SELECT c FROM Consultation c " +
+            "LEFT JOIN FETCH c.expertProfile ep " +
+            "LEFT JOIN FETCH ep.user u1 " +         // 전문가의 User 정보
+            "LEFT JOIN FETCH c.generalProfile gp " +
+            "LEFT JOIN FETCH gp.user u2 " +         // 의뢰인의 User 정보
+            "WHERE c.id = :id")
+    Optional<Consultation> findByIdWithAllRelations(@Param("id") Long id);
+}

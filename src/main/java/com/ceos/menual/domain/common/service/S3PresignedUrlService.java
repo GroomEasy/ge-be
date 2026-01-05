@@ -42,7 +42,7 @@ public class S3PresignedUrlService {
 	 * @return Presigned URL
 	 */
 	public String generateUploadPresignedUrl(String resourceType, Long resourceId, String fileName) {
-		String s3Key = buildS3Key(resourceType, resourceId, fileName);
+		String s3Key = buildS3Key(resourceType, resourceId, fileName, true);
 
 		try (S3Presigner presigner = S3Presigner.builder()
 			.region(Region.of(region))
@@ -73,7 +73,7 @@ public class S3PresignedUrlService {
 	 * @return Presigned URL
 	 */
 	public String generateDownloadPresignedUrl(String resourceType, Long resourceId, String fileName) {
-		String s3Key = buildS3Key(resourceType, resourceId, fileName);
+		String s3Key = buildS3Key(resourceType, resourceId, fileName, false);
 
 		try (S3Presigner presigner = S3Presigner.builder()
 			.region(Region.of(region))
@@ -101,10 +101,12 @@ public class S3PresignedUrlService {
 	 * @param resourceType 리소스 타입 (consultation, review 등)
 	 * @param resourceId 리소스 ID
 	 * @param fileName 파일명
-	 * @return S3 Key (예: consultation/123/hairstyle.jpg)
+	 * @param isTemporary 임시 경로 여부 (true: tmp/ 접두사 추가)
+	 * @return S3 Key (예: tmp/consultation/123/hairstyle.jpg)
 	 */
-	public String buildS3Key(String resourceType, Long resourceId, String fileName) {
-		return String.format("%s/%d/%s", resourceType, resourceId, fileName);
+	public String buildS3Key(String resourceType, Long resourceId, String fileName, boolean isTemporary) {
+		String basePath = isTemporary ? "tmp/" : "";
+		return String.format("%s%s/%d/%s", basePath, resourceType, resourceId, fileName);
 	}
 }
 

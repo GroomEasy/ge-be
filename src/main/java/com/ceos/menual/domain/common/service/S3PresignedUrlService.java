@@ -82,8 +82,36 @@ public class S3PresignedUrlService {
 	 * @return S3 Key (예: tmp/consultation/123/hairstyle.jpg)
 	 */
 	public String buildS3Key(String resourceType, Long resourceId, String fileName, boolean isTemporary) {
+		validateInputs(resourceType, resourceId, fileName);
 		String basePath = isTemporary ? "tmp/" : "";
 		return String.format("%s%s/%d/%s", basePath, resourceType, resourceId, fileName);
+	}
+
+	/**
+	 * S3 Key 생성을 위한 입력값 검증 (경로 조작 공격 방어)
+	 * @param resourceType 리소스 타입
+	 * @param resourceId 리소스 ID
+	 * @param fileName 파일명
+	 * @throws IllegalArgumentException 유효하지 않은 입력값인 경우
+	 */
+	private void validateInputs(String resourceType, Long resourceId, String fileName) {
+		if (resourceType == null || resourceType.trim().isEmpty()) {
+			throw new IllegalArgumentException("리소스 타입은 필수입니다.");
+		}
+		if (resourceType.contains("/") || resourceType.contains("\\") || resourceType.contains("..")) {
+			throw new IllegalArgumentException("유효하지 않은 리소스 타입입니다.");
+		}
+
+		if (resourceId == null || resourceId <= 0) {
+			throw new IllegalArgumentException("유효하지 않은 리소스 ID입니다.");
+		}
+
+		if (fileName == null || fileName.trim().isEmpty()) {
+			throw new IllegalArgumentException("파일명은 필수입니다.");
+		}
+		if (fileName.contains("..") || fileName.startsWith("/") || fileName.startsWith("\\")) {
+			throw new IllegalArgumentException("파일명에 경로 조작 문자를 포함할 수 없습니다.");
+		}
 	}
 }
 

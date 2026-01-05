@@ -5,10 +5,6 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -25,14 +21,11 @@ public class S3PresignedUrlService {
 	@Value("${aws.s3.bucket-name}")
 	private String bucketName;
 
-	@Value("${aws.s3.region}")
-	private String region;
+	private final S3Presigner s3Presigner;
 
-	@Value("${aws.s3.access-key}")
-	private String accessKey;
-
-	@Value("${aws.s3.secret-key}")
-	private String secretKey;
+	public S3PresignedUrlService(S3Presigner s3Presigner) {
+		this.s3Presigner = s3Presigner;
+	}
 
 	/**
 	 * Presigned URL 발급 (업로드용)
@@ -44,25 +37,17 @@ public class S3PresignedUrlService {
 	public String generateUploadPresignedUrl(String resourceType, Long resourceId, String fileName) {
 		String s3Key = buildS3Key(resourceType, resourceId, fileName, true);
 
-		try (S3Presigner presigner = S3Presigner.builder()
-			.region(Region.of(region))
-			.credentialsProvider(StaticCredentialsProvider.create(
-				AwsBasicCredentials.create(accessKey, secretKey)
-			))
-			.build()) {
+		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+			.bucket(bucketName)
+			.key(s3Key)
+			.build();
 
-			PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-				.bucket(bucketName)
-				.key(s3Key)
-				.build();
+		PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+			.signatureDuration(Duration.ofMinutes(15))
+			.putObjectRequest(putObjectRequest)
+			.build();
 
-			PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
-				.signatureDuration(Duration.ofMinutes(15))
-				.putObjectRequest(putObjectRequest)
-				.build();
-
-			return presigner.presignPutObject(presignRequest).url().toString();
-		}
+		return s3Presigner.presignPutObject(presignRequest).url().toString();
 	}
 
 	/**
@@ -75,25 +60,17 @@ public class S3PresignedUrlService {
 	public String generateDownloadPresignedUrl(String resourceType, Long resourceId, String fileName) {
 		String s3Key = buildS3Key(resourceType, resourceId, fileName, false);
 
-		try (S3Presigner presigner = S3Presigner.builder()
-			.region(Region.of(region))
-			.credentialsProvider(StaticCredentialsProvider.create(
-				AwsBasicCredentials.create(accessKey, secretKey)
-			))
-			.build()) {
+		GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+			.bucket(bucketName)
+			.key(s3Key)
+			.build();
 
-			GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-				.bucket(bucketName)
-				.key(s3Key)
-				.build();
+		GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+			.signatureDuration(Duration.ofHours(1))
+			.getObjectRequest(getObjectRequest)
+			.build();
 
-			GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-				.signatureDuration(Duration.ofHours(1))
-				.getObjectRequest(getObjectRequest)
-				.build();
-
-			return presigner.presignGetObject(presignRequest).url().toString();
-		}
+		return s3Presigner.presignGetObject(presignRequest).url().toString();
 	}
 
 	/**

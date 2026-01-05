@@ -56,7 +56,8 @@ public class S3PresignedUrlController {
 		String s3Key = s3PresignedUrlService.buildS3Key(
 			request.getResourceType(),
 			request.getResourceId(),
-			request.getFileName());
+			request.getFileName(),
+			true);
 
 		PresignedUrlResponseDTO response = PresignedUrlResponseDTO.builder()
 			.s3Key(s3Key)
@@ -91,7 +92,8 @@ public class S3PresignedUrlController {
 		String s3Key = s3PresignedUrlService.buildS3Key(
 			request.getResourceType(),
 			request.getResourceId(),
-			request.getFileName());
+			request.getFileName(),
+			false);
 
 		PresignedUrlResponseDTO response = PresignedUrlResponseDTO.builder()
 			.s3Key(s3Key)

@@ -60,7 +60,6 @@ public class Consultation extends BaseEntity {
 	private Integer durationMinutes;
 	private String videoLink;
 
-
 	//고민지 관련 추후 작성 예정
 
 	//솔루션 관련

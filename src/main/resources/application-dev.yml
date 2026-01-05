@@ -9,10 +9,10 @@ spring:
       write-dates-as-timestamps: false
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://localhost:5432/mydatabase
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: myuser
+    password: secret
 
   jpa:
     hibernate:
@@ -23,17 +23,18 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: dev-secret-key
   access-token-validity: 86400000 # 1일
   refresh-token-validity: 604800000 # 7일
 
 kakao:
-  client-id: ${KAKAO_CLIENT_ID}
-  redirect-uri: ${KAKAO_REDIRECT_URI}
+  client-id: dev-kakao-client-id
+  redirect-uri: http://localhost:8080/oauth/callback/kakao
 
 aws:
   s3:
-    bucket-name: ${AWS_S3_BUCKET_NAME}
-    region: ${AWS_REGION}
-    access-key: ${AWS_ACCESS_KEY_ID}
-    secret-key: ${AWS_SECRET_ACCESS_KEY}
+    bucket-name: test-bucket
+    region: ap-northeast-2
+    access-key: test-access-key
+    secret-key: test-secret-key
+

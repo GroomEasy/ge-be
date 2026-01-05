@@ -27,7 +27,7 @@ public class PresignedUrlRequestDTO {
 
 	@NotBlank(message = "파일명은 필수입니다.")
 	@Pattern(
-		regexp = "^[a-zA-Z0-9._/\\-]+$", 
+		regexp = "^(?!/)(?!.*\\.\\.)(?!.*/{2,})[a-zA-Z0-9._/\\-]+$", 
 		message = "파일명은 영문자, 숫자, 점(.), 하이픈(-), 언더스코어(_), 슬래시(/)만 허용됩니다. 절대 경로(/로 시작)와 점점(..)은 사용할 수 없습니다."
 	)
 	private String fileName;

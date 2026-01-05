@@ -59,10 +59,14 @@ public class UserController {
     /**
      * 내 정보 조회
      */
+    @Operation(
+            summary = "내 정보 조회",
+            description = "현재 로그인한 사용자의 정보를 반환합니다."
+    )
     @GetMapping("/me")
     public ResponseEntity<UserInfoResponseDTO> getMyInfo(
             @AuthenticationPrincipal Long userId) {
         UserInfoResponseDTO response = userService.getMyInfo(userId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

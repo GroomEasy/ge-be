@@ -64,7 +64,7 @@ public class UserController {
             description = "현재 로그인한 사용자의 정보를 반환합니다."
     )
     @GetMapping("/me")
-    public ResponseEntity<UserInfoResponseDTO> getMyInfo(
+    public ResponseEntity<CommonResponse<UserInfoResponseDTO>> getMyInfo(
             @AuthenticationPrincipal Long userId) {
         UserInfoResponseDTO response = userService.getMyInfo(userId);
         return ResponseEntity.ok(CommonResponse.success(response));

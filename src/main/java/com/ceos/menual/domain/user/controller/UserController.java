@@ -5,19 +5,16 @@ import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
+import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
 import com.ceos.menual.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/user")
@@ -56,6 +53,20 @@ public class UserController {
     ) {
         SocialSignUpResponseDTO response = userService.socialSignUp(userId, request);
 
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 내 정보 조회
+     */
+    @Operation(
+            summary = "내 정보 조회",
+            description = "현재 로그인한 사용자의 정보를 반환합니다."
+    )
+    @GetMapping("/me")
+    public ResponseEntity<CommonResponse<UserInfoResponseDTO>> getMyInfo(
+            @AuthenticationPrincipal Long userId) {
+        UserInfoResponseDTO response = userService.getMyInfo(userId);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

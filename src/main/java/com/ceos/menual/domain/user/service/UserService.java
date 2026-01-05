@@ -4,6 +4,7 @@ import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
+import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
@@ -120,4 +121,13 @@ public class UserService {
         }
     }
 
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
+    public UserInfoResponseDTO getMyInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        return UserInfoResponseDTO.from(user);
+    }
 }

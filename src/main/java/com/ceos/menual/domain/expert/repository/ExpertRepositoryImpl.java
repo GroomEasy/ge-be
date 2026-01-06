@@ -7,10 +7,7 @@ import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.jpa.JPAExpressions;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
@@ -61,30 +58,31 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 
 	@Override
 	public List<ExpertRankingResponseDTO> findTop3ByCategory(Category category) {
+		QExpertLike el = QExpertLike.expertLike;
+
 		return queryFactory
-			.select(Projections.constructor(
-				ExpertRankingResponseDTO.class,
-				ep.user.nickname,
-				ep.category,
-				ep.user.profileImage,
-				ep.introduction
-			))
-			.from(ep)
-			.leftJoin(c)
-				.on(c.expertProfile.id.eq(ep.id)
-					.and(c.status.eq(ConsultationStatus.COMPLETED)))
-			.join(ep.user)
-			.where(ep.category.eq(category))
-			.groupBy(
-				ep.id,
-				ep.user.nickname,
-				ep.category,
-				ep.user.profileImage,
-				ep.introduction
-			)
-			.orderBy(c.id.count().desc())
-			.limit(3)
-			.fetch();
+				.select(Projections.constructor(
+						ExpertRankingResponseDTO.class,
+						ep.user.nickname,
+						ep.category,
+						ep.user.profileImage,
+						ep.introduction
+				))
+				.from(ep)
+				.leftJoin(el)
+				.on(el.expertProfile.id.eq(ep.id))
+				.join(ep.user)
+				.where(ep.category.eq(category))
+				.groupBy(
+						ep.id,
+						ep.user.nickname,
+						ep.category,
+						ep.user.profileImage,
+						ep.introduction
+				)
+				.orderBy(el.id.count().desc())
+				.limit(3)
+				.fetch();
 	}
 
 	@Override

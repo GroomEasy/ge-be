@@ -23,7 +23,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOrigins(
                         "http://localhost:5173",
                         "http://localhost:3000",
-                        "https://ge-fe-pi.vercel.app"
+                        "https://ge-fe-pi.vercel.app",
+                        "https://www.menual.site"
                 )
                 .addInterceptors(authHandshakeInterceptor) // 핸드셰이크 인터셉터 등록
                 .withSockJS(); // SockJS 지원

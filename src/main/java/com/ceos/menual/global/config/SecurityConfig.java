@@ -39,10 +39,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 // health check
                                 "/actuator/health",
+                                "/error",
 
                                 // 인증 관련
                                 "/api/auth/**",
                                 "/api/user/signup",
+                                "/api/user/social-signup",
 
                                 // TODO: http GET 메소드만 허용
                                 // 전문가 관련

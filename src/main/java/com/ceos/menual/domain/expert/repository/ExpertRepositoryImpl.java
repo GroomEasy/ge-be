@@ -105,7 +105,10 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.leftJoin(r).on(r.consultation.eq(c))
 				.where(categoryEq(category))
 				.groupBy(ep.id, u.nickname, ep.category, u.profileImage, ep.introduction)
-				.orderBy(ep.id.desc())
+				.orderBy(
+						r.count().desc(),           // 리뷰 많은 순
+						r.rating.avg().desc()       // 평점 높은 순
+				)
 				.offset((long) page * size)
 				.limit(size)
 				.fetch();

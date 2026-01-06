@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
-import com.ceos.menual.entity.enums.PaymentStatus;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -47,23 +46,16 @@ public class Consultation extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	private ConsultationStatus status;
 
+	// 실제 상담 일정
 	private LocalDateTime scheduleTime;
 
-	private Integer price;
-
-	@Enumerated(EnumType.STRING)
-	private PaymentStatus paymentStatus;
-
-	//화상상담 관련
+	// 화상 상담 관련
 	private LocalDateTime videoStartTime;
 	private LocalDateTime videoEndTime;
 	private Integer durationMinutes;
 	private String videoLink;
 
-	//고민지 관련 추후 작성 예정
-
 	//솔루션 관련
-	private String solutionPdfUrl;
 	private LocalDateTime solutionSubmittedAt;
 
 	private Boolean reviewWritten;

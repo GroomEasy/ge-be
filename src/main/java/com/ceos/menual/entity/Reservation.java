@@ -38,12 +38,9 @@ public class Reservation extends BaseEntity {
     @Column(name = "consultation_type", nullable = false, length = 20)
     private ConsultationType consultationType;
 
+    // 예약 일정
     @Column(name = "scheduled_date_time")
     private LocalDateTime scheduledDateTime;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "concerns_json", columnDefinition = "json")
-    private String concernsJson;
 
     @Column(nullable = false)
     private Integer price;
@@ -55,9 +52,15 @@ public class Reservation extends BaseEntity {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // 결제 완료 후 생성
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "consultation_id")
     private Consultation consultation;
+
+    // 고민 입력
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "concerns_json", columnDefinition = "json")
+    private String concernsJson;
 
     // 비즈니스 메서드
     public void updateConcerns(String concernsJson) {

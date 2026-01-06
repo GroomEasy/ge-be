@@ -61,5 +61,14 @@ public class JwtValidator {
                 .get("type", String.class);
     }
 
+    // 사용자 타입 추출
+    public String getUserTypeFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("userType", String.class);
+    }
 
 }

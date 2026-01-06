@@ -48,7 +48,7 @@ public class AuthService {
         }
 
         // 토큰 생성
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
         return LoginResponseDTO.builder()
@@ -99,7 +99,7 @@ public class AuthService {
                     .build()
             ));
 
-        String jwtAccessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
+        String jwtAccessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
         cookieUtil.addAccessTokenCookie(response, jwtAccessToken);
         cookieUtil.addRefreshTokenCookie(response, refreshToken);
@@ -126,6 +126,6 @@ public class AuthService {
                 .orElseThrow(() -> new GlobalException(UserErrorCode.INVALID_EMAIL));
 
         // 새로운 Access Token 생성
-        return jwtProvider.createAccessToken(user.getId(), user.getEmail());
+        return jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
     }
 }

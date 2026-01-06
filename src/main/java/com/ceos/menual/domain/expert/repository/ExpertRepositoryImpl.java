@@ -176,9 +176,9 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 			result.computeIfAbsent(expertId, k -> new ArrayList<>());
 
 			List<String> expertImages = result.get(expertId);
-			if (expertImages.size() < 3) {
+			if (expertImages.size() < 3 && !expertImages.contains(imageUrl)) {
 				expertImages.add(imageUrl);
-			}
+			}				expertImages.add(imageUrl);
 		}
 
 		return result;

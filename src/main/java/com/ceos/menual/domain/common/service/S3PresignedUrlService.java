@@ -1,20 +1,31 @@
 package com.ceos.menual.domain.common.service;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * S3 Presigned URL 발급 서비스 (공통)
  * consultation, review 등 여러 도메인에서 사용 가능
+ * 
+ * 임시 파일 저장 경로: tmp/consultation/user-{userId}/{imageType}/{fileName}
+ * 최종 파일 저장 경로: final/consultation/{consultationId}/{imageType}/{fileName}
  */
+@Slf4j
 @Service
 public class S3PresignedUrlService {
 
@@ -22,20 +33,33 @@ public class S3PresignedUrlService {
 	private String bucketName;
 
 	private final S3Presigner s3Presigner;
+	private final S3Client s3Client;
 
-	public S3PresignedUrlService(S3Presigner s3Presigner) {
+	public S3PresignedUrlService(S3Presigner s3Presigner, S3Client s3Client) {
 		this.s3Presigner = s3Presigner;
+		this.s3Client = s3Client;
 	}
 
 	/**
-	 * Presigned URL 발급 (업로드용)
+	 * Presigned URL 발급 (업로드용 - 임시 저장)
+	 * 
+	 * 경로 구조: tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 * 
 	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param resourceId 리소스 ID
-	 * @param fileName 파일명 (예: hairstyle.jpg, front.jpg, favorite/1.jpg)
-	 * @return Presigned URL
+	 * @param imageType 이미지 타입 (hairstyle, front, left-side, right-side, favorite, purpose)
+	 * @param fileName 파일명 (예: image.jpg, 1.jpg)
+	 * @return Presigned URL과 S3 Key
 	 */
-	public String generateUploadPresignedUrl(String resourceType, Long resourceId, String fileName) {
-		String s3Key = buildS3Key(resourceType, resourceId, fileName, true);
+	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, String imageType, String fileName) {
+		// 현재 사용자 ID 가져오기
+		Long userId = getCurrentUserId();
+
+		validateResourceType(resourceType);
+		validateImageType(imageType);
+		validateFileName(fileName);
+
+		// S3 Key 생성 - imageType에 따라 경로 구조가 다름
+		String s3Key = buildTemporaryS3Key(userId, resourceType, imageType, fileName);
 
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 			.bucket(bucketName)
@@ -47,18 +71,41 @@ public class S3PresignedUrlService {
 			.putObjectRequest(putObjectRequest)
 			.build();
 
-		return s3Presigner.presignPutObject(presignRequest).url().toString();
+		String uploadUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
+
+		return GeneratePresignedUrlResponse.builder()
+			.s3Key(s3Key)
+			.uploadUrl(uploadUrl)
+			.expiresIn(900L) // 15분 = 900초
+			.build();
+	}
+
+	/**
+	 * 임시 저장 경로 생성
+	 * tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 */
+	private String buildTemporaryS3Key(Long userId, String resourceType, String imageType, String fileName) {
+		return String.format("tmp/%s/user-%d/%s/%s", resourceType, userId, imageType, fileName);
 	}
 
 	/**
 	 * Presigned URL 발급 (다운로드용)
+	 * 
+	 * 경로 구조: final/consultation/{consultationId}/{imageType}/{fileName}
+	 * 
 	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param resourceId 리소스 ID
+	 * @param imageType 이미지 타입
+	 * @param resourceId 리소스 ID (consultation ID, review ID 등)
 	 * @param fileName 파일명
-	 * @return Presigned URL
+	 * @return Presigned URL과 S3 Key
 	 */
-	public String generateDownloadPresignedUrl(String resourceType, Long resourceId, String fileName) {
-		String s3Key = buildS3Key(resourceType, resourceId, fileName, false);
+	public GeneratePresignedUrlResponse generateDownloadPresignedUrl(String resourceType, String imageType, Long resourceId, String fileName) {
+		validateResourceType(resourceType);
+		validateImageType(imageType);
+		validateFileName(fileName);
+
+		// S3 Key 생성 - imageType에 따라 경로 구조가 다름
+		String s3Key = buildFinalS3Key(resourceType, imageType, resourceId, fileName);
 
 		GetObjectRequest getObjectRequest = GetObjectRequest.builder()
 			.bucket(bucketName)
@@ -70,48 +117,119 @@ public class S3PresignedUrlService {
 			.getObjectRequest(getObjectRequest)
 			.build();
 
-		return s3Presigner.presignGetObject(presignRequest).url().toString();
+		String downloadUrl = s3Presigner.presignGetObject(presignRequest).url().toString();
+
+		return GeneratePresignedUrlResponse.builder()
+			.s3Key(s3Key)
+			.downloadUrl(downloadUrl)
+			.expiresIn(3600L) // 1시간 = 3600초
+			.build();
 	}
 
 	/**
-	 * S3 Key 생성
-	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param resourceId 리소스 ID
-	 * @param fileName 파일명
-	 * @param isTemporary 임시 경로 여부 (true: tmp/ 접두사 추가)
-	 * @return S3 Key (예: tmp/consultation/123/hairstyle.jpg)
+	 * 최종 저장 경로 생성
+	 * final/consultation/{consultationId}/{imageType}/{fileName}
 	 */
-	public String buildS3Key(String resourceType, Long resourceId, String fileName, boolean isTemporary) {
-		validateInputs(resourceType, resourceId, fileName);
-		String basePath = isTemporary ? "tmp/" : "";
-		return String.format("%s%s/%d/%s", basePath, resourceType, resourceId, fileName);
+	private String buildFinalS3Key(String resourceType, String imageType, Long resourceId, String fileName) {
+		return String.format("final/%s/%d/%s/%s", resourceType, resourceId, imageType, fileName);
 	}
 
 	/**
-	 * S3 Key 생성을 위한 입력값 검증 (경로 조작 공격 방어)
-	 * @param resourceType 리소스 타입
-	 * @param resourceId 리소스 ID
-	 * @param fileName 파일명
-	 * @throws IllegalArgumentException 유효하지 않은 입력값인 경우
+	 * S3에서 임시 이미지를 최종 위치로 이동
+	 * 
+	 * @param tempS3Key 임시 저장 경로 (tmp/consultation/user-{userId}/{imageType}/{fileName})
+	 * @param finalS3Key 최종 저장 경로 (final/consultation/{consultationId}/{imageType}/{fileName})
 	 */
-	private void validateInputs(String resourceType, Long resourceId, String fileName) {
+	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {
+		try {
+			validateResourceType("consultation");
+			validateResourceType("final");
+
+			// 1. 임시 위치의 파일을 최종 위치로 복사
+			CopyObjectRequest copyObjectRequest = CopyObjectRequest.builder()
+				.copySource(bucketName + "/" + tempS3Key)
+				.destinationBucket(bucketName)
+				.destinationKey(finalS3Key)
+				.build();
+
+			s3Client.copyObject(copyObjectRequest);
+
+			// 2. 임시 위치의 파일 삭제
+			DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+				.bucket(bucketName)
+				.key(tempS3Key)
+				.build();
+
+			s3Client.deleteObject(deleteObjectRequest);
+
+			log.info("S3 이미지 이동 완료 - from: {}, to: {}", tempS3Key, finalS3Key);
+		} catch (Exception e) {
+			log.error("S3 이미지 이동 실패 - tempS3Key: {}, finalS3Key: {}", tempS3Key, finalS3Key, e);
+			throw new RuntimeException("S3 이미지 이동 중 오류가 발생했습니다", e);
+		}
+	}
+
+	/**
+	 * 현재 로그인한 사용자 ID 가져오기
+	 */
+	private Long getCurrentUserId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof Long)) {
+			throw new IllegalArgumentException("사용자 정보를 찾을 수 없습니다.");
+		}
+		return (Long) authentication.getPrincipal();
+	}
+
+	/**
+	 * 리소스 타입 검증
+	 */
+	private void validateResourceType(String resourceType) {
 		if (resourceType == null || resourceType.trim().isEmpty()) {
 			throw new IllegalArgumentException("리소스 타입은 필수입니다.");
 		}
-		if (resourceType.contains("/") || resourceType.contains("\\") || resourceType.contains("..")) {
-			throw new IllegalArgumentException("유효하지 않은 리소스 타입입니다.");
+		if (!resourceType.matches("^[a-z]+$")) {
+			throw new IllegalArgumentException("리소스 타입은 영문 소문자만 허용됩니다.");
 		}
+	}
 
-		if (resourceId == null || resourceId <= 0) {
-			throw new IllegalArgumentException("유효하지 않은 리소스 ID입니다.");
+	/**
+	 * 이미지 타입 검증
+	 */
+	private void validateImageType(String imageType) {
+		if (imageType == null || imageType.trim().isEmpty()) {
+			throw new IllegalArgumentException("이미지 타입은 필수입니다.");
 		}
+		if (!imageType.matches("^[a-z0-9\\-]+$")) {
+			throw new IllegalArgumentException("이미지 타입은 영문 소문자, 숫자, 하이픈만 허용됩니다.");
+		}
+	}
 
+	/**
+	 * 파일명 검증 (경로 조작 공격 방어, 확장자 검증)
+	 */
+	private void validateFileName(String fileName) {
 		if (fileName == null || fileName.trim().isEmpty()) {
 			throw new IllegalArgumentException("파일명은 필수입니다.");
 		}
 		if (fileName.contains("..") || fileName.startsWith("/") || fileName.startsWith("\\")) {
 			throw new IllegalArgumentException("파일명에 경로 조작 문자를 포함할 수 없습니다.");
 		}
+		
+		// 파일 확장자 검증 (이미지 파일만 허용)
+		String lowerFileName = fileName.toLowerCase();
+		if (!lowerFileName.matches(".*\\.(jpg|jpeg|png|gif|webp)$")) {
+			throw new IllegalArgumentException("이미지 파일만 업로드 가능합니다 (jpg, jpeg, png, gif, webp)");
+		}
+	}
+
+	// Response DTO
+	@lombok.Getter
+	@lombok.Builder
+	public static class GeneratePresignedUrlResponse {
+		private String s3Key;
+		private String uploadUrl;
+		private String downloadUrl;
+		private Long expiresIn;
 	}
 }
 

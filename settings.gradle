@@ -1,1 +1,18 @@
 rootProject.name = 'backend'
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        // Maven Central 미러(우회) - 403 회피용
+        maven { url = uri("https://repo1.maven.org/maven2") }
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        // 프로젝트 의존성도 동일하게 우회
+        maven { url = uri("https://repo1.maven.org/maven2") }
+        mavenCentral()
+    }
+}

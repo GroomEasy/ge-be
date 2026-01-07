@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @Builder
 @AllArgsConstructor
@@ -14,6 +16,15 @@ public class ReviewSummaryResponseDTO {
 	@Schema(description = "리뷰 ID")
 	private Long reviewId;
 
+	@Schema(description = "전문가 닉네임")
+	private String expertNickname;
+
+	@Schema(description = "전문가 프로필 이미지")
+	private String expertProfileImage;
+
+	@Schema(description = "전문가 평균 평점")
+	private Double expertRatingAverage;
+
 	@Schema(description = "별점")
 	private Integer rating;
 
@@ -21,10 +32,7 @@ public class ReviewSummaryResponseDTO {
 	private String content;
 
 	@Schema(description = "이미지 URL")
-	private String mediaUrls;
-
-	@Schema(description = "좋아요 수")
-	private Integer likeCount;
+	private List<String> mediaUrls;
 
 	@Schema(description = "카테고리")
 	private String category;

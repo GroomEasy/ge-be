@@ -23,7 +23,7 @@ public class CompletePaymentResponseDTO {
     @Schema(description = "상담 유형", example = "VIDEO")
     private ConsultationType type;
 
-    @Schema(description = "상담 상태", example = "SCHEDULED")
+    @Schema(description = "상담 상태", example = "READY")
     private ConsultationStatus status;
 
     @Schema(description = "상담 예정 시간", example = "2026-01-28T11:30:00")

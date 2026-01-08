@@ -21,7 +21,8 @@ public enum ReservationErrorCode implements ResultCode {
     INVALID_PRICE(HttpStatus.BAD_REQUEST, 4010, "잘못된 가격입니다."),
     UNAUTHORIZED_RESERVATION_ACCESS(HttpStatus.FORBIDDEN, 4011, "해당 예약에 대한 접근 권한이 없습니다."),
     CONCERN_JSON_CONVERSION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 4012, "고민지 JSON 변환 중 오류가 발생했습니다."),
-    INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, 4013, "유효하지 않은 예약 상태입니다.");
+    INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, 4013, "유효하지 않은 예약 상태입니다."),
+    INVALID_IMAGE_KEY_FORMAT(HttpStatus.BAD_REQUEST, 4014, "잘못된 이미지 키 형식입니다. 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}");
 
 
     private final HttpStatus status;

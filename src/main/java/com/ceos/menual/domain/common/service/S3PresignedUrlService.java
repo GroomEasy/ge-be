@@ -1,12 +1,17 @@
 package com.ceos.menual.domain.common.service;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import com.ceos.menual.domain.common.entity.S3CleanupTask;
+import com.ceos.menual.domain.common.entity.S3CleanupTask.CleanupStatus;
+import com.ceos.menual.domain.common.repository.S3CleanupTaskRepository;
 
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
@@ -32,12 +37,21 @@ public class S3PresignedUrlService {
 	@Value("${aws.s3.bucket-name}")
 	private String bucketName;
 
+	@Value("${aws.s3.cleanup.max-retries:3}")
+	private Integer maxRetries;
+
+	@Value("${aws.s3.cleanup.retry-interval-ms:1000}")
+	private Long retryIntervalMs;
+
 	private final S3Presigner s3Presigner;
 	private final S3Client s3Client;
+	private final S3CleanupTaskRepository s3CleanupTaskRepository;
 
-	public S3PresignedUrlService(S3Presigner s3Presigner, S3Client s3Client) {
+	public S3PresignedUrlService(S3Presigner s3Presigner, S3Client s3Client, 
+			S3CleanupTaskRepository s3CleanupTaskRepository) {
 		this.s3Presigner = s3Presigner;
 		this.s3Client = s3Client;
+		this.s3CleanupTaskRepository = s3CleanupTaskRepository;
 	}
 
 	/**
@@ -137,8 +151,14 @@ public class S3PresignedUrlService {
 	/**
 	 * S3에서 임시 이미지를 최종 위치로 이동
 	 * 
+	 * 프로세스:
+	 * 1. 임시 위치의 파일을 최종 위치로 복사
+	 * 2. 임시 위치의 파일 삭제 (재시도 로직 포함)
+	 * 3. 삭제 실패 시 정리 작업 기록
+	 * 
 	 * @param tempS3Key 임시 저장 경로 (tmp/consultation/user-{userId}/{imageType}/{fileName})
 	 * @param finalS3Key 최종 저장 경로 (final/consultation/{consultationId}/{imageType}/{fileName})
+	 * @throws RuntimeException 복사 실패 또는 삭제 재시도가 완전히 실패한 경우
 	 */
 	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {
 		try {
@@ -146,6 +166,8 @@ public class S3PresignedUrlService {
 			validateResourceType("final");
 
 			// 1. 임시 위치의 파일을 최종 위치로 복사
+			log.info("S3 파일 복사 시작 - bucket: {}, from: {}, to: {}", bucketName, tempS3Key, finalS3Key);
+			
 			CopyObjectRequest copyObjectRequest = CopyObjectRequest.builder()
 				.copySource(bucketName + "/" + tempS3Key)
 				.destinationBucket(bucketName)
@@ -153,19 +175,108 @@ public class S3PresignedUrlService {
 				.build();
 
 			s3Client.copyObject(copyObjectRequest);
+			log.info("S3 파일 복사 완료 - from: {}, to: {}", tempS3Key, finalS3Key);
 
-			// 2. 임시 위치의 파일 삭제
-			DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-				.bucket(bucketName)
-				.key(tempS3Key)
-				.build();
-
-			s3Client.deleteObject(deleteObjectRequest);
+			// 2. 임시 위치의 파일 삭제 (재시도 로직 포함)
+			deleteTemporaryFileWithRetry(tempS3Key, finalS3Key);
 
 			log.info("S3 이미지 이동 완료 - from: {}, to: {}", tempS3Key, finalS3Key);
 		} catch (Exception e) {
-			log.error("S3 이미지 이동 실패 - tempS3Key: {}, finalS3Key: {}", tempS3Key, finalS3Key, e);
+			log.error("S3 이미지 이동 실패 - bucket: {}, tempS3Key: {}, finalS3Key: {}", bucketName, tempS3Key, finalS3Key, e);
 			throw new RuntimeException("S3 이미지 이동 중 오류가 발생했습니다", e);
+		}
+	}
+
+	/**
+	 * 임시 파일 삭제 - 재시도 로직 포함
+	 * 
+	 * 삭제 실패 시:
+	 * - 로컬 재시도 (최대 3회)
+	 * - 모두 실패하면 정리 작업을 DB에 기록
+	 * - 스케줄러가 주기적으로 재처리
+	 * 
+	 * @param tempS3Key 삭제 대상 파일 경로
+	 * @param finalS3Key 최종 파일 경로 (참조용)
+	 * @throws RuntimeException 모든 재시도 실패 후
+	 */
+	private void deleteTemporaryFileWithRetry(String tempS3Key, String finalS3Key) {
+		int attempt = 0;
+		Exception lastException = null;
+
+		log.info("임시 파일 삭제 시작 - bucket: {}, key: {}", bucketName, tempS3Key);
+
+		// 로컬 재시도 루프
+		while (attempt < maxRetries) {
+			attempt++;
+			try {
+				DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+					.bucket(bucketName)
+					.key(tempS3Key)
+					.build();
+
+				s3Client.deleteObject(deleteObjectRequest);
+				log.info("임시 파일 삭제 성공 - bucket: {}, key: {}, attempt: {}/{}", 
+					bucketName, tempS3Key, attempt, maxRetries);
+				return; // 성공 시 메서드 종료
+
+			} catch (Exception e) {
+				lastException = e;
+				log.warn("임시 파일 삭제 실패 (재시도 가능) - bucket: {}, key: {}, attempt: {}/{}, error: {}", 
+					bucketName, tempS3Key, attempt, maxRetries, e.getMessage());
+
+				// 마지막 시도가 아니면 대기 후 재시도
+				if (attempt < maxRetries) {
+					try {
+						Thread.sleep(retryIntervalMs);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						log.warn("재시도 대기 중단됨", ie);
+					}
+				}
+			}
+		}
+
+		// 모든 로컬 재시도 실패 → 정리 작업 기록
+		log.error("로컬 재시도 모두 실패 - 정리 작업 DB에 기록 - bucket: {}, key: {}", bucketName, tempS3Key);
+		persistCleanupTask(tempS3Key, finalS3Key, lastException);
+
+		// 정리 작업이 기록되었음을 호출자에게 알림
+		throw new RuntimeException(
+			String.format("S3 임시 파일 삭제 재시도 실패 (정리 작업 기록됨) - bucket: %s, key: %s, 최대 재시도: %d",
+				bucketName, tempS3Key, maxRetries),
+			lastException
+		);
+	}
+
+	/**
+	 * 정리 작업을 DB에 기록
+	 * 
+	 * 스케줄러가 주기적으로 이 작업들을 조회하여 재처리
+	 * 
+	 * @param tempS3Key 삭제 대상 파일 경로
+	 * @param finalS3Key 최종 파일 경로 (참조용)
+	 * @param exception 발생한 예외
+	 */
+	private void persistCleanupTask(String tempS3Key, String finalS3Key, Exception exception) {
+		try {
+			S3CleanupTask cleanupTask = S3CleanupTask.builder()
+				.bucketName(bucketName)
+				.s3Key(tempS3Key)
+				.destinationS3Key(finalS3Key)
+				.status(CleanupStatus.PENDING)
+				.retryCount(0)
+				.maxRetries(maxRetries)
+				.createdAt(LocalDateTime.now())
+				.errorMessage(exception != null ? exception.getMessage() : "초기 삭제 실패")
+				.build();
+
+			s3CleanupTaskRepository.save(cleanupTask);
+			log.info("정리 작업 기록됨 - id: {}, bucket: {}, key: {}, destination: {}", 
+				cleanupTask.getId(), bucketName, tempS3Key, finalS3Key);
+
+		} catch (Exception e) {
+			log.error("정리 작업 기록 실패 - bucket: {}, key: {}, error: {}", 
+				bucketName, tempS3Key, e.getMessage(), e);
 		}
 	}
 

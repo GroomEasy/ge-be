@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ceos.menual.domain.common.dto.request.DownloadPresignedUrlRequestDTO;
+import com.ceos.menual.domain.common.dto.request.UploadPresignedUrlRequestDTO;
 import com.ceos.menual.domain.common.dto.response.PresignedUrlResponseDTO;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService.GeneratePresignedUrlResponse;
@@ -14,7 +16,6 @@ import com.ceos.menual.domain.common.service.S3PresignedUrlService.GeneratePresi
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -50,7 +51,7 @@ public class S3PresignedUrlController {
 					"유효시간은 15분입니다."
 	)
 	public ResponseEntity<PresignedUrlResponseDTO> getUploadPresignedUrl(
-		@Valid @RequestBody UploadPresignedUrlRequest request) {
+		@Valid @RequestBody UploadPresignedUrlRequestDTO request) {
 
 		GeneratePresignedUrlResponse response = s3PresignedUrlService.generateUploadPresignedUrl(
 			request.getResourceType(),
@@ -78,7 +79,7 @@ public class S3PresignedUrlController {
 		description = "S3에서 파일을 다운로드하기 위한 Presigned URL을 발급합니다. 유효시간은 1시간입니다."
 	)
 	public ResponseEntity<PresignedUrlResponseDTO> getDownloadPresignedUrl(
-		@Valid @RequestBody DownloadPresignedUrlRequest request) {
+		@Valid @RequestBody DownloadPresignedUrlRequestDTO request) {
 
 		GeneratePresignedUrlResponse response = s3PresignedUrlService.generateDownloadPresignedUrl(
 			request.getResourceType(),
@@ -93,38 +94,6 @@ public class S3PresignedUrlController {
 			.expiresIn(response.getExpiresIn())
 			.message("다운로드용 URL이 발급되었습니다. 1시간 내에 다운로드해주세요.")
 			.build());
-	}
-
-	// Request DTOs
-	@lombok.Getter
-	@lombok.NoArgsConstructor
-	@lombok.AllArgsConstructor
-	public static class UploadPresignedUrlRequest {
-		@NotBlank(message = "리소스 타입은 필수입니다. (예: consultation, review)")
-		private String resourceType;
-
-		@NotBlank(message = "이미지 타입은 필수입니다. (예: hairstyle, favorite, purpose)")
-		private String imageType;
-
-		@NotBlank(message = "파일명은 필수입니다.")
-		private String fileName;
-	}
-
-	@lombok.Getter
-	@lombok.NoArgsConstructor
-	@lombok.AllArgsConstructor
-	public static class DownloadPresignedUrlRequest {
-		@NotBlank(message = "리소스 타입은 필수입니다.")
-		private String resourceType;
-
-		@NotBlank(message = "이미지 타입은 필수입니다.")
-		private String imageType;
-
-		@lombok.NonNull
-		private Long resourceId;
-
-		@NotBlank(message = "파일명은 필수입니다.")
-		private String fileName;
 	}
 }
 

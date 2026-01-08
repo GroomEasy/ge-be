@@ -15,7 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 public class UpdateReservationConcernRequestDTO {
 
-    @Schema(description = "S3 이미지 키 목록 (tmp 폴더의 이미지 경로)", example = "[\"tmp/hairstyle.jpg\", \"tmp/front.jpg\", \"tmp/favorite/1.jpg\", \"tmp/favorite/2.jpg\", \"tmp/purpose/1.jpg\"]")
+    @Schema(description = "S3 이미지 키 목록 (임시 저장 경로: tmp/{resourceType}/user-{userId}/{imageType}/{fileName})", example = "[\"tmp/consultation/user-123/purpose/1.jpg\", \"tmp/consultation/user-123/favorite/2.jpg\", \"tmp/consultation/user-123/favorite/3.jpg\"]")
     @NotEmpty(message = "최소 1개 이상의 이미지 키를 포함해야 합니다")
     private List<String> imageKeys;
 

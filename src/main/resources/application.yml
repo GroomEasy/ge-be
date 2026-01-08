@@ -37,3 +37,16 @@ aws:
     region: ${AWS_REGION}
     access-key: ${AWS_ACCESS_KEY_ID}
     secret-key: ${AWS_SECRET_ACCESS_KEY}
+    cleanup:
+      # 삭제 실패 시 최대 재시도 횟수
+      max-retries: 3
+      # 재시도 간 대기 시간 (밀리초)
+      retry-interval-ms: 1000
+      # 미처리 작업 재시도 스케줄러 실행 간격 (밀리초, 기본값: 15분)
+      retry-scheduler-interval: 900000
+      # 스케줄러 초기 지연 시간 (밀리초)
+      initial-delay: 60000
+      # 오래된 완료 작업 정리 주기 (cron 표현식, 기본값: 매일 오전 3시)
+      old-task-cleanup-cron: "0 0 3 * * *"
+      # 장시간 미처리 작업 모니터링 간격 (밀리초, 기본값: 1시간)
+      stale-task-check-interval: 3600000

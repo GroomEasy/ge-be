@@ -2,9 +2,11 @@ package com.ceos.menual.domain.reservation.controller;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
 import com.ceos.menual.domain.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -80,6 +82,30 @@ public class ReservationController {
             @Valid @RequestBody CreateTempReservationRequestDTO request
     ) {
         TempReservationResponseDTO response = reservationService.createTempReservation(userId, request);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 예약 고민지(concernJson) 업데이트 API
+     */
+    @Operation(
+            summary = "예약 고민지 업데이트",
+            description = "예약에 고민지(이미지, 추구미, 상담 목적)를 작성하여 저장합니다."
+    )
+    @PutMapping("/{reservationId}/concern")
+    public ResponseEntity<CommonResponse<UpdateReservationConcernResponseDTO>> updateReservationConcern(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+
+            @AuthenticationPrincipal Long userId,
+
+            @Valid @RequestBody UpdateReservationConcernRequestDTO request
+    ) {
+        UpdateReservationConcernResponseDTO response = reservationService.updateReservationConcern(
+                reservationId,
+                userId,
+                request
+        );
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

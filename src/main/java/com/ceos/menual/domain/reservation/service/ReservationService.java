@@ -1,19 +1,28 @@
 package com.ceos.menual.domain.reservation.service;
 
+import com.ceos.menual.domain.common.service.S3PresignedUrlService;
+import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
+import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.CompletePaymentResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository;
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
+import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.ReservationStatus;
 import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,11 +44,102 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
     private final AvailableScheduleRepository availableScheduleRepository;
+    private final ConsultationRepository consultationRepository;
+    private final ObjectMapper objectMapper;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
 
     private static final int PAYMENT_WAITING_MINUTES = 60; // 60분 후에 만료
+
+    /**
+     * 관리자: 결제 확인 및 Consultation 생성
+     * 사용자가 은행 송금으로 입금한 후, 관리자가 확인하면 호출
+     * 
+     * 동시에 S3의 임시 저장 이미지를 최종 저장 위치로 이동
+     * tmp/consultation/user-{userId}/{imageType}/{fileName}
+     *     → final/consultation/{consultationId}/{imageType}/{fileName}
+     */
+    @Transactional
+    public CompletePaymentResponseDTO confirmPaymentByAdmin(
+            Long reservationId,
+            CompletePaymentRequestDTO requestDTO
+    ) {
+        log.info("관리자 결제 확인 및 상담 생성 시작 - reservationId: {}", reservationId);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 상태 검증 (UNPAID 상태만 결제 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // Consultation 생성
+        Consultation consultation = Consultation.builder()
+                .expertProfile(reservation.getExpertProfile())
+                .generalProfile(reservation.getGeneralProfile())
+                .type(reservation.getConsultationType())
+                .status(ConsultationStatus.READY) // 초기 상태: 준비됨 (결제 확인 후)
+                .scheduleTime(reservation.getScheduledDateTime())
+                .reviewWritten(false)
+                .build();
+
+        Consultation savedConsultation = consultationRepository.save(consultation);
+
+        // 예약 상태를 PAID로 변경하고 consultation과 연결
+        reservation.updateStatusToPaid(savedConsultation);
+
+        // S3 임시 이미지를 최종 위치로 이동
+        moveImagesToFinalLocation(reservation, savedConsultation);
+
+        log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
+                reservationId, savedConsultation.getId());
+
+        return CompletePaymentResponseDTO.from(savedConsultation, reservationId);
+    }
+
+    /**
+     * 예약의 고민지(concernJson) 업데이트
+     */
+    @Transactional
+    public UpdateReservationConcernResponseDTO updateReservationConcern(
+            Long reservationId,
+            Long userId,
+            UpdateReservationConcernRequestDTO requestDTO
+    ) {
+        log.info("고민지 업데이트 시작 - reservationId: {}, userId: {}", reservationId, userId);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 소유자 검증 (예약한 일반 회원과 현재 사용자가 동일한지 확인)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 고민지 JSON 생성
+        ConcernJsonDTO concernJson = ConcernJsonDTO.builder()
+                .imageKeys(requestDTO.getImageKeys())
+                .desiredStyle(requestDTO.getDesiredStyle())
+                .consultationPurpose(requestDTO.getConsultationPurpose())
+                .build();
+
+        // JSON 문자열로 변환
+        try {
+            String concernJsonString = objectMapper.writeValueAsString(concernJson);
+            reservation.updateConcerns(concernJsonString);
+            log.info("고민지 업데이트 완료 - reservationId: {}", reservationId);
+        } catch (Exception e) {
+            log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
+            throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
+        }
+
+        return UpdateReservationConcernResponseDTO.from(reservation, concernJson);
+    }
 
     @Transactional
     public TempReservationResponseDTO createTempReservation(
@@ -284,5 +385,174 @@ public class ReservationService {
                     LocalDateTime dateTime = date.atTime(schedule.getAvailableTime());
                     return dateTime.isAfter(now) && !bookedTimes.contains(dateTime);
                 });
+    }
+
+    /**
+     * 이미지 키 형식 검증
+     * 
+     * 기대 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
+     * 예: tmp/consultation/user-123/purpose/1.jpg
+     * 
+     * @param imageKeys 검증할 이미지 키 목록
+     * @return 잘못된 형식의 이미지 키 목록 (비어있으면 모두 유효)
+     */
+    private List<String> validateImageKeysFormat(List<String> imageKeys) {
+        List<String> invalidKeys = new ArrayList<>();
+
+        for (String imageKey : imageKeys) {
+            if (!isValidImageKeyFormat(imageKey)) {
+                invalidKeys.add(imageKey);
+            }
+        }
+
+        return invalidKeys;
+    }
+
+    /**
+     * 단일 이미지 키의 형식이 유효한지 확인
+     * 
+     * @param imageKey 검증할 이미지 키
+     * @return 유효하면 true, 아니면 false
+     */
+    private boolean isValidImageKeyFormat(String imageKey) {
+        // null 또는 빈 문자열 체크
+        if (imageKey == null || imageKey.trim().isEmpty()) {
+            log.warn("빈 이미지 키");
+            return false;
+        }
+
+        // 경로 분석
+        String[] parts = imageKey.split("/");
+
+        // 기대 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
+        // parts[0] = "tmp"
+        // parts[1] = "consultation"
+        // parts[2] = "user-{userId}"
+        // parts[3] = "{imageType}"
+        // parts[4] = "{fileName}"
+        if (parts.length < 5) {
+            log.warn("이미지 키 구조 불일치 - imageKey: {}, partCount: {}", imageKey, parts.length);
+            return false;
+        }
+
+        // 기본 경로 검증
+        if (!"tmp".equals(parts[0])) {
+            log.warn("첫 번째 경로 컴포넌트가 'tmp'가 아님 - imageKey: {}", imageKey);
+            return false;
+        }
+
+        if (!"consultation".equals(parts[1])) {
+            log.warn("두 번째 경로 컴포넌트가 'consultation'이 아님 - imageKey: {}", imageKey);
+            return false;
+        }
+
+        if (!parts[2].startsWith("user-")) {
+            log.warn("세 번째 경로 컴포넌트가 'user-' 형식이 아님 - imageKey: {}, userPart: {}", imageKey, parts[2]);
+            return false;
+        }
+
+        // imageType 검증 (비어있으면 안됨)
+        if (parts[3] == null || parts[3].trim().isEmpty()) {
+            log.warn("imageType이 비어있음 - imageKey: {}", imageKey);
+            return false;
+        }
+
+        // fileName 검증 (비어있으면 안됨)
+        if (parts[4] == null || parts[4].trim().isEmpty()) {
+            log.warn("fileName이 비어있음 - imageKey: {}", imageKey);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * S3 임시 저장된 이미지를 최종 위치로 이동
+     * tmp/consultation/user-{userId}/{imageType}/{fileName}
+     *     → final/consultation/{consultationId}/{imageType}/{fileName}
+     */
+    private void moveImagesToFinalLocation(Reservation reservation, Consultation consultation) {
+        try {
+            // 고민지 JSON 파싱
+            String concernsJsonString = reservation.getConcernsJson();
+            if (concernsJsonString == null || concernsJsonString.isEmpty()) {
+                log.info("이동할 이미지가 없음 - consultationId: {}", consultation.getId());
+                return;
+            }
+
+            ConcernJsonDTO concernJson = objectMapper.readValue(concernsJsonString, ConcernJsonDTO.class);
+            List<String> imageKeys = concernJson.getImageKeys();
+
+            if (imageKeys == null || imageKeys.isEmpty()) {
+                log.info("이미지 키가 없음 - consultationId: {}", consultation.getId());
+                return;
+            }
+
+            Long userId = reservation.getGeneralProfile().getUser().getId();
+            Long consultationId = consultation.getId();
+
+            // 사전 검증: 모든 이미지 키가 유효한 형식인지 확인 (이동 작업 전)
+            List<String> invalidImageKeys = validateImageKeysFormat(imageKeys);
+            if (!invalidImageKeys.isEmpty()) {
+                log.error("잘못된 이미지 키 형식 발견 - 이동 작업 중단 - consultationId: {}, invalidKeys: {}", 
+                    consultationId, invalidImageKeys);
+                throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+            }
+
+            // 모든 키가 유효한 경우에만 이미지 이동 시작
+            for (String imageKey : imageKeys) {
+                // imageKey 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
+                // 이 경로에서 imageType과 fileName을 추출
+                String[] parts = imageKey.split("/");
+                
+                // 사전 검증에서 이미 확인했지만, 방어적 프로그래밍을 위해 재확인
+                if (parts.length < 5) {
+                    log.error("예상치 못한 이미지 키 형식 - consultationId: {}, imageKey: {}", 
+                        consultationId, imageKey);
+                    throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+                }
+
+                String imageType = parts[3];  // hairstyle, favorite, purpose 등
+                String fileName = parts[4];   // 파일명
+
+                // 최종 경로 생성: final/consultation/{consultationId}/{imageType}/{fileName}
+                String finalS3Key = String.format("final/consultation/%d/%s/%s", 
+                    consultationId, imageType, fileName);
+
+                // S3에서 이미지 이동
+                s3PresignedUrlService.moveImageFromTempToFinal(imageKey, finalS3Key);
+
+                log.info("이미지 이동 완료 - from: {}, to: {}", imageKey, finalS3Key);
+            }
+
+            // ConcernJsonDTO의 imageKeys를 최종 경로로 업데이트
+            // 모든 이미지 키는 이미 검증되었으므로 안전하게 변환
+            List<String> finalImageKeys = imageKeys.stream()
+                    .map(imageKey -> {
+                        String[] parts = imageKey.split("/");
+                        // 사전 검증에서 이미 확인했으므로 parts.length >= 5 보장
+                        String imageType = parts[3];
+                        String fileName = parts[4];
+                        return String.format("final/consultation/%d/%s/%s", 
+                            consultationId, imageType, fileName);
+                    })
+                    .collect(Collectors.toList());
+
+            concernJson = ConcernJsonDTO.builder()
+                    .imageKeys(finalImageKeys)
+                    .desiredStyle(concernJson.getDesiredStyle())
+                    .consultationPurpose(concernJson.getConsultationPurpose())
+                    .build();
+
+            // 업데이트된 JSON으로 저장
+            String updatedConcernsJsonString = objectMapper.writeValueAsString(concernJson);
+            reservation.updateConcerns(updatedConcernsJsonString);
+
+            log.info("고민지 이미지 경로 업데이트 완료 - consultationId: {}", consultationId);
+
+        } catch (Exception e) {
+            log.error("S3 이미지 이동 중 오류 발생 - consultationId: {}", consultation.getId(), e);
+            throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
+        }
     }
 }

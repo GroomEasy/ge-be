@@ -18,7 +18,11 @@ public enum ReservationErrorCode implements ResultCode {
     EXPERT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 4007, "전문가 프로필이 존재하지 않습니다."),
     GENERAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 4008, "일반 회원 프로필이 존재하지 않습니다."),
     CONSULTATION_TYPE_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, 4009, "해당 전문가가 제공하지 않는 상담 유형입니다."),
-    INVALID_PRICE(HttpStatus.BAD_REQUEST, 4010, "잘못된 가격입니다.");
+    INVALID_PRICE(HttpStatus.BAD_REQUEST, 4010, "잘못된 가격입니다."),
+    UNAUTHORIZED_RESERVATION_ACCESS(HttpStatus.FORBIDDEN, 4011, "해당 예약에 대한 접근 권한이 없습니다."),
+    CONCERN_JSON_CONVERSION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 4012, "고민지 JSON 변환 중 오류가 발생했습니다."),
+    INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, 4013, "유효하지 않은 예약 상태입니다."),
+    INVALID_IMAGE_KEY_FORMAT(HttpStatus.BAD_REQUEST, 4014, "잘못된 이미지 키 형식입니다. 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}");
 
 
     private final HttpStatus status;

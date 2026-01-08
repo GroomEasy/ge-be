@@ -72,11 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                         // 인증 객체를 생성해 SecurityContext에 저장
                         // 이후 컨트롤러에서 @AuthenticationPrincipal 등으로 접근 가능
-                        setAuthentication(request, userId);
-
-                        log.info("[JwtAuth] SecurityContext authentication set (ROLE_USER)"); // 변경
-                    } else {
-                        log.warn("[JwtAuth] tokenType is not 'access' -> skip authentication"); // 변경
+                        setAuthentication(request, userId, accessToken);
                     }
                 }
             } catch (Exception e) {
@@ -92,11 +88,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     // SecurityContext에 인증 정보를 등록하는 메서드
-    private void setAuthentication(HttpServletRequest request, Long userId) {
+    private void setAuthentication(HttpServletRequest request, Long userId, String accessToken) {
+        // 토큰에서 UserType 추출
+        String userType = jwtValidator.getUserTypeFromToken(accessToken);
+        
+        // UserType에 따라 권한 설정
+        String authority = "ROLE_USER"; // 기본값
+        if ("ADMIN".equals(userType)) {
+            authority = "ROLE_ADMIN";
+        } else if ("EXPERT".equals(userType)) {
+            authority = "ROLE_EXPERT";
+        }
+        
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userId,
                 null,
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                Collections.singletonList(new SimpleGrantedAuthority(authority))
         );
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);

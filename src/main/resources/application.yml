@@ -50,3 +50,7 @@ aws:
       old-task-cleanup-cron: "0 0 3 * * *"
       # 장시간 미처리 작업 모니터링 간격 (밀리초, 기본값: 1시간)
       stale-task-check-interval: 3600000
+
+logging:
+  level:
+    org.springframework.security: DEBUG

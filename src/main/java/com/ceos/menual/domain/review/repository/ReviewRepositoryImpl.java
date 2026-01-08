@@ -4,16 +4,13 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.ceos.menual.entity.QConsultation;
-import com.ceos.menual.entity.QExpertProfile;
-import com.ceos.menual.entity.QReviewImage;
+import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.review.dto.response.ReviewSummaryResponseDTO;
-import com.ceos.menual.entity.QReview;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -29,6 +26,8 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	private static final QConsultation c = QConsultation.consultation;
 	private static final QExpertProfile ep = QExpertProfile.expertProfile;
 	private static final QReviewImage ri = QReviewImage.reviewImage;
+	private static final QUser u = QUser.user;
+
 
 	@Override
 	public List<ReviewSummaryResponseDTO> findRecentReviews(Category category, int page, int size) {
@@ -38,13 +37,16 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						r.id,
 						r.rating,
 						r.content,
-						r.likeCount,
 						ep.category,
-						r.createdAt
+						r.createdAt,
+						u.nickname,
+						u.profileImage,
+						ep.id
 				)
 				.from(r)
 				.join(r.consultation, c)
 				.join(c.expertProfile, ep)
+				.join(ep.user, u)
 				.where(categoryEq(category))
 				.orderBy(r.createdAt.desc())
 				.offset((long) page * size)
@@ -59,25 +61,36 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 				.map(t -> t.get(r.id))
 				.collect(Collectors.toList());
 
+		List<Long> expertIds = results.stream()
+				.map(t -> t.get(ep.id))
+				.distinct()
+				.collect(Collectors.toList());
+
 		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
+
+		Map<Long, Double> expertRatingsMap = getExpertRatingsInBatch(expertIds);
 
 		return results.stream()
 				.map(tuple -> {
-					List<String> images = imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList());
-					String mediaUrls = images.isEmpty() ? null : String.join(",", images);
+					List<String> mediaUrls = imagesMap.getOrDefault(
+							tuple.get(r.id),
+							Collections.emptyList()
+					);
 
-					// NPE 방지
 					Category cat = tuple.get(ep.category);
 					LocalDateTime createdAt = tuple.get(r.createdAt);
+					Long expertId = tuple.get(ep.id);
 
 					return ReviewSummaryResponseDTO.builder()
 							.reviewId(tuple.get(r.id))
 							.rating(tuple.get(r.rating))
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)
-							.likeCount(tuple.get(r.likeCount))
 							.category(cat != null ? cat.name() : null)
 							.createdAt(createdAt != null ? createdAt.toString() : null)
+							.expertNickname(tuple.get(u.nickname))
+							.expertProfileImage(tuple.get(u.profileImage))
+							.expertRatingAverage(expertRatingsMap.getOrDefault(expertId, 0.0))
 							.build();
 				})
 				.collect(Collectors.toList());
@@ -91,7 +104,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						r.id,
 						r.rating,
 						r.content,
-						r.likeCount,
 						ep.category,
 						r.createdAt
 				)
@@ -115,8 +127,10 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 		return results.stream()
 				.map(tuple -> {
-					List<String> images = imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList());
-					String mediaUrls = images.isEmpty() ? null : String.join(",", images);
+					List<String> mediaUrls = imagesMap.getOrDefault(
+							tuple.get(r.id),
+							Collections.emptyList()
+					);
 
 					Category cat = tuple.get(ep.category);
 					LocalDateTime createdAt = tuple.get(r.createdAt);
@@ -126,7 +140,6 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 							.rating(tuple.get(r.rating))
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)
-							.likeCount(tuple.get(r.likeCount))
 							.category(cat != null ? cat.name() : null)
 							.createdAt(createdAt != null ? createdAt.toString() : null)
 							.build();
@@ -157,6 +170,34 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 			result.computeIfAbsent(reviewId, k -> new ArrayList<>());
 			result.get(reviewId).add(imageUrl);
+		}
+
+		return result;
+	}
+
+	/**
+	 * 여러 전문가의 평균 평점을 배치로 조회
+	 */
+	private Map<Long, Double> getExpertRatingsInBatch(List<Long> expertIds) {
+
+		List<Tuple> ratings = queryFactory
+				.select(
+						ep.id,
+						r.rating.avg()
+				)
+				.from(r)
+				.join(r.consultation, c)
+				.join(c.expertProfile, ep)
+				.where(ep.id.in(expertIds))
+				.groupBy(ep.id)
+				.fetch();
+
+		Map<Long, Double> result = new HashMap<>();
+
+		for (Tuple tuple : ratings) {
+			Long expertId = tuple.get(ep.id);
+			Double avgRating = tuple.get(r.rating.avg());
+			result.put(expertId, avgRating != null ? avgRating : 0.0);
 		}
 
 		return result;

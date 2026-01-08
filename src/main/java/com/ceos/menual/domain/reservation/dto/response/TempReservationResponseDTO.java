@@ -17,9 +17,11 @@ import java.time.LocalDateTime;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TempReservationResponseDTO {
 
+    @Schema(description = "예약 ID", example = "1")
+    private Long reservationId;
+
     @Schema(description = "전문가 ID", example = "1")
     private Long expertId;
-
     @Schema(description = "상담 카테고리", example = "HAIR")
     private Category category;
 
@@ -41,6 +43,7 @@ public class TempReservationResponseDTO {
 
     public static TempReservationResponseDTO from(Reservation reservation) {
         return TempReservationResponseDTO.builder()
+                .reservationId(reservation.getId())
                 .expertId(reservation.getExpertProfile().getUser().getId())
                 .category(reservation.getCategory())
                 .consultationType(reservation.getConsultationType())

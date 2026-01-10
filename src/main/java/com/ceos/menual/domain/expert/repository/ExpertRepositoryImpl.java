@@ -88,7 +88,6 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	@Override
 	public List<ExpertSummaryResponseDTO> findExpertList(Category category, int page, int size) {
 
-		// 전문가 조회
 		List<Tuple> results = queryFactory
 				.select(
 						u.id,
@@ -104,61 +103,41 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.leftJoin(c).on(c.expertProfile.eq(ep))
 				.leftJoin(r).on(r.consultation.eq(c))
 				.where(categoryEq(category))
-				.groupBy(ep.id, u.nickname, ep.category, u.profileImage, ep.introduction)
+				.groupBy(u.id, u.nickname, ep.category, u.profileImage, ep.introduction)
 				.orderBy(
-						r.count().desc(),           // 리뷰 많은 순
-						r.rating.avg().desc()       // 평점 높은 순
+						r.count().desc(),
+						r.rating.avg().desc()
 				)
 				.offset((long) page * size)
 				.limit(size)
 				.fetch();
 
-		// 아무것도 없으면 그냥 반환
 		if (results.isEmpty()) {
 			return Collections.emptyList();
 		}
 
-		// userId로 expertProfileId를 찾기 위한 매핑
+		// userId 추출
 		List<Long> userIds = results.stream()
 				.map(t -> t.get(u.id))
 				.collect(Collectors.toList());
 
-		// userId → expertProfileId 매핑
-		Map<Long, Long> userToExpertProfileMap = queryFactory
-				.select(u.id, ep.id)
-				.from(ep)
-				.join(ep.user, u)
-				.where(u.id.in(userIds))
-				.fetch()
-				.stream()
-				.collect(Collectors.toMap(
-						tuple -> tuple.get(u.id),
-						tuple -> tuple.get(ep.id)
-				));
-
-		// expertProfileId로 이미지 조회
-		List<Long> expertProfileIds = new ArrayList<>(userToExpertProfileMap.values());
-		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(expertProfileIds);
+		// 리뷰 이미지 조회 (userId 기준)
+		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(userIds);
 
 		// DTO 조립
 		return results.stream()
-				.map(tuple -> {
-					Long userId = tuple.get(u.id);
-					Long expertProfileId = userToExpertProfileMap.get(userId);
-
-					return ExpertSummaryResponseDTO.builder()
-							.expertId(userId)
-							.nickname(tuple.get(u.nickname))
-							.category(tuple.get(ep.category).name())
-							.profileImage(tuple.get(u.profileImage))
-							.introduction(tuple.get(ep.introduction))
-							.ratingAverage(tuple.get(r.rating.avg().coalesce(0.0)))
-							.reviewCount(tuple.get(r.count()))
-							.representativeReviewImages(
-									imagesMap.getOrDefault(expertProfileId, Collections.emptyList())
-							)
-							.build();
-				})
+				.map(tuple -> ExpertSummaryResponseDTO.builder()
+						.expertId(tuple.get(u.id))
+						.nickname(tuple.get(u.nickname))
+						.category(tuple.get(ep.category).name())
+						.profileImage(tuple.get(u.profileImage))
+						.introduction(tuple.get(ep.introduction))
+						.ratingAverage(tuple.get(r.rating.avg().coalesce(0.0)))
+						.reviewCount(tuple.get(r.count()))
+						.representativeReviewImages(
+								imagesMap.getOrDefault(tuple.get(u.id), Collections.emptyList())
+						)
+						.build())
 				.collect(Collectors.toList());
 	}
 
@@ -166,35 +145,36 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	 * 여러 전문가의 리뷰 이미지를 배치로 조회
 	 * 각 전문가당 최신 리뷰 이미지 3개까지
 	 */
-	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> expertProfileIds) {
+	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> userIds) {
 
 		List<Tuple> images = queryFactory
 				.select(
-						c.expertProfile.id,
+						ep.user.id,
 						ri.imageUrl,
 						r.createdAt
 				)
 				.from(ri)
 				.join(ri.review, r)
 				.join(r.consultation, c)
-				.where(c.expertProfile.id.in(expertProfileIds))
+				.join(c.expertProfile, ep)
+				.where(ep.user.id.in(userIds))
 				.orderBy(
-						c.expertProfile.id.asc(),
+						ep.user.id.asc(),
 						r.createdAt.desc(),
 						ri.displayOrder.asc()
 				)
 				.fetch();
 
-		// 전문가별로 그룹핑 (최대 3개)
+		// userId별로 그룹핑 (최대 3개)
 		Map<Long, List<String>> result = new LinkedHashMap<>();
 
 		for (Tuple tuple : images) {
-			Long expertId = tuple.get(c.expertProfile.id);
+			Long userId = tuple.get(ep.user.id);
 			String imageUrl = tuple.get(ri.imageUrl);
 
-			result.computeIfAbsent(expertId, k -> new ArrayList<>());
+			result.computeIfAbsent(userId, k -> new ArrayList<>());
 
-			List<String> expertImages = result.get(expertId);
+			List<String> expertImages = result.get(userId);
 			if (expertImages.size() < 3 && !expertImages.contains(imageUrl)) {
 				expertImages.add(imageUrl);
 			}

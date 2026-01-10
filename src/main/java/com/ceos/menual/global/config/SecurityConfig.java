@@ -44,7 +44,10 @@ public class SecurityConfig {
                                 "/error",
 
                                 // 인증 관련
-                                "/api/auth/**",
+                                "/api/auth/login",
+                                "/api/auth/social-login",
+
+                                // 사용자 관련
                                 "/api/user/signup",
                                 "/api/user/social-signup",
 

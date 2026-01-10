@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.auth.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -16,11 +17,13 @@ import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.config.jwt.CookieUtil;
 import com.ceos.menual.global.config.jwt.JwtProvider;
 import com.ceos.menual.global.config.jwt.JwtValidator;
+import com.ceos.menual.global.config.redis.RefreshTokenStore;
 import com.ceos.menual.global.exception.GlobalException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +39,10 @@ public class AuthService {
     private final JwtValidator jwtValidator;
     private final CookieUtil cookieUtil;
     private final KakaoOauthClient kakaoOauthClient;
+    private final RefreshTokenStore refreshTokenStore; // Redis
+
+    @Value("${jwt.refresh-token-validity}")
+    private long refreshTtlMillis;
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         // 사용자 조회
@@ -50,6 +57,9 @@ public class AuthService {
         // 토큰 생성
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
+
+        // Redis에 RefreshToken 저장
+        refreshTokenStore.save(user.getId(), refreshToken, Duration.ofMillis(refreshTtlMillis));
 
         return LoginResponseDTO.builder()
                 .nickname(user.getNickname())
@@ -101,6 +111,10 @@ public class AuthService {
 
         String jwtAccessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
+
+        // Redis에 RefreshToken 저장
+        refreshTokenStore.save(user.getId(), refreshToken, Duration.ofMillis(refreshTtlMillis));
+
         cookieUtil.addAccessTokenCookie(response, jwtAccessToken);
         cookieUtil.addRefreshTokenCookie(response, refreshToken);
 

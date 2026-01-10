@@ -3,6 +3,11 @@ spring:
     scheduling:
       enabled: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
   jackson:
     time-zone: Asia/Seoul
     serialization:

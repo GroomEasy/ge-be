@@ -24,7 +24,7 @@ public class UserInfoResponseDTO {
 
         if (user == null) {
                 throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
-        };
+        }
 
         Integer points = user.getGeneralProfile() != null
                 ? user.getGeneralProfile().getTotalPoints()

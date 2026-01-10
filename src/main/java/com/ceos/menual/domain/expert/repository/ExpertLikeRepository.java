@@ -15,4 +15,7 @@ public interface ExpertLikeRepository extends JpaRepository<ExpertLike, Long> {
     Optional<ExpertLike> findByGeneralProfileAndExpertProfile(GeneralProfile generalProfile, ExpertProfile expertProfile);
 
     long countByExpertProfileId(Long expertProfileId);
+
+    // 사용자(GeneralProfile)가 찜한 전문가 수 조회
+    long countByGeneralProfileId(Long generalProfileId);
 }

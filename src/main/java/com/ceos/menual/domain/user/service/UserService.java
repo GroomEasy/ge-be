@@ -1,5 +1,7 @@
 package com.ceos.menual.domain.user.service;
 
+import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
+import com.ceos.menual.domain.review.repository.ReviewRepository;
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
@@ -26,6 +28,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ExpertLikeRepository expertLikeRepository;
+    private final ReviewRepository reviewRepository;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
@@ -128,6 +132,13 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
-        return UserInfoResponseDTO.from(user);
-    }
+        Long generalProfileId = user.getGeneralProfile().getId();
+
+        // 찜한 전문가 수 조회
+        Long expertLiketCount = expertLikeRepository.countByGeneralProfileId(generalProfileId);
+
+        // 남긴 후기 수 조회
+        Long reviewCount = reviewRepository.countByConsultationGeneralProfileId(generalProfileId);
+
+        return UserInfoResponseDTO.of(user, expertLiketCount, reviewCount);    }
 }

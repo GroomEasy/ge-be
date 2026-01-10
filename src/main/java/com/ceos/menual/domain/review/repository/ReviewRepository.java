@@ -9,4 +9,7 @@ public interface ReviewRepository {
 	List<ReviewSummaryResponseDTO> findRecentReviews(Category category, int page, int size);
 
 	List<ReviewSummaryResponseDTO> findBestReviews(Category category);
+
+	Long countByConsultationGeneralProfileId(Long generalProfileId);
+
 }

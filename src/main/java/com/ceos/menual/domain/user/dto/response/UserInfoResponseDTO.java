@@ -14,11 +14,21 @@ public class UserInfoResponseDTO {
 
     private Long userId;
     private String nickname;
+    private Long expertLikeCount;
+    private Integer points;
+    private Long reviewCount;
 
-    public static UserInfoResponseDTO from(User user) {
+    public static UserInfoResponseDTO of(User user, Long expertLikeCount, Long reviewCount) {
+        Integer points = user.getGeneralProfile() != null
+                ? user.getGeneralProfile().getTotalPoints()
+                : 0;
+
         return UserInfoResponseDTO.builder()
                 .userId(user.getId())
                 .nickname(user.getNickname())
+                .expertLikeCount(expertLikeCount)
+                .points(points)
+                .reviewCount(reviewCount)
                 .build();
     }
 }

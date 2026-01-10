@@ -1,6 +1,7 @@
 package com.ceos.menual.entity.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -17,5 +18,18 @@ public enum StyleFit {
     @JsonValue
     public String getKorean() {
         return korean;
+    }
+
+    @JsonCreator
+    public static StyleFit fromKorean(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (StyleFit fit : StyleFit.values()) {
+            if (fit.korean.equals(value)) {
+                return fit;
+            }
+        }
+        throw new IllegalArgumentException("Unknown StyleFit: " + value);
     }
 }

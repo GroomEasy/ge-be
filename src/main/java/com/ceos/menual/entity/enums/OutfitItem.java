@@ -1,6 +1,7 @@
 package com.ceos.menual.entity.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -20,5 +21,18 @@ public enum OutfitItem {
     @JsonValue
     public String getKorean() {
         return korean;
+    }
+
+    @JsonCreator
+    public static OutfitItem fromKorean(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (OutfitItem item : OutfitItem.values()) {
+            if (item.korean.equals(value)) {
+                return item;
+            }
+        }
+        throw new IllegalArgumentException("Unknown OutfitItem: " + value);
     }
 }

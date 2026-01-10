@@ -7,7 +7,6 @@ import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.HairConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
-import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;

@@ -1,6 +1,7 @@
 package com.ceos.menual.entity.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -22,5 +23,18 @@ public enum StyleImage {
     @JsonValue
     public String getKorean() {
         return korean;
+    }
+
+    @JsonCreator
+    public static StyleImage fromKorean(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (StyleImage image : StyleImage.values()) {
+            if (image.korean.equals(value)) {
+                return image;
+            }
+        }
+        throw new IllegalArgumentException("Unknown StyleImage: " + value);
     }
 }

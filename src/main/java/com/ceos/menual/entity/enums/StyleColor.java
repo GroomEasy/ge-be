@@ -1,6 +1,7 @@
 package com.ceos.menual.entity.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -16,5 +17,18 @@ public enum StyleColor {
     @JsonValue
     public String getKorean() {
         return korean;
+    }
+
+    @JsonCreator
+    public static StyleColor fromKorean(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (StyleColor color : StyleColor.values()) {
+            if (color.korean.equals(value)) {
+                return color;
+            }
+        }
+        throw new IllegalArgumentException("Unknown StyleColor: " + value);
     }
 }

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.Length;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -49,7 +50,7 @@ public class HairConcernDTO {
     private List<PursuedImage> pursuedImages;
 
     @Schema(description = "스타일링 시 느낀 어려움이나 궁금증", example = "매일 아침 스타일링이 힘들어요", required = true)
-    @NotNull(message = "스타일링 어려움은 필수입니다")
+    @NotBlank(message = "스타일링 어려움은 필수입니다")
     @JsonProperty("stylingDifficulty")
     private String stylingDifficulty;
 

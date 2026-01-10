@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.Length;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,12 +35,12 @@ public class FashionConcernDTO {
     private Integer weight;
 
     @Schema(description = "상의 사이즈", example = "M", allowableValues = {"S", "M", "L", "XL", "XXL"}, required = true)
-    @NotNull(message = "상의 사이즈는 필수입니다")
+    @NotBlank(message = "상의 사이즈는 필수입니다")
     @JsonProperty("topSize")
     private String topSize;
 
     @Schema(description = "하의 사이즈", example = "M", allowableValues = {"S", "M", "L", "XL", "XXL"}, required = true)
-    @NotNull(message = "하의 사이즈는 필수입니다")
+    @NotBlank(message = "하의 사이즈는 필수입니다")
     @JsonProperty("bottomSize")
     private String bottomSize;
 

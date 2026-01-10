@@ -3,9 +3,12 @@ package com.ceos.menual.domain.reservation.service;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
+import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
+import com.ceos.menual.domain.reservation.dto.HairConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
-import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.CompletePaymentResponseDTO;
@@ -17,6 +20,7 @@ import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
+import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.ReservationStatus;
@@ -27,6 +31,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -103,14 +111,17 @@ public class ReservationService {
 
     /**
      * 예약의 고민지(concernJson) 업데이트
+     * 패션 상담: FashionConcernDTO 저장
+     * 헤어 상담: HairConcernDTO 저장
      */
     @Transactional
-    public UpdateReservationConcernResponseDTO updateReservationConcern(
+    public UpdateReservationConcernResponseDTO updateFashionConcern(
             Long reservationId,
             Long userId,
-            UpdateReservationConcernRequestDTO requestDTO
+            UpdateFashionConcernRequestDTO requestDTO
     ) {
-        log.info("고민지 업데이트 시작 - reservationId: {}, userId: {}", reservationId, userId);
+        log.info("패션 상담 고민지 업데이트 시작 - reservationId: {}, userId: {}", 
+                reservationId, userId);
 
         // 예약 조회
         Reservation reservation = reservationRepository.findById(reservationId)
@@ -121,24 +132,127 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
         }
 
-        // 고민지 JSON 생성
-        ConcernJsonDTO concernJson = ConcernJsonDTO.builder()
-                .imageKeys(requestDTO.getImageKeys())
-                .desiredStyle(requestDTO.getDesiredStyle())
-                .consultationPurpose(requestDTO.getConsultationPurpose())
+        // 예약의 카테고리가 FASHION인지 확인
+        if (!reservation.getCategory().equals(Category.FASHION)) {
+            throw new GlobalException(ReservationErrorCode.INVALID_CATEGORY);
+        }
+
+        // 패션 상담 고민지 JSON 생성
+        if (requestDTO.getFashion() == null) {
+            throw new GlobalException(ReservationErrorCode.MISSING_FASHION_CONCERN_DATA);
+        }
+        
+        // 모든 이미지 키를 하나의 리스트로 수집
+        List<String> allImageKeys = new ArrayList<>();
+        if (requestDTO.getFashion().getImages() != null) {
+            if (requestDTO.getFashion().getImages().getFrontFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFrontFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getLeftFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getLeftFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getRightFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getRightFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getFavoriteOutfit() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFavoriteOutfit());
+            }
+            if (requestDTO.getFashion().getImages().getConsultationPurpose() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getConsultationPurpose());
+            }
+        }
+        
+        FashionConcernJsonDTO fashionConcern = FashionConcernJsonDTO.builder()
+                .type(Category.FASHION.name())
+                .fashion(requestDTO.getFashion())
+                .imageKeys(allImageKeys)
                 .build();
+        
+        log.info("패션 상담 고민지 저장 - reservationId: {}", reservationId);
 
         // JSON 문자열로 변환
         try {
-            String concernJsonString = objectMapper.writeValueAsString(concernJson);
+            String concernJsonString = objectMapper.writeValueAsString(fashionConcern);
             reservation.updateConcerns(concernJsonString);
-            log.info("고민지 업데이트 완료 - reservationId: {}", reservationId);
+            log.info("패션 상담 고민지 업데이트 완료 - reservationId: {}", reservationId);
         } catch (Exception e) {
             log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
 
-        return UpdateReservationConcernResponseDTO.from(reservation, concernJson);
+        return UpdateReservationConcernResponseDTO.from(reservation, fashionConcern);
+    }
+
+    @Transactional
+    public UpdateReservationConcernResponseDTO updateHairConcern(
+            Long reservationId,
+            Long userId,
+            UpdateHairConcernRequestDTO requestDTO
+    ) {
+        log.info("헤어 상담 고민지 업데이트 시작 - reservationId: {}, userId: {}", 
+                reservationId, userId);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 소유자 검증 (예약한 일반 회원과 현재 사용자가 동일한지 확인)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 예약의 카테고리가 HAIR인지 확인
+        if (!reservation.getCategory().equals(Category.HAIR)) {
+            throw new GlobalException(ReservationErrorCode.INVALID_CATEGORY);
+        }
+
+        // 헤어 상담 고민지 JSON 생성
+        if (requestDTO.getHair() == null) {
+            throw new GlobalException(ReservationErrorCode.MISSING_HAIR_CONCERN_DATA);
+        }
+        
+        // 모든 이미지 키를 하나의 리스트로 수집
+        List<String> allImageKeys = new ArrayList<>();
+        if (requestDTO.getHair().getImages() != null) {
+            if (requestDTO.getHair().getImages().getHairstyle() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getHairstyle());
+            }
+            if (requestDTO.getHair().getImages().getFront() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getFront());
+            }
+            if (requestDTO.getHair().getImages().getLeftSide() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getLeftSide());
+            }
+            if (requestDTO.getHair().getImages().getRightSide() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getRightSide());
+            }
+            if (requestDTO.getHair().getImages().getFavoriteStyle() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getFavoriteStyle());
+            }
+            if (requestDTO.getHair().getImages().getStylingDifficulty() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getStylingDifficulty());
+            }
+        }
+        
+        HairConcernJsonDTO hairConcern = HairConcernJsonDTO.builder()
+                .type(Category.HAIR.name())
+                .hair(requestDTO.getHair())
+                .imageKeys(allImageKeys)
+                .build();
+        
+        log.info("헤어 상담 고민지 저장 - reservationId: {}", reservationId);
+
+        // JSON 문자열로 변환
+        try {
+            String concernJsonString = objectMapper.writeValueAsString(hairConcern);
+            reservation.updateConcerns(concernJsonString);
+            log.info("헤어 상담 고민지 업데이트 완료 - reservationId: {}", reservationId);
+        } catch (Exception e) {
+            log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
+            throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
+        }
+
+        return UpdateReservationConcernResponseDTO.from(reservation, hairConcern);
     }
 
     @Transactional

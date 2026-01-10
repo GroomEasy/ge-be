@@ -91,7 +91,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 		// 전문가 조회
 		List<Tuple> results = queryFactory
 				.select(
-						ep.id,
+						u.id,
 						u.nickname,
 						ep.category,
 						u.profileImage,
@@ -118,28 +118,47 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 			return Collections.emptyList();
 		}
 
-		// 전문가 ID 추출
-		List<Long> expertIds = results.stream()
-				.map(t -> t.get(ep.id))
+		// userId로 expertProfileId를 찾기 위한 매핑
+		List<Long> userIds = results.stream()
+				.map(t -> t.get(u.id))
 				.collect(Collectors.toList());
 
-		// 전문가 ID로 이미지 조회
-		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(expertIds);
+		// userId → expertProfileId 매핑
+		Map<Long, Long> userToExpertProfileMap = queryFactory
+				.select(u.id, ep.id)
+				.from(ep)
+				.join(ep.user, u)
+				.where(u.id.in(userIds))
+				.fetch()
+				.stream()
+				.collect(Collectors.toMap(
+						tuple -> tuple.get(u.id),
+						tuple -> tuple.get(ep.id)
+				));
+
+		// expertProfileId로 이미지 조회
+		List<Long> expertProfileIds = new ArrayList<>(userToExpertProfileMap.values());
+		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(expertProfileIds);
 
 		// DTO 조립
 		return results.stream()
-				.map(tuple -> ExpertSummaryResponseDTO.builder()
-						.expertId(tuple.get(ep.id))
-						.nickname(tuple.get(u.nickname))
-						.category(tuple.get(ep.category).name())
-						.profileImage(tuple.get(u.profileImage))
-						.introduction(tuple.get(ep.introduction))
-						.ratingAverage(tuple.get(r.rating.avg().coalesce(0.0)))
-						.reviewCount(tuple.get(r.count()))
-						.representativeReviewImages(
-								imagesMap.getOrDefault(tuple.get(ep.id), Collections.emptyList())
-						)
-						.build())
+				.map(tuple -> {
+					Long userId = tuple.get(u.id);
+					Long expertProfileId = userToExpertProfileMap.get(userId);
+
+					return ExpertSummaryResponseDTO.builder()
+							.expertId(userId)
+							.nickname(tuple.get(u.nickname))
+							.category(tuple.get(ep.category).name())
+							.profileImage(tuple.get(u.profileImage))
+							.introduction(tuple.get(ep.introduction))
+							.ratingAverage(tuple.get(r.rating.avg().coalesce(0.0)))
+							.reviewCount(tuple.get(r.count()))
+							.representativeReviewImages(
+									imagesMap.getOrDefault(expertProfileId, Collections.emptyList())
+							)
+							.build();
+				})
 				.collect(Collectors.toList());
 	}
 

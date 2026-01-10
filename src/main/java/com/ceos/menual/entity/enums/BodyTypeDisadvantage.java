@@ -1,0 +1,28 @@
+package com.ceos.menual.entity.enums;
+
+import com.fasterxml.jackson.annotation.JsonValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+public enum BodyTypeDisadvantage {
+    NARROW_SHOULDERS("좁은어깨", "Narrow shoulders"),
+    THIN_LEGS("얇은다리", "Thin legs"),
+    THIN_ARMS("얇은팔", "Thin arms"),
+    PROTRUDING_BELLY("볼록한배", "Protruding belly"),
+    THICK_LEGS("굵은다리", "Thick legs"),
+    LARGE_TORSO("큰몸통", "Large torso"),
+    SLENDER_BODY("얄상한몸", "Slender body"),
+    HEIGHT("키", "Height"),
+    UPPER_LOWER_BODY_RATIO("상하체비율", "Upper lower body ratio"),
+    HEAD_SIZE("머리크기", "Head size");
+
+    private final String korean;
+    private final String english;
+
+    @JsonValue
+    public String getKorean() {
+        return korean;
+    }
+}

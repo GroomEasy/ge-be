@@ -3,6 +3,8 @@ package com.ceos.menual.domain.reservation.controller;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
+import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
@@ -86,22 +88,46 @@ public class ReservationController {
     }
 
     /**
-     * 예약 고민지(concernJson) 업데이트 API
+     * 패션 상담 고민지 업데이트 API
      */
     @Operation(
-            summary = "예약 고민지 업데이트",
-            description = "예약에 고민지(이미지, 추구미, 상담 목적)를 작성하여 저장합니다."
+            summary = "패션 상담 고민지 업데이트",
+            description = "패션 상담에 고민지(이미지, 신체 정보, 스타일 선호)를 작성하여 저장합니다."
     )
-    @PutMapping("/{reservationId}/concern")
-    public ResponseEntity<CommonResponse<UpdateReservationConcernResponseDTO>> updateReservationConcern(
+    @PutMapping("/{reservationId}/fashion-concern")
+    public ResponseEntity<CommonResponse<UpdateReservationConcernResponseDTO>> updateFashionConcern(
             @Parameter(description = "예약 ID", required = true, example = "1")
             @PathVariable Long reservationId,
 
             @AuthenticationPrincipal Long userId,
 
-            @Valid @RequestBody UpdateReservationConcernRequestDTO request
+            @Valid @RequestBody UpdateFashionConcernRequestDTO request
     ) {
-        UpdateReservationConcernResponseDTO response = reservationService.updateReservationConcern(
+        UpdateReservationConcernResponseDTO response = reservationService.updateFashionConcern(
+                reservationId,
+                userId,
+                request
+        );
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 헤어 상담 고민지 업데이트 API
+     */
+    @Operation(
+            summary = "헤어 상담 고민지 업데이트",
+            description = "헤어 상담에 고민지(이미지, 얼굴 정보, 스타일 선호)를 작성하여 저장합니다."
+    )
+    @PutMapping("/{reservationId}/hair-concern")
+    public ResponseEntity<CommonResponse<UpdateReservationConcernResponseDTO>> updateHairConcern(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+
+            @AuthenticationPrincipal Long userId,
+
+            @Valid @RequestBody UpdateHairConcernRequestDTO request
+    ) {
+        UpdateReservationConcernResponseDTO response = reservationService.updateHairConcern(
                 reservationId,
                 userId,
                 request

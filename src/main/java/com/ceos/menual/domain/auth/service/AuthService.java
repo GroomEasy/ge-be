@@ -16,7 +16,6 @@ import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.config.jwt.CookieUtil;
 import com.ceos.menual.global.config.jwt.JwtProvider;
 import com.ceos.menual.global.config.jwt.JwtValidator;
-import com.ceos.menual.global.config.redis.RedisRefreshTokenStore;
 import com.ceos.menual.global.config.redis.RefreshTokenStore;
 import com.ceos.menual.global.exception.GlobalException;
 

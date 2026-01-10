@@ -23,11 +23,13 @@ import com.ceos.menual.global.exception.GlobalException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -119,6 +121,22 @@ public class AuthService {
         cookieUtil.addRefreshTokenCookie(response, refreshToken);
 
         return user;
+    }
+
+    /**
+     * Logout 시 refreshToken Redis에서 제거 후 Cookie 삭제
+     */
+    @Transactional
+    public void logout(Long userId, HttpServletResponse response) {
+        // Redis에서 refresh 제거
+        try {
+            refreshTokenStore.delete(userId);
+        } catch (Exception e) {
+            log.warn("Redis에서 RefreshToken 삭제 실패. userId={}", userId, e);
+        }
+        // 쿠키 만료
+        cookieUtil.deleteAccessTokenCookie(response);
+        cookieUtil.deleteRefreshTokenCookie(response);
     }
 
 

@@ -30,6 +30,17 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 
 	@Override
+	public Long countByConsultationGeneralProfileId(Long generalProfileId) {
+		return queryFactory
+				.select(r.count())
+				.from(r)
+				.join(r.consultation, c)
+				.where(c.generalProfile.id.eq(generalProfileId))
+				.fetchOne();
+	}
+
+
+	@Override
 	public List<ReviewSummaryResponseDTO> findRecentReviews(Category category, int page, int size) {
 
 		List<Tuple> results = queryFactory

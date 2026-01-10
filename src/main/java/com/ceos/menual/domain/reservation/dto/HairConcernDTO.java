@@ -5,8 +5,10 @@ import com.ceos.menual.entity.enums.FaceAdvantage;
 import com.ceos.menual.entity.enums.PursuedImage;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.validator.constraints.Length;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,6 +29,7 @@ public class HairConcernDTO {
     private List<FaceAdvantage> faceAdvantages;
 
     @Schema(description = "얼굴 장점 기타 텍스트", example = "얼굴이 길어요")
+    @Length(min = 0, max = 100, message = "얼굴 장점 기타 텍스트는 최대 100글자입니다")
     @JsonProperty("faceAdvantagesEtcText")
     private String faceAdvantagesEtcText;
 
@@ -36,6 +39,7 @@ public class HairConcernDTO {
     private List<CoveringPart> coveringParts;
 
     @Schema(description = "커버하고 싶은 부분 기타 텍스트", example = "넓은 이마")
+    @Length(min = 0, max = 100, message = "커버하고 싶은 부분 기타 텍스트는 최대 100글자입니다")
     @JsonProperty("coveringPartsEtcText")
     private String coveringPartsEtcText;
 
@@ -49,16 +53,9 @@ public class HairConcernDTO {
     @JsonProperty("stylingDifficulty")
     private String stylingDifficulty;
 
-    // 기존 필드 (하위 호환성)
-    @Schema(description = "S3 이미지 키 목록", example = "[\"tmp/consultation/user-123/hairstyle/1.jpg\"]")
-    @JsonProperty("imageKeys")
-    private List<String> imageKeys;
-
-    @Schema(description = "추구미 (원하는 스타일 설명)", example = "자연스럽고 볼륨감 있는 스타일")
-    @JsonProperty("desiredStyle")
-    private String desiredStyle;
-
-    @Schema(description = "상담 목적", example = "손상된 머리 케어 및 스타일 추천")
-    @JsonProperty("consultationPurpose")
-    private String consultationPurpose;
+    @Schema(description = "헤어 이미지 맵", required = true)
+    @NotNull(message = "헤어 이미지는 필수입니다")
+    @Valid
+    @JsonProperty("images")
+    private HairImageListDTO images;
 }

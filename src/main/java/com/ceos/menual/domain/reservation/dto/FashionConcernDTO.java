@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.validator.constraints.Length;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,6 +49,7 @@ public class FashionConcernDTO {
     private List<BodyTypeDisadvantage> bodyTypeDisadvantages;
 
     @Schema(description = "체형적 결점 기타 텍스트", example = "상체가 발달했어요")
+    @Length(min = 0, max = 100, message = "체형적 결점 기타 텍스트는 최대 100글자입니다")
     @JsonProperty("bodyTypeEtcText")
     private String bodyTypeEtcText;
 
@@ -67,6 +69,7 @@ public class FashionConcernDTO {
     private List<StyleImage> styleImages;
 
     @Schema(description = "선호 스타일 기타 텍스트", example = "클래식한 느낌")
+    @Length(min = 0, max = 100, message = "선호 스타일 기타 텍스트는 최대 100글자입니다")
     @JsonProperty("styleEtcText")
     private String styleEtcText;
 
@@ -82,11 +85,13 @@ public class FashionConcernDTO {
     private OutfitPriceRangeDTO outfitPriceRange;
 
     @Schema(description = "원하는 착장 기타 텍스트", example = "일상복")
+    @Length(min = 0, max = 100, message = "원하는 착장 기타 텍스트는 최대 100글자입니다")
     @JsonProperty("outfitEtcText")
     private String outfitEtcText;
 
-    @Schema(description = "전문가 상담 목적", example = "직장복 코디 팁", required = true)
-    @NotNull(message = "상담 목적은 필수입니다")
-    @JsonProperty("consultationPurpose")
-    private String consultationPurpose;
+    @Schema(description = "패션 이미지 맵", required = true)
+    @NotNull(message = "패션 이미지는 필수입니다")
+    @Valid
+    @JsonProperty("images")
+    private FashionImageListDTO images;
 }

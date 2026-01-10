@@ -27,8 +27,4 @@ public class UpdateHairConcernRequestDTO {
     @Valid
     @JsonProperty("hair")
     private HairConcernDTO hair;
-
-    @Schema(description = "S3 이미지 키 목록", example = "[\"tmp/consultation/user-123/hairstyle/1.jpg\"]", required = true)
-    @NotEmpty(message = "최소 1개 이상의 이미지 키를 포함해야 합니다")
-    private List<String> imageKeys;
 }

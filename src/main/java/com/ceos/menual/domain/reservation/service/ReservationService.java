@@ -33,6 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -139,10 +143,30 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.MISSING_FASHION_CONCERN_DATA);
         }
         
+        // 모든 이미지 키를 하나의 리스트로 수집
+        List<String> allImageKeys = new ArrayList<>();
+        if (requestDTO.getFashion().getImages() != null) {
+            if (requestDTO.getFashion().getImages().getFrontFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFrontFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getLeftFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getLeftFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getRightFullBody() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getRightFullBody());
+            }
+            if (requestDTO.getFashion().getImages().getFavoriteOutfit() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFavoriteOutfit());
+            }
+            if (requestDTO.getFashion().getImages().getConsultationPurpose() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getConsultationPurpose());
+            }
+        }
+        
         FashionConcernJsonDTO fashionConcern = FashionConcernJsonDTO.builder()
                 .type(Category.FASHION.name())
                 .fashion(requestDTO.getFashion())
-                .imageKeys(requestDTO.getImageKeys())
+                .imageKeys(allImageKeys)
                 .build();
         
         log.info("패션 상담 고민지 저장 - reservationId: {}", reservationId);
@@ -188,10 +212,33 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.MISSING_HAIR_CONCERN_DATA);
         }
         
+        // 모든 이미지 키를 하나의 리스트로 수집
+        List<String> allImageKeys = new ArrayList<>();
+        if (requestDTO.getHair().getImages() != null) {
+            if (requestDTO.getHair().getImages().getHairstyle() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getHairstyle());
+            }
+            if (requestDTO.getHair().getImages().getFront() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getFront());
+            }
+            if (requestDTO.getHair().getImages().getLeftSide() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getLeftSide());
+            }
+            if (requestDTO.getHair().getImages().getRightSide() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getRightSide());
+            }
+            if (requestDTO.getHair().getImages().getFavoriteStyle() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getFavoriteStyle());
+            }
+            if (requestDTO.getHair().getImages().getStylingDifficulty() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getStylingDifficulty());
+            }
+        }
+        
         HairConcernJsonDTO hairConcern = HairConcernJsonDTO.builder()
                 .type(Category.HAIR.name())
                 .hair(requestDTO.getHair())
-                .imageKeys(requestDTO.getImageKeys())
+                .imageKeys(allImageKeys)
                 .build();
         
         log.info("헤어 상담 고민지 저장 - reservationId: {}", reservationId);

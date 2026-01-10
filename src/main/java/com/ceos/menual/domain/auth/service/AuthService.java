@@ -158,8 +158,9 @@ public class AuthService {
                 .orElseThrow(() -> new GlobalException(UserErrorCode.INVALID_EMAIL));
 
         // Redis에 저장된 토큰과 비교
+        // TODO: Prod 환경에서는 storedToken != null 인 경우로 바꿔야 함
         String storedToken = refreshTokenStore.get(userId);
-        if (storedToken != null && !storedToken.equals(refreshToken)) {
+        if (storedToken == null && !storedToken.equals(refreshToken)) {
             throw new GlobalException(AuthErrorCode.INVALID_REFRESH_TOKEN);
         }
 

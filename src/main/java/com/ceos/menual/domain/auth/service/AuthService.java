@@ -1,6 +1,6 @@
 package com.ceos.menual.domain.auth.service;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.UUID;
 
 import com.ceos.menual.domain.auth.api.KakaoOauthClient;
@@ -16,15 +16,18 @@ import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.config.jwt.CookieUtil;
 import com.ceos.menual.global.config.jwt.JwtProvider;
 import com.ceos.menual.global.config.jwt.JwtValidator;
+import com.ceos.menual.global.config.redis.RefreshTokenStore;
 import com.ceos.menual.global.exception.GlobalException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -36,6 +39,10 @@ public class AuthService {
     private final JwtValidator jwtValidator;
     private final CookieUtil cookieUtil;
     private final KakaoOauthClient kakaoOauthClient;
+    private final RefreshTokenStore refreshTokenStore; // Redis
+
+    @Value("${jwt.refresh-token-validity}")
+    private long refreshTtlMillis;
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         // 사용자 조회
@@ -50,6 +57,9 @@ public class AuthService {
         // 토큰 생성
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
+
+        // Redis에 RefreshToken 저장
+        refreshTokenStore.save(user.getId(), refreshToken, Duration.ofMillis(refreshTtlMillis));
 
         return LoginResponseDTO.builder()
                 .nickname(user.getNickname())
@@ -101,20 +111,42 @@ public class AuthService {
 
         String jwtAccessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
+
+        // Redis에 RefreshToken 저장
+        refreshTokenStore.save(user.getId(), refreshToken, Duration.ofMillis(refreshTtlMillis));
+
         cookieUtil.addAccessTokenCookie(response, jwtAccessToken);
         cookieUtil.addRefreshTokenCookie(response, refreshToken);
 
         return user;
     }
 
+    /**
+     * Logout 시 refreshToken Redis에서 제거 후 Cookie 삭제
+     */
+    @Transactional
+    public void logout(Long userId, HttpServletResponse response) {
+        // Redis에서 refresh 제거
+        try {
+            refreshTokenStore.delete(userId);
+        } catch (Exception e) {
+            log.warn("Redis에서 RefreshToken 삭제 실패. userId={}", userId, e);
+        }
+
+        // 쿠키 만료
+        cookieUtil.deleteAccessTokenCookie(response);
+        cookieUtil.deleteRefreshTokenCookie(response);
+
+    }
+
 
     public String refresh(String refreshToken) {
-        // Refresh Token 검증
+        // JWT 검증
         if (refreshToken == null || !jwtValidator.validateToken(refreshToken)) {
             throw new GlobalException(AuthErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        // Refresh Token 타입 확인
+        // 토큰 타입 확인
         String tokenType = jwtValidator.getTokenType(refreshToken);
         if (!"refresh".equals(tokenType)) {
             throw new GlobalException(AuthErrorCode.INVALID_REFRESH_TOKEN);
@@ -124,6 +156,13 @@ public class AuthService {
         Long userId = jwtValidator.getUserIdFromToken(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.INVALID_EMAIL));
+
+        // Redis에 저장된 토큰과 비교
+        // TODO: Prod 환경에서는 storedToken != null 인 경우로 바꿔야 함
+        String storedToken = refreshTokenStore.get(userId);
+        if (storedToken == null && !storedToken.equals(refreshToken)) {
+            throw new GlobalException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
 
         // 새로운 Access Token 생성
         return jwtProvider.createAccessToken(user.getId(), user.getEmail(), user.getUserType().name());

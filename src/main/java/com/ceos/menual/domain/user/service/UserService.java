@@ -9,6 +9,7 @@ import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
+import com.ceos.menual.entity.GeneralProfile;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.AuthProvider;
 
@@ -132,13 +133,17 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
-        Long generalProfileId = user.getGeneralProfile().getId();
+        GeneralProfile generalProfile = user.getGeneralProfile();
+        if (generalProfile == null) {
+            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+        };
+        Long generalProfileId = generalProfile.getId();
 
         // 찜한 전문가 수 조회
-        Long expertLiketCount = expertLikeRepository.countByGeneralProfileId(generalProfileId);
+        Long expertLikeCount = expertLikeRepository.countByGeneralProfileId(generalProfileId);
 
         // 남긴 후기 수 조회
         Long reviewCount = reviewRepository.countByConsultationGeneralProfileId(generalProfileId);
 
-        return UserInfoResponseDTO.of(user, expertLiketCount, reviewCount);    }
+        return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);    }
 }

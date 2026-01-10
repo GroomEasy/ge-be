@@ -1,6 +1,8 @@
 package com.ceos.menual.domain.user.dto.response;
 
+import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.global.exception.GlobalException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +21,11 @@ public class UserInfoResponseDTO {
     private Long reviewCount;
 
     public static UserInfoResponseDTO of(User user, Long expertLikeCount, Long reviewCount) {
+
+        if (user == null) {
+                throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+        };
+
         Integer points = user.getGeneralProfile() != null
                 ? user.getGeneralProfile().getTotalPoints()
                 : 0;

@@ -136,7 +136,7 @@ public class UserService {
         GeneralProfile generalProfile = user.getGeneralProfile();
         if (generalProfile == null) {
             throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
-        };
+        }
         Long generalProfileId = generalProfile.getId();
 
         // 찜한 전문가 수 조회

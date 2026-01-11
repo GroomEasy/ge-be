@@ -2,18 +2,18 @@ package com.ceos.menual.domain.review.controller;
 
 import java.util.List;
 
+import com.ceos.menual.domain.review.dto.request.CreateReviewRequestDTO;
 import com.ceos.menual.domain.review.dto.response.AvailableReviewResponseDTO;
 import com.ceos.menual.domain.review.dto.response.CompletedReviewResponseDTO;
+import com.ceos.menual.domain.review.dto.response.CreateReviewResponseDTO;
 import com.ceos.menual.entity.enums.Category;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.review.dto.response.ReviewSummaryResponseDTO;
@@ -85,6 +85,22 @@ public class ReviewController {
 			@AuthenticationPrincipal Long userId
 	) {
 		List<CompletedReviewResponseDTO> response = reviewService.getCompletedReviews(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 후기 작성 API
+	 */
+	@Operation(
+			summary = "후기 작성",
+			description = "상담에 대한 후기를 작성합니다."
+	)
+	@PostMapping
+	public ResponseEntity<CommonResponse<CreateReviewResponseDTO>> createReview(
+			@AuthenticationPrincipal Long userId,
+			@Valid @RequestBody CreateReviewRequestDTO request
+	) {
+		CreateReviewResponseDTO response = reviewService.createReview(userId, request);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

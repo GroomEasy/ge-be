@@ -37,8 +37,4 @@ public class CreateTempReservationRequestDTO {
     @Schema(description = "예약 날짜 및 시간 (VIDEO 상담인 경우 필수)", example = "2026-01-28T11:30:00", type = "string")
     private LocalDateTime scheduledDateTime;
 
-    @Schema(description = "상담 가격", example = "40000", required = true)
-    @NotNull(message = "가격은 필수입니다")
-    @Positive(message = "가격은 0보다 커야 합니다")
-    private Integer price;
 }

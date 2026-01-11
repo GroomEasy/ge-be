@@ -286,6 +286,15 @@ public class ReservationService {
 
         GeneralProfile generalProfile = generalUser.getGeneralProfile();
 
+        // 해당 타입의 상담 스케줄 찾기 & 가격 결정
+        ConsultationSchedule targetSchedule = expertProfile.getConsultationSchedules().stream()
+                // 요청한 상담 타입(VIDEO/MESSAGE)과 일치하는지 확인
+                .filter(schedule -> schedule.getConsultationType() == requestDTO.getConsultationType())
+                // 현재 활성화된 스케줄인지 확인 (isActive == true)
+                .filter(ConsultationSchedule::getIsActive)
+                .findFirst() // 조건에 맞는 첫 번째 요소 찾기
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.CONSULTATION_TYPE_NOT_SUPPORTED));
+
         // 화상 상담인 경우 시간 중복 체크
         if (requestDTO.getConsultationType() == ConsultationType.VIDEO) {
             checkTimeAvailability(expertProfile.getId(), requestDTO.getScheduledDateTime());
@@ -298,7 +307,7 @@ public class ReservationService {
                 .category(requestDTO.getCategory())
                 .consultationType(requestDTO.getConsultationType())
                 .scheduledDateTime(requestDTO.getScheduledDateTime())
-                .price(requestDTO.getPrice())
+                .price(targetSchedule.getPrice())
                 .reservationStatus(ReservationStatus.UNPAID)
                 .expiresAt(LocalDateTime.now().plusMinutes(PAYMENT_WAITING_MINUTES))
                 .build();

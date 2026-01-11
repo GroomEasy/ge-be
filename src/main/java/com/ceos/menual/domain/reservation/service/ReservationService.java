@@ -5,6 +5,7 @@ import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.HairConcernJsonDTO;
@@ -56,6 +57,7 @@ public class ReservationService {
     private final ObjectMapper objectMapper;
     private final S3PresignedUrlService s3PresignedUrlService;
     private final ChatroomService chatroomService;
+    private final ConsultationScheduleRepository consultationScheduleRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -291,12 +293,11 @@ public class ReservationService {
         GeneralProfile generalProfile = generalUser.getGeneralProfile();
 
         // 해당 타입의 상담 스케줄 찾기 & 가격 결정
-        ConsultationSchedule targetSchedule = expertProfile.getConsultationSchedules().stream()
-                // 요청한 상담 타입(VIDEO/MESSAGE)과 일치하는지 확인
-                .filter(schedule -> schedule.getConsultationType() == requestDTO.getConsultationType())
-                // 현재 활성화된 스케줄인지 확인 (isActive == true)
-                .filter(ConsultationSchedule::getIsActive)
-                .findFirst() // 조건에 맞는 첫 번째 요소 찾기
+        ConsultationSchedule targetSchedule = consultationScheduleRepository
+                .findActiveScheduleByExpertProfileIdAndType(
+                        expertProfile.getId(),
+                        requestDTO.getConsultationType()
+                )
                 .orElseThrow(() -> new GlobalException(ReservationErrorCode.CONSULTATION_TYPE_NOT_SUPPORTED));
 
         // 화상 상담인 경우 시간 중복 체크

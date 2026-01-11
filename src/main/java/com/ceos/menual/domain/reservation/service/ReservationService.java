@@ -718,18 +718,7 @@ public class ReservationService {
                 .chatroomType(chatroomType)
                 .build();
 
-        try {
-            ChatroomResponseDTO chatroom = chatroomService.createChatroom(
-                    expertId,
-                    consultationId,
-                    request
-            );
-            log.info("채팅방 생성 성공 - chatroomId: {}, type: {}",
-                    chatroom.getChatroomId(), chatroomType);
-        } catch (Exception e) {
-            log.error("채팅방 생성 실패 - consultationId: {}, type: {}, error: {}",
-                    consultationId, chatroomType, e.getMessage(), e);
-
-        }
+            ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
+            log.info("채팅방 생성 성공 - chatroomId: {}, type: {}", chatroom.getChatroomId(), chatroomType);
     }
 }

@@ -25,7 +25,8 @@ public enum ReservationErrorCode implements ResultCode {
     INVALID_IMAGE_KEY_FORMAT(HttpStatus.BAD_REQUEST, 4014, "잘못된 이미지 키 형식입니다. 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}"),
     MISSING_FASHION_CONCERN_DATA(HttpStatus.BAD_REQUEST, 4015, "패션 상담 고민지 데이터가 필요합니다."),
     MISSING_HAIR_CONCERN_DATA(HttpStatus.BAD_REQUEST, 4016, "헤어 상담 고민지 데이터가 필요합니다."),
-    INVALID_CATEGORY(HttpStatus.BAD_REQUEST, 4017, "예약 카테고리와 요청 카테고리가 일치하지 않습니다.");
+    INVALID_CATEGORY(HttpStatus.BAD_REQUEST, 4017, "예약 카테고리와 요청 카테고리가 일치하지 않습니다."),
+    INVALID_CONSULTATION_TYPE(HttpStatus.BAD_REQUEST, 4018, "유효하지 않은 상담 유형입니다.");
 
 
     private final HttpStatus status;

@@ -229,7 +229,7 @@ public class ChatroomService {
                 case MIXED:
                     lastMessageText = lastMessage.getContent();  // 텍스트만 표시
                     break;
-                case QUESTION:
+                case CONCERN:
                     lastMessageText = memberNickname + "님을 위한 고민지가 도착했어요.";
                     break;
                 case SOLUTION:

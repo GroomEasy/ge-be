@@ -2,6 +2,7 @@ package com.ceos.menual.domain.reservation.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
@@ -58,6 +59,7 @@ public class ReservationService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final ChatroomService chatroomService;
     private final ConsultationScheduleRepository consultationScheduleRepository;
+    private final ChatMessageService chatMessageService;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -106,8 +108,8 @@ public class ReservationService {
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
         
-        // 채팅방 생성
-        createChatroomsForConsultation(savedConsultation);
+        // 채팅방 자동 생성 및 고민지 전송
+        createChatroomsAndSendConcern(savedConsultation, reservation);
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
@@ -685,41 +687,61 @@ public class ReservationService {
     }
 
     /**
-     * 상담 확정 시 채팅방 자동 생성
-     * - 상담 타입에 따라 MESSAGE 또는 VIDEO 채팅방 생성
+     * 상담 확정 시 채팅방 자동 생성 및 고민지 전송
      */
     @Transactional
-    public void createChatroomsForConsultation(Consultation consultation) {
+    public void createChatroomsAndSendConcern(Consultation consultation, Reservation reservation) {
         log.info("채팅방 자동 생성 시작 - consultationId: {}, type: {}",
                 consultation.getId(), consultation.getType());
 
-        // 전문가 ID 추출 (채팅방 생성 주체)
         Long expertId = consultation.getExpertProfile().getUser().getId();
+        Long memberId = consultation.getGeneralProfile().getUser().getId();
         Long consultationId = consultation.getId();
 
         // 상담 타입에 따라 채팅방 생성
+        ChatroomType chatroomType;
         if (consultation.getType() == ConsultationType.MESSAGE) {
-            // 메시지 상담 MESSAGE 채팅방 생성
-            createChatroom(expertId, consultationId, ChatroomType.MESSAGE);
-
+            chatroomType = ChatroomType.MESSAGE;
         } else if (consultation.getType() == ConsultationType.VIDEO) {
-            // 화상 상담 VIDEO 채팅방 생성
-            createChatroom(expertId, consultationId, ChatroomType.VIDEO);
+            chatroomType = ChatroomType.VIDEO;
+        } else {
+            throw new GlobalException(ReservationErrorCode.INVALID_CONSULTATION_TYPE);
+        }
+        // 채팅방 생성
+        Long chatroomId = createChatroom(expertId, consultationId, chatroomType);
+
+        // 고민지가 있으면 자동 전송
+        if (reservation.getConcernsJson() != null && !reservation.getConcernsJson().isEmpty()) {
+            chatMessageService.sendConcernMessage(
+                    chatroomId,
+                    memberId,
+                    reservation.getConcernsJson(),
+                    reservation.getId()
+            );
+            log.info("고민지 자동 전송 완료 - chatroomId: {}, reservationId: {}",
+                    chatroomId, reservation.getId());
         }
 
-        log.info("채팅방 자동 생성 완료 - consultationId: {}", consultationId);
+        log.info("채팅방 자동 생성 및 고민지 전송 완료 - consultationId: {}, chatroomId: {}",
+                consultationId, chatroomId);
     }
 
     /**
      * 특정 타입의 채팅방 생성
+     * @return 생성된 채팅방 ID
      */
-    private void createChatroom(Long expertId, Long consultationId, ChatroomType chatroomType) {
+    private Long createChatroom(Long expertId, Long consultationId, ChatroomType chatroomType) {
         ChatroomCreateRequestDTO request = ChatroomCreateRequestDTO.builder()
                 .consultationId(consultationId)
                 .chatroomType(chatroomType)
                 .build();
 
-            ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
-            log.info("채팅방 생성 성공 - chatroomId: {}, type: {}", chatroom.getChatroomId(), chatroomType);
+        ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
+
+        log.info("채팅방 생성 성공 - chatroomId: {}, type: {}",
+                chatroom.getChatroomId(), chatroomType);
+
+        return chatroom.getChatroomId();
     }
+
 }

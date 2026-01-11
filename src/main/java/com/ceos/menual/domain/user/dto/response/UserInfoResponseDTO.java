@@ -2,6 +2,7 @@ package com.ceos.menual.domain.user.dto.response;
 
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class UserInfoResponseDTO {
 
     private Long userId;
+    private UserType userType;
     private String nickname;
     private Long expertLikeCount;
     private Integer points;
@@ -32,6 +34,7 @@ public class UserInfoResponseDTO {
 
         return UserInfoResponseDTO.builder()
                 .userId(user.getId())
+                .userType(user.getUserType())
                 .nickname(user.getNickname())
                 .expertLikeCount(expertLikeCount)
                 .points(points)

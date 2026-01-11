@@ -1,13 +1,13 @@
 package com.ceos.menual.domain.chat.dto.request;
 
 import com.ceos.menual.entity.enums.MessageType;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class ChatMessageDTO {
 
     private Long chatroomId;

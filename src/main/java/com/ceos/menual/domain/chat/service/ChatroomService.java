@@ -52,6 +52,7 @@ public class ChatroomService {
         Long expertId = consultation.getExpertProfile().getUser().getId();
         Long generalId = consultation.getGeneralProfile().getUser().getId();
 
+        // 권한 검증
         if (!memberId.equals(expertId) && !memberId.equals(generalId)) {
             throw new GlobalException(ConsultationErrorCode.CONSULTATION_ACCESS_DENIED);
         }
@@ -65,20 +66,22 @@ public class ChatroomService {
 
         String categoryName = expertProfile.getCategory().getDescription();
 
-        // TODO: 채팅방 이미 존재하면 예외처리
-        // 채팅방 존재 여부 확인 및 생성
-        Chatroom chatroom = chatroomRepository.findByConsultationIdAndChatroomType(consultationId, request.getChatroomType())
-                .orElseGet(() -> {
-                    Chatroom newRoom = Chatroom.builder()
-                            .consultationId(consultationId)
-                            .chatroomType(request.getChatroomType())
-                            .member(memberUser)
-                            .expert(expertUser)
-                            .build();
-                    return chatroomRepository.save(newRoom);
-                });
+        // 새로운 채팅방 생성
+        log.info("새 채팅방 생성 - consultationId: {}, type: {}", consultationId, request.getChatroomType());
+
+        Chatroom chatroom = Chatroom.builder()
+                .consultationId(consultationId)
+                .chatroomType(request.getChatroomType())
+                .member(memberUser)
+                .expert(expertUser)
+                .build();
+
+        Chatroom savedChatroom = chatroomRepository.save(chatroom);
 
         // 응답 DTO 생성
+        log.info("채팅방 생성 완료 - chatroomId: {}, consultationId: {}, type: {}",
+                savedChatroom.getId(), consultationId, request.getChatroomType());
+
         ChatroomResponseDTO.ExpertInfo expertInfo = ChatroomResponseDTO.ExpertInfo.builder()
                 .userId(expertId)
                 .nickname(expertUser.getNickname())
@@ -90,7 +93,7 @@ public class ChatroomService {
                 .nickname(memberUser.getNickname())
                 .build();
 
-        return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
+        return ChatroomResponseDTO.of(savedChatroom, expertInfo, memberInfo);
     }
 
     /**

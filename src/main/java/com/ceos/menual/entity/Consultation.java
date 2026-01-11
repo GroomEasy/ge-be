@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,9 +20,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -56,6 +59,9 @@ public class Consultation extends BaseEntity {
 	private String videoLink;
 
 	//솔루션 관련
+	@Column(columnDefinition = "TEXT")
+	private String solution;
+
 	private LocalDateTime solutionSubmittedAt;
 
 	private Boolean reviewWritten;

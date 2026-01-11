@@ -10,7 +10,8 @@ import org.springframework.http.HttpStatus;
 public enum ConsultationErrorCode  implements ResultCode {
 
     CONSULTATION_NOT_FOUND(HttpStatus.NOT_FOUND, 3001, "존재하지 않는 상담입니다."),
-    CONSULTATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 3002, "해당 상담에 대한 접근 권한이 없습니다.");
+    CONSULTATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, 3002, "해당 상담에 대한 접근 권한이 없습니다."),
+    UNAUTHORIZED_CONSULTATION(HttpStatus.FORBIDDEN, 3003, "이 작업을 수행할 권한이 없습니다.");
 
     private final HttpStatus status;
     private final int code;

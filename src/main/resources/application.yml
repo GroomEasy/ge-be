@@ -51,3 +51,4 @@ aws:
 logging:
   level:
     org.springframework.security: DEBUG
+    com.ceos.menual.domain.consultation: DEBUG

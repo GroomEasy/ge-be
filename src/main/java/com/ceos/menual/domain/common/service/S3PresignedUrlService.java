@@ -57,23 +57,26 @@ public class S3PresignedUrlService {
 	/**
 	 * Presigned URL 발급 (업로드용 - 임시 저장)
 	 * 
-	 * 경로 구조: tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 * 경로 구조: tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
 	 * 
 	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param imageType 이미지 타입 (hairstyle, front, left-side, right-side, favorite, purpose)
+	 * @param resourceId 리소스 ID (예약/상담 ID)
+	 * @param imageType 이미지 타입
+	 *   - 헤어: hairstyle, front, left, right, favorite, difficulty
+	 *   - 패션: front, left, right, favorite, purpose
 	 * @param fileName 파일명 (예: image.jpg, 1.jpg)
 	 * @return Presigned URL과 S3 Key
 	 */
-	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, String imageType, String fileName) {
-		// 현재 사용자 ID 가져오기
+	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, String resourceId, String imageType, String fileName) {
 		Long userId = getCurrentUserId();
 
 		validateResourceType(resourceType);
 		validateImageType(imageType);
 		validateFileName(fileName);
 
-		// S3 Key 생성 - imageType에 따라 경로 구조가 다름
-		String s3Key = buildTemporaryS3Key(userId, resourceType, imageType, fileName);
+		String s3Key = buildTemporaryS3Key(userId, resourceType, resourceId, imageType, fileName);
+
+		log.debug("Presigned URL 발급 - 사용자: {}, S3 Key: {}", userId, s3Key);
 
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 			.bucket(bucketName)
@@ -90,16 +93,16 @@ public class S3PresignedUrlService {
 		return GeneratePresignedUrlResponse.builder()
 			.s3Key(s3Key)
 			.uploadUrl(uploadUrl)
-			.expiresIn(900L) // 15분 = 900초
+			.expiresIn(900L)
 			.build();
 	}
 
 	/**
 	 * 임시 저장 경로 생성
-	 * tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
 	 */
-	private String buildTemporaryS3Key(Long userId, String resourceType, String imageType, String fileName) {
-		return String.format("tmp/%s/user-%d/%s/%s", resourceType, userId, imageType, fileName);
+	private String buildTemporaryS3Key(Long userId, String resourceType, String resourceId, String imageType, String fileName) {
+		return String.format("tmp/%s/reservation-%s/%s/%s", resourceType, resourceId, imageType, fileName);
 	}
 
 	/**
@@ -301,10 +304,17 @@ public class S3PresignedUrlService {
 		if (!resourceType.matches("^[a-z]+$")) {
 			throw new IllegalArgumentException("리소스 타입은 영문 소문자만 허용됩니다.");
 		}
+		// 허용된 리소스 타입만 접수
+		if (!resourceType.equals("consultation") && !resourceType.equals("review") && !resourceType.equals("portfolio")) {
+			throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio만 가능)");
+		}
 	}
 
 	/**
 	 * 이미지 타입 검증
+	 * 
+	 * 헤어 상담: hairstyle, front, left, right, favorite, difficulty
+	 * 패션 상담: front, left, right, favorite, purpose
 	 */
 	private void validateImageType(String imageType) {
 		if (imageType == null || imageType.trim().isEmpty()) {
@@ -312,6 +322,18 @@ public class S3PresignedUrlService {
 		}
 		if (!imageType.matches("^[a-z0-9\\-]+$")) {
 			throw new IllegalArgumentException("이미지 타입은 영문 소문자, 숫자, 하이픈만 허용됩니다.");
+		}
+		// 허용된 이미지 타입만 접수
+		String[] allowedTypes = {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose"};
+		boolean isValid = false;
+		for (String type : allowedTypes) {
+			if (imageType.equals(type)) {
+				isValid = true;
+				break;
+			}
+		}
+		if (!isValid) {
+			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다. (hairstyle, front, left, right, favorite, difficulty, purpose만 가능)");
 		}
 	}
 

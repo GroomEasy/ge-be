@@ -19,6 +19,16 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+server:
+  tomcat:
+    uri-encoding: UTF-8
+    max-http-form-post-size: 10MB
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-validity: 86400000 # 1일
@@ -49,6 +59,7 @@ aws:
       stale-task-check-interval: 3600000
 
 logging:
+  charset: UTF-8
   level:
     org.springframework.security: DEBUG
     com.ceos.menual.domain.consultation: DEBUG

@@ -16,6 +16,10 @@ public class UploadPresignedUrlRequestDTO {
 	@NotBlank(message = "리소스 타입은 필수입니다. (예: consultation, review)")
 	private String resourceType;
 
+	@Schema(description = "리소스 ID (예약/상담 ID)", example = "123", required = true)
+	@NotBlank(message = "리소스 ID는 필수입니다.")
+	private String resourceId;
+
 	@Schema(description = "이미지 타입", example = "hairstyle")
 	@NotBlank(message = "이미지 타입은 필수입니다. (예: hairstyle, favorite, purpose)")
 	private String imageType;

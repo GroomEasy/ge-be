@@ -8,7 +8,9 @@ import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
+import com.ceos.menual.domain.reservation.dto.FashionImageListDTO;
 import com.ceos.menual.domain.reservation.dto.HairConcernJsonDTO;
+import com.ceos.menual.domain.reservation.dto.HairImageListDTO;
 import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
@@ -151,27 +153,26 @@ public class ReservationService {
         // 모든 이미지 키를 하나의 리스트로 수집
         List<String> allImageKeys = new ArrayList<>();
         if (requestDTO.getFashion().getImages() != null) {
-            if (requestDTO.getFashion().getImages().getFrontFullBody() != null) {
-                allImageKeys.addAll(requestDTO.getFashion().getImages().getFrontFullBody());
+            if (requestDTO.getFashion().getImages().getFront() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFront());
             }
-            if (requestDTO.getFashion().getImages().getLeftFullBody() != null) {
-                allImageKeys.addAll(requestDTO.getFashion().getImages().getLeftFullBody());
+            if (requestDTO.getFashion().getImages().getLeft() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getLeft());
             }
-            if (requestDTO.getFashion().getImages().getRightFullBody() != null) {
-                allImageKeys.addAll(requestDTO.getFashion().getImages().getRightFullBody());
+            if (requestDTO.getFashion().getImages().getRight() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getRight());
             }
-            if (requestDTO.getFashion().getImages().getFavoriteOutfit() != null) {
-                allImageKeys.addAll(requestDTO.getFashion().getImages().getFavoriteOutfit());
+            if (requestDTO.getFashion().getImages().getFavorite() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getFavorite());
             }
-            if (requestDTO.getFashion().getImages().getConsultationPurpose() != null) {
-                allImageKeys.addAll(requestDTO.getFashion().getImages().getConsultationPurpose());
+            if (requestDTO.getFashion().getImages().getPurpose() != null) {
+                allImageKeys.addAll(requestDTO.getFashion().getImages().getPurpose());
             }
         }
         
         FashionConcernJsonDTO fashionConcern = FashionConcernJsonDTO.builder()
                 .type(Category.FASHION.name())
                 .fashion(requestDTO.getFashion())
-                .imageKeys(allImageKeys)
                 .build();
         
         log.info("패션 상담 고민지 저장 - reservationId: {}", reservationId);
@@ -226,24 +227,23 @@ public class ReservationService {
             if (requestDTO.getHair().getImages().getFront() != null) {
                 allImageKeys.addAll(requestDTO.getHair().getImages().getFront());
             }
-            if (requestDTO.getHair().getImages().getLeftSide() != null) {
-                allImageKeys.addAll(requestDTO.getHair().getImages().getLeftSide());
+            if (requestDTO.getHair().getImages().getLeft() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getLeft());
             }
-            if (requestDTO.getHair().getImages().getRightSide() != null) {
-                allImageKeys.addAll(requestDTO.getHair().getImages().getRightSide());
+            if (requestDTO.getHair().getImages().getRight() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getRight());
             }
-            if (requestDTO.getHair().getImages().getFavoriteStyle() != null) {
-                allImageKeys.addAll(requestDTO.getHair().getImages().getFavoriteStyle());
+            if (requestDTO.getHair().getImages().getFavorite() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getFavorite());
             }
-            if (requestDTO.getHair().getImages().getStylingDifficulty() != null) {
-                allImageKeys.addAll(requestDTO.getHair().getImages().getStylingDifficulty());
+            if (requestDTO.getHair().getImages().getDifficulty() != null) {
+                allImageKeys.addAll(requestDTO.getHair().getImages().getDifficulty());
             }
         }
         
         HairConcernJsonDTO hairConcern = HairConcernJsonDTO.builder()
                 .type(Category.HAIR.name())
                 .hair(requestDTO.getHair())
-                .imageKeys(allImageKeys)
                 .build();
         
         log.info("헤어 상담 고민지 저장 - reservationId: {}", reservationId);
@@ -309,7 +309,7 @@ public class ReservationService {
         Reservation reservation = Reservation.builder()
                 .expertProfile(expertProfile)
                 .generalProfile(generalProfile)
-                .category(expertProfile.getCategory())
+                .category(requestDTO.getCategory())
                 .consultationType(requestDTO.getConsultationType())
                 .scheduledDateTime(requestDTO.getScheduledDateTime())
                 .price(targetSchedule.getPrice())
@@ -539,6 +539,9 @@ public class ReservationService {
     /**
      * 단일 이미지 키의 형식이 유효한지 확인
      * 
+     * 지원 형식:
+     * tmp/consultation/reservation-{resourceId}/{imageType}/{fileName}
+     * 
      * @param imageKey 검증할 이미지 키
      * @return 유효하면 true, 아니면 false
      */
@@ -552,10 +555,10 @@ public class ReservationService {
         // 경로 분석
         String[] parts = imageKey.split("/");
 
-        // 기대 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
+        // 기대 형식: tmp/consultation/reservation-{resourceId}/{imageType}/{fileName}
         // parts[0] = "tmp"
         // parts[1] = "consultation"
-        // parts[2] = "user-{userId}"
+        // parts[2] = "reservation-{resourceId}"
         // parts[3] = "{imageType}"
         // parts[4] = "{fileName}"
         if (parts.length < 5) {
@@ -574,8 +577,9 @@ public class ReservationService {
             return false;
         }
 
-        if (!parts[2].startsWith("user-")) {
-            log.warn("세 번째 경로 컴포넌트가 'user-' 형식이 아님 - imageKey: {}, userPart: {}", imageKey, parts[2]);
+        // 세 번째 부분: reservation-{resourceId} 형식만 허용
+        if (!parts[2].startsWith("reservation-")) {
+            log.warn("세 번째 경로 컴포넌트가 'reservation-' 형식이 아님 - imageKey: {}, part: {}", imageKey, parts[2]);
             return false;
         }
 
@@ -609,7 +613,26 @@ public class ReservationService {
             }
 
             ConcernJsonDTO concernJson = objectMapper.readValue(concernsJsonString, ConcernJsonDTO.class);
-            List<String> imageKeys = concernJson.getImageKeys();
+            
+            // 패션 또는 헤어 상담 고민지에서 이미지 키 추출
+            List<String> imageKeys = new ArrayList<>();
+            
+            if (concernJson.getFashion() != null && concernJson.getFashion().getImages() != null) {
+                FashionImageListDTO fashionImages = concernJson.getFashion().getImages();
+                if (fashionImages.getFront() != null) imageKeys.addAll(fashionImages.getFront());
+                if (fashionImages.getLeft() != null) imageKeys.addAll(fashionImages.getLeft());
+                if (fashionImages.getRight() != null) imageKeys.addAll(fashionImages.getRight());
+                if (fashionImages.getFavorite() != null) imageKeys.addAll(fashionImages.getFavorite());
+                if (fashionImages.getPurpose() != null) imageKeys.addAll(fashionImages.getPurpose());
+            } else if (concernJson.getHair() != null && concernJson.getHair().getImages() != null) {
+                HairImageListDTO hairImages = concernJson.getHair().getImages();
+                if (hairImages.getHairstyle() != null) imageKeys.addAll(hairImages.getHairstyle());
+                if (hairImages.getFront() != null) imageKeys.addAll(hairImages.getFront());
+                if (hairImages.getLeft() != null) imageKeys.addAll(hairImages.getLeft());
+                if (hairImages.getRight() != null) imageKeys.addAll(hairImages.getRight());
+                if (hairImages.getFavorite() != null) imageKeys.addAll(hairImages.getFavorite());
+                if (hairImages.getDifficulty() != null) imageKeys.addAll(hairImages.getDifficulty());
+            }
 
             if (imageKeys == null || imageKeys.isEmpty()) {
                 log.info("이미지 키가 없음 - consultationId: {}", consultation.getId());
@@ -629,25 +652,28 @@ public class ReservationService {
 
             // 모든 키가 유효한 경우에만 이미지 이동 시작
             for (String imageKey : imageKeys) {
-                // imageKey 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
-                // 이 경로에서 imageType과 fileName을 추출
                 String[] parts = imageKey.split("/");
                 
-                // 사전 검증에서 이미 확인했지만, 방어적 프로그래밍을 위해 재확인
-                if (parts.length < 5) {
+                if (parts.length < 4) {
                     log.error("예상치 못한 이미지 키 형식 - consultationId: {}, imageKey: {}", 
                         consultationId, imageKey);
                     throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
                 }
 
-                String imageType = parts[3];  // hairstyle, favorite, purpose 등
-                String fileName = parts[4];   // 파일명
+                // reservation ID 검증
+                String reservationIdPart = parts[2];
+                if (!reservationIdPart.startsWith("reservation-")) {
+                    log.error("잘못된 예약 ID 형식 - consultationId: {}, imageKey: {}", 
+                        consultationId, imageKey);
+                    throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+                }
 
-                // 최종 경로 생성: final/consultation/{consultationId}/{imageType}/{fileName}
+                String imageType = parts[3];
+                String fileName = parts[4];
+
                 String finalS3Key = String.format("final/consultation/%d/%s/%s", 
                     consultationId, imageType, fileName);
 
-                // S3에서 이미지 이동
                 s3PresignedUrlService.moveImageFromTempToFinal(imageKey, finalS3Key);
 
                 log.info("이미지 이동 완료 - from: {}, to: {}", imageKey, finalS3Key);
@@ -658,7 +684,7 @@ public class ReservationService {
             List<String> finalImageKeys = imageKeys.stream()
                     .map(imageKey -> {
                         String[] parts = imageKey.split("/");
-                        // 사전 검증에서 이미 확인했으므로 parts.length >= 5 보장
+                        // 사전 검증에서 이미 확인했으므로 parts.length >= 4 보장
                         String imageType = parts[3];
                         String fileName = parts[4];
                         return String.format("final/consultation/%d/%s/%s", 
@@ -667,7 +693,6 @@ public class ReservationService {
                     .collect(Collectors.toList());
 
             concernJson = ConcernJsonDTO.builder()
-                    .imageKeys(finalImageKeys)
                     .desiredStyle(concernJson.getDesiredStyle())
                     .consultationPurpose(concernJson.getConsultationPurpose())
                     .build();

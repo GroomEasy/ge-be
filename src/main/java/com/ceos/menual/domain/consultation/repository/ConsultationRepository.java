@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
+public interface ConsultationRepository extends JpaRepository<Consultation, Long>, ConsultationRepositoryCustom {
 
 
     @Query("SELECT c FROM Consultation c " +

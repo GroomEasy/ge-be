@@ -27,11 +27,3 @@ public class CompletedReviewResponseDTO {
     private String content;
     private List<String> imageUrls; // 후기 사진
 }
-
-
-
-
-
-
-
-

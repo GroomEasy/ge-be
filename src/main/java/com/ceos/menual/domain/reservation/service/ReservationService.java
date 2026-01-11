@@ -1,5 +1,8 @@
 package com.ceos.menual.domain.reservation.service;
 
+import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
+import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
@@ -20,11 +23,8 @@ import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
+import com.ceos.menual.entity.enums.*;
 import com.ceos.menual.entity.enums.Category;
-import com.ceos.menual.entity.enums.ConsultationStatus;
-import com.ceos.menual.entity.enums.ConsultationType;
-import com.ceos.menual.entity.enums.ReservationStatus;
-import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +55,7 @@ public class ReservationService {
     private final ConsultationRepository consultationRepository;
     private final ObjectMapper objectMapper;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final ChatroomService chatroomService;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -102,6 +103,9 @@ public class ReservationService {
 
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
+        
+        // 채팅방 생성
+        createChatroomsForConsultation(savedConsultation);
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
@@ -676,6 +680,56 @@ public class ReservationService {
         } catch (Exception e) {
             log.error("S3 이미지 이동 중 오류 발생 - consultationId: {}", consultation.getId(), e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
+        }
+    }
+
+    /**
+     * 상담 확정 시 채팅방 자동 생성
+     * - 상담 타입에 따라 MESSAGE 또는 VIDEO 채팅방 생성
+     */
+    @Transactional
+    public void createChatroomsForConsultation(Consultation consultation) {
+        log.info("채팅방 자동 생성 시작 - consultationId: {}, type: {}",
+                consultation.getId(), consultation.getType());
+
+        // 전문가 ID 추출 (채팅방 생성 주체)
+        Long expertId = consultation.getExpertProfile().getUser().getId();
+        Long consultationId = consultation.getId();
+
+        // 상담 타입에 따라 채팅방 생성
+        if (consultation.getType() == ConsultationType.MESSAGE) {
+            // 메시지 상담 MESSAGE 채팅방 생성
+            createChatroom(expertId, consultationId, ChatroomType.MESSAGE);
+
+        } else if (consultation.getType() == ConsultationType.VIDEO) {
+            // 화상 상담 VIDEO 채팅방 생성
+            createChatroom(expertId, consultationId, ChatroomType.VIDEO);
+        }
+
+        log.info("채팅방 자동 생성 완료 - consultationId: {}", consultationId);
+    }
+
+    /**
+     * 특정 타입의 채팅방 생성
+     */
+    private void createChatroom(Long expertId, Long consultationId, ChatroomType chatroomType) {
+        ChatroomCreateRequestDTO request = ChatroomCreateRequestDTO.builder()
+                .consultationId(consultationId)
+                .chatroomType(chatroomType)
+                .build();
+
+        try {
+            ChatroomResponseDTO chatroom = chatroomService.createChatroom(
+                    expertId,
+                    consultationId,
+                    request
+            );
+            log.info("채팅방 생성 성공 - chatroomId: {}, type: {}",
+                    chatroom.getChatroomId(), chatroomType);
+        } catch (Exception e) {
+            log.error("채팅방 생성 실패 - consultationId: {}, type: {}, error: {}",
+                    consultationId, chatroomType, e.getMessage(), e);
+
         }
     }
 }

@@ -2,11 +2,13 @@ package com.ceos.menual.domain.review.controller;
 
 import java.util.List;
 
+import com.ceos.menual.domain.review.dto.response.AvailableReviewResponseDTO;
+import com.ceos.menual.domain.review.dto.response.CompletedReviewResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,6 +55,36 @@ public class ReviewController {
 		@RequestParam(required = false) Category category
 	){
 		List<ReviewSummaryResponseDTO> response = reviewService.getBestReviews(category);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 작성 가능한 후기 목록 조회 API
+	 */
+	@Operation(
+			summary = "작성 가능한 후기 목록 조회",
+			description = "작성 가능한 후기 목록을 조회합니다. (reviewWritten = false)"
+	)
+	@GetMapping("/available")
+	public ResponseEntity<CommonResponse<List<AvailableReviewResponseDTO>>> getAvailableReviews(
+			@AuthenticationPrincipal Long userId
+	) {
+		List<AvailableReviewResponseDTO> response = reviewService.getAvailableReviews(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 작성 완료된 후기 목록 조회 API
+	 */
+	@Operation(
+			summary = "작성 완료된 후기 목록 조회",
+			description = "작성 완료된 후기 목록을 조회합니다. (reviewWritten = true)"
+	)
+	@GetMapping("/completed")
+	public ResponseEntity<CommonResponse<List<CompletedReviewResponseDTO>>> getCompletedReviews(
+			@AuthenticationPrincipal Long userId
+	) {
+		List<CompletedReviewResponseDTO> response = reviewService.getCompletedReviews(userId);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

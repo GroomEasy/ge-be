@@ -23,6 +23,7 @@ public class CreateTempReservationRequestDTO {
     @NotNull(message = "전문가 ID는 필수입니다")
     private Long expertId;
 
+    // TODO: 프론트와 협의하에 삭제
     @Schema(description = "상담 카테고리", example = "HAIR", required = true,
             allowableValues = {"HAIR", "FASHION", "SKIN", "MAKEUP"})
     @NotNull(message = "카테고리는 필수입니다")
@@ -37,4 +38,9 @@ public class CreateTempReservationRequestDTO {
     @Schema(description = "예약 날짜 및 시간 (VIDEO 상담인 경우 필수)", example = "2026-01-28T11:30:00", type = "string")
     private LocalDateTime scheduledDateTime;
 
+    // TODO: 프론트와 협의하에 삭제
+    @Schema(description = "상담 가격", example = "40000", required = true)
+    @NotNull(message = "가격은 필수입니다")
+    @Positive(message = "가격은 0보다 커야 합니다")
+    private Integer price;
 }

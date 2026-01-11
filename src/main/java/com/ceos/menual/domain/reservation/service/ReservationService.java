@@ -304,7 +304,7 @@ public class ReservationService {
         Reservation reservation = Reservation.builder()
                 .expertProfile(expertProfile)
                 .generalProfile(generalProfile)
-                .category(requestDTO.getCategory())
+                .category(expertProfile.getCategory())
                 .consultationType(requestDTO.getConsultationType())
                 .scheduledDateTime(requestDTO.getScheduledDateTime())
                 .price(targetSchedule.getPrice())

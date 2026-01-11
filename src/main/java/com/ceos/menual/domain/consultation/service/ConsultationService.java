@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.consultation.service;
 
 import com.ceos.menual.entity.Consultation;
+import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.global.exception.GlobalException;
@@ -20,7 +21,7 @@ public class ConsultationService {
     /**
      * 솔루션 저장 - 해당 전문가만 가능
      */
-    public Consultation saveSolution(Long consultationId, String solution, Long expertProfileId) {
+    public Consultation saveSolution(Long consultationId, SolutionRequestDTO solutionRequestDTO, Long expertProfileId) {
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
 
@@ -29,7 +30,7 @@ public class ConsultationService {
             throw new GlobalException(ConsultationErrorCode.UNAUTHORIZED_CONSULTATION);
         }
 
-        consultation.setSolution(solution);
+        consultation.updateSolution(solutionRequestDTO.getSolution());
         return consultationRepository.save(consultation);
     }
 
@@ -40,6 +41,17 @@ public class ConsultationService {
     public String getSolution(Long consultationId, Long userId, String userType) {
         Consultation consultation = consultationRepository.findByIdWithProfiles(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
+
+        // Null 체크
+        if (consultation.getExpertProfile() == null || consultation.getExpertProfile().getUser() == null) {
+            log.error("상담 ID: {}의 전문가 프로필 또는 사용자가 없습니다", consultationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND);
+        }
+
+        if (consultation.getGeneralProfile() == null || consultation.getGeneralProfile().getUser() == null) {
+            log.error("상담 ID: {}의 회원 프로필 또는 사용자가 없습니다", consultationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND);
+        }
 
         Long expertUserId = consultation.getExpertProfile().getUser().getId();
         Long memberUserId = consultation.getGeneralProfile().getUser().getId();

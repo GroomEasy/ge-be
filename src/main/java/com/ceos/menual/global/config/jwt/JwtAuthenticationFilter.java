@@ -85,17 +85,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setAuthentication(HttpServletRequest request, Long userId, String userType) {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         
-        // 기본 권한
-        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-        
-        // userType에 따라 추가 권한 부여
+        // userType에 따라 권한 부여
         if ("ADMIN".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
             log.debug("ROLE_ADMIN 권한 추가됨");
         } else if ("EXPERT".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_EXPERT"));
             log.debug("ROLE_EXPERT 권한 추가됨");
+        } else if ("MEMBER".equals(userType)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_MEMBER"));
+            log.debug("ROLE_MEMBER 권한 추가됨");
+        } else {
+            // 기본 권한 (정의되지 않은 타입의 경우)
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            log.debug("ROLE_USER 권한 추가됨 (기본값) - userType: {}", userType);
         }
+        
+        log.debug("설정된 권한: {}", authorities);
         
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userId,

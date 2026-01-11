@@ -20,11 +20,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -65,5 +63,15 @@ public class Consultation extends BaseEntity {
 	private LocalDateTime solutionSubmittedAt;
 
 	private Boolean reviewWritten;
+
+	/**
+	 * 솔루션 업데이트 - 비즈니스 로직을 통한 필드 변경
+	 */
+	public void updateSolution(String solution) {
+		if (solution != null && !solution.trim().isEmpty()) {
+			this.solution = solution;
+			this.solutionSubmittedAt = LocalDateTime.now();
+		}
+	}
 
 }

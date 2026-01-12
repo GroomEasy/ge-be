@@ -550,8 +550,8 @@ public class ReservationService {
     /**
      * 이미지 키 형식 검증
      * 
-     * 기대 형식: tmp/consultation/user-{userId}/{imageType}/{fileName}
-     * 예: tmp/consultation/user-123/purpose/1.jpg
+     * 기대 형식: tmp/consultation/reservation-{reservationId}/{imageType}/{fileName}
+     * 예: tmp/consultation/reservation-1020/purpose/1.jpg
      * 
      * @param imageKeys 검증할 이미지 키 목록
      * @return 잘못된 형식의 이미지 키 목록 (비어있으면 모두 유효)

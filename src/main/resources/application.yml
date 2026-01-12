@@ -61,5 +61,5 @@ aws:
 logging:
   charset: UTF-8
   level:
-    org.springframework.security: DEBUG
-    com.ceos.menual.domain.consultation: DEBUG
+    org.springframework.security: WARN
+    com.ceos.menual: INFO

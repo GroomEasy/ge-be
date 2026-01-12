@@ -42,6 +42,9 @@ public class S3PresignedUrlService {
 	@Value("${aws.s3.cleanup.retry-interval-ms:1000}")
 	private Long retryIntervalMs;
 
+	@Value("${aws.s3.region}")
+	private String awsRegion;
+
 	private final S3Presigner s3Presigner;
 	private final S3Client s3Client;
 	private final S3CleanupTaskRepository s3CleanupTaskRepository;
@@ -313,6 +316,7 @@ public class S3PresignedUrlService {
 	 * 
 	 * 헤어 상담: hairstyle, front, left, right, favorite, difficulty
 	 * 패션 상담: front, left, right, favorite, purpose
+	 * 솔루션: solution
 	 */
 	private void validateImageType(String imageType) {
 		if (imageType == null || imageType.trim().isEmpty()) {
@@ -322,7 +326,7 @@ public class S3PresignedUrlService {
 			throw new IllegalArgumentException("이미지 타입은 영문 소문자, 숫자, 하이픈만 허용됩니다.");
 		}
 		// 허용된 이미지 타입만 접수
-		String[] allowedTypes = {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose"};
+		String[] allowedTypes = {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose", "solution"};
 		boolean isValid = false;
 		for (String type : allowedTypes) {
 			if (imageType.equals(type)) {
@@ -331,7 +335,7 @@ public class S3PresignedUrlService {
 			}
 		}
 		if (!isValid) {
-			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다. (hairstyle, front, left, right, favorite, difficulty, purpose만 가능)");
+			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다. (hairstyle, front, left, right, favorite, difficulty, purpose, solution만 가능)");
 		}
 	}
 
@@ -361,6 +365,20 @@ public class S3PresignedUrlService {
 		private String uploadUrl;
 		private String downloadUrl;
 		private Long expiresIn;
+	}
+
+	/**
+	 * S3 파일의 공개 URL 생성
+	 * 
+	 * @param s3Key S3 객체 키 (final/solution/{consultationId}/{fileName})
+	 * @return 공개 S3 URL
+	 */
+	public String generateS3Url(String s3Key) {
+		if (s3Key == null || s3Key.trim().isEmpty()) {
+			return null;
+		}
+		// S3 URL 형식: https://bucket-name.s3.region.amazonaws.com/key
+		return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, awsRegion, s3Key);
 	}
 }
 

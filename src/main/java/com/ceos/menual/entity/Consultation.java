@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.ceos.menual.entity.enums.ConsultationType;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -56,17 +57,28 @@ public class Consultation extends BaseEntity {
 	private String videoLink;
 
 	//솔루션 관련
+	@Column(columnDefinition = "TEXT")
+	private String solution;
+
 	private LocalDateTime solutionSubmittedAt;
 
 	private Boolean reviewWritten;
 
-
-	// ====== 헬퍼 메서드 ======= //
 	/**
-	 * 후기 작성 완료 처리
+	 * 솔루션 업데이트 - 비즈니스 로직을 통한 필드 변경
 	 */
-	public void markReviewAsWritten() {
-		this.reviewWritten = true;
+	public void updateSolution(String solution) {
+		if (solution != null && !solution.trim().isEmpty()) {
+			this.solution = solution;
+			this.solutionSubmittedAt = LocalDateTime.now();
+		}
 	}
 
+    // ====== 헬퍼 메서드 ======= //
+    /**
+     * 후기 작성 완료 처리
+     */
+    public void markReviewAsWritten() {
+        this.reviewWritten = true;
+    }
 }

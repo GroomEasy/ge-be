@@ -18,37 +18,37 @@ import java.util.List;
 @AllArgsConstructor
 public class HairImageListDTO {
 
-    @Schema(description = "헤어스타일 이미지", example = "[\"tmp/consultation/user-123/hairstyle/1.jpg\"]", required = true)
+    @Schema(description = "헤어스타일 이미지", example = "[\"tmp/consultation/reservation-123/hairstyle/1.jpg\"]", required = true)
     @NotEmpty(message = "헤어스타일 사진은 1개 필수입니다")
     @Size(min = 1, max = 1, message = "헤어스타일 사진은 정확히 1개여야 합니다")
     @JsonProperty("hairstyle")
     private List<String> hairstyle;
 
-    @Schema(description = "정면 이미지", example = "[\"tmp/consultation/user-123/front/1.jpg\"]", required = true)
+    @Schema(description = "정면 이미지", example = "[\"tmp/consultation/reservation-123/front/1.jpg\"]", required = true)
     @NotEmpty(message = "정면 사진은 1개 필수입니다")
     @Size(min = 1, max = 1, message = "정면 사진은 정확히 1개여야 합니다")
     @JsonProperty("front")
     private List<String> front;
 
-    @Schema(description = "왼쪽 측면 이미지", example = "[\"tmp/consultation/user-123/left/1.jpg\"]", required = true)
+    @Schema(description = "왼쪽 측면 이미지", example = "[\"tmp/consultation/reservation-123/left/1.jpg\"]", required = true)
     @NotEmpty(message = "왼쪽 측면 사진은 1개 필수입니다")
     @Size(min = 1, max = 1, message = "왼쪽 측면 사진은 정확히 1개여야 합니다")
-    @JsonProperty("leftSide")
-    private List<String> leftSide;
+    @JsonProperty("left")
+    private List<String> left;
 
-    @Schema(description = "오른쪽 측면 이미지", example = "[\"tmp/consultation/user-123/right/1.jpg\"]", required = true)
+    @Schema(description = "오른쪽 측면 이미지", example = "[\"tmp/consultation/reservation-123/right/1.jpg\"]", required = true)
     @NotEmpty(message = "오른쪽 측면 사진은 1개 필수입니다")
     @Size(min = 1, max = 1, message = "오른쪽 측면 사진은 정확히 1개여야 합니다")
-    @JsonProperty("rightSide")
-    private List<String> rightSide;
+    @JsonProperty("right")
+    private List<String> right;
 
-    @Schema(description = "가장 마음에 드는 사진 (0~1개)", example = "[\"tmp/consultation/user-123/favorite/1.jpg\"]")
+    @Schema(description = "가장 마음에 드는 사진 (0~1개)", example = "[\"tmp/consultation/reservation-123/favorite/1.jpg\"]")
     @Size(min = 0, max = 1, message = "가장 마음에 드는 사진은 0~1개여야 합니다")
-    @JsonProperty("favoriteStyle")
-    private List<String> favoriteStyle;
+    @JsonProperty("favorite")
+    private List<String> favorite;
 
-    @Schema(description = "스타일링 어려움 이미지 (0~3개)", example = "[\"tmp/consultation/user-123/difficulty/1.jpg\"]")
+    @Schema(description = "스타일링 어려움 이미지 (0~3개)", example = "[\"tmp/consultation/reservation-123/difficulty/1.jpg\"]")
     @Size(min = 0, max = 3, message = "스타일링 어려움 사진은 0~3개여야 합니다")
-    @JsonProperty("stylingDifficulty")
-    private List<String> stylingDifficulty;
+    @JsonProperty("difficulty")
+    private List<String> difficulty;
 }

@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.common.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,11 +18,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * S3 Presigned URL 공통 API Controller
  * consultation, review 등 여러 도메인에서 사용 가능
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/presigned-urls")
 @Validated
@@ -41,7 +44,9 @@ public class S3PresignedUrlController {
 	 * 결제 확인 후: final/{resourceType}/{resourceId}/{imageType}/{fileName}로 이동
 	 * 
 	 * resourceType 예시: consultation, review, portfolio 등
-	 * imageType 예시: hairstyle, front, left-side, right-side, favorite, purpose 등
+	 * imageType 예시:
+	 *   - 헤어: hairstyle, front, left, right, favorite, difficulty
+	 *   - 패션: front, left, right, favorite, purpose
 	 */
 	@PostMapping("/upload")
 	@Operation(
@@ -51,10 +56,14 @@ public class S3PresignedUrlController {
 					"유효시간은 15분입니다."
 	)
 	public ResponseEntity<PresignedUrlResponseDTO> getUploadPresignedUrl(
-		@Valid @RequestBody UploadPresignedUrlRequestDTO request) {
+		@Valid @RequestBody UploadPresignedUrlRequestDTO request,
+		@AuthenticationPrincipal Long userId) {
+
+		log.info("Presigned URL 요청 - 사용자: {}, 리소스ID: {}, 이미지타입: {}", userId, request.getResourceId(), request.getImageType());
 
 		GeneratePresignedUrlResponse response = s3PresignedUrlService.generateUploadPresignedUrl(
 			request.getResourceType(),
+			request.getResourceId(),
 			request.getImageType(),
 			request.getFileName()
 		);

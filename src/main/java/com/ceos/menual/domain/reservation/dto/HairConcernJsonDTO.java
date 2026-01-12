@@ -8,8 +8,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Schema(description = "헤어 상담 고민지 JSON 저장 구조")
 @Getter
 @Builder
@@ -25,8 +23,4 @@ public class HairConcernJsonDTO {
     @Schema(description = "헤어 상담 고민지")
     @JsonProperty("hair")
     private HairConcernDTO hair;
-
-    @Schema(description = "S3 이미지 키 목록")
-    @JsonProperty("imageKeys")
-    private List<String> imageKeys;
 }

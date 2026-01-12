@@ -74,4 +74,13 @@ public class Consultation extends BaseEntity {
 		}
 	}
 
+
+	// ====== 헬퍼 메서드 ======= //
+	/**
+	 * 후기 작성 완료 처리
+	 */
+	public void markReviewAsWritten() {
+		this.reviewWritten = true;
+	}
+
 }

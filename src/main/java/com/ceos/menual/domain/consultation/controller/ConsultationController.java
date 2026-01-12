@@ -2,30 +2,59 @@ package com.ceos.menual.domain.consultation.controller;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
+import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
-import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.global.exception.GlobalErrorCode;
 import com.ceos.menual.global.exception.GlobalException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/consults")
+@RequestMapping("/api/consultations")
 @RequiredArgsConstructor
-@Tag(name = "Consultation", description = "상담 관련 API")
+@Tag(name = "상담 API", description = "상담 관련 엔드포인트")
 public class ConsultationController {
 
     private final ConsultationService consultationService;
     private final UserRepository userRepository;
+
+    /**
+     * 지난 상담 내역 조회 API
+     */
+    @Operation(
+            summary = "지난 상담 내역 조회",
+            description = "지난 상담 내역을 전체 조회합니다."
+    )
+    @GetMapping("/history")
+    public ResponseEntity<CommonResponse<List<ConsultationHistoryResponseDTO>>> getConsultationHistory(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "카테고리 (선택)")
+            @RequestParam(required = false) Category category
+    ) {
+        List<ConsultationHistoryResponseDTO> response = consultationService.getConsultationHistory(userId, category);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
 
     /**
      * 솔루션 저장 - 해당 전문가만 가능
@@ -39,7 +68,7 @@ public class ConsultationController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
         log.debug("POST 요청 - 사용자 ID: {}, 상담 ID: {}", userId, consultationId);
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.UNAUTHORIZED_CONSULTATION));
 
@@ -49,7 +78,7 @@ public class ConsultationController {
 
         Long expertProfileId = user.getExpertProfile().getId();
         consultationService.saveSolution(consultationId, solutionRequestDTO, expertProfileId);
-        
+
         return ResponseEntity.ok(new CommonResponse<>(GlobalErrorCode.SUCCESS));
     }
 
@@ -64,10 +93,10 @@ public class ConsultationController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
         log.debug("요청 사용자 ID: {}", userId);
-        
+
         // 모든 권한 출력 (디버깅용)
         log.debug("사용자 권한 목록: {}", authentication.getAuthorities());
-        
+
         String userType = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .peek(auth -> log.debug("검토 중인 권한: {}", auth))  // 각 권한을 로깅
@@ -78,7 +107,7 @@ public class ConsultationController {
                     log.error("사용자 ID: {}는 ROLE_EXPERT 또는 ROLE_MEMBER 역할이 없습니다", userId);
                     return new GlobalException(ConsultationErrorCode.INVALID_USER_ROLE);
                 });
-        
+
         log.debug("사용자 타입: {}, 상담 ID: {}", userType, consultationId);
 
         String solution = consultationService.getSolution(consultationId, userId, userType);

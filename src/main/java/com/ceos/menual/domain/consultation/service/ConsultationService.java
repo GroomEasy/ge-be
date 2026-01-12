@@ -2,12 +2,12 @@ package com.ceos.menual.domain.consultation.service;
 
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
-import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
-import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.Consultation;
+import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.entity.GeneralProfile;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
@@ -55,7 +55,6 @@ public class ConsultationService {
 
         return consultations;
     }
-
     /**
      * 솔루션 저장 - 해당 전문가만 가능
      */
@@ -110,4 +109,5 @@ public class ConsultationService {
 
         return consultation.getSolution();
     }
+
 }

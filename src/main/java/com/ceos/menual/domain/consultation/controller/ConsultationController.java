@@ -2,12 +2,12 @@ package com.ceos.menual.domain.consultation.controller;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
-import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
+import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
+import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
-import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.global.exception.GlobalErrorCode;
 import com.ceos.menual.global.exception.GlobalException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,13 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -38,23 +32,6 @@ public class ConsultationController {
 
     private final ConsultationService consultationService;
     private final UserRepository userRepository;
-
-    /**
-     * 지난 상담 내역 조회 API
-     */
-    @Operation(
-            summary = "지난 상담 내역 조회",
-            description = "지난 상담 내역을 전체 조회합니다."
-    )
-    @GetMapping("/history")
-    public ResponseEntity<CommonResponse<List<ConsultationHistoryResponseDTO>>> getConsultationHistory(
-            @AuthenticationPrincipal Long userId,
-            @Parameter(description = "카테고리 (선택)")
-            @RequestParam(required = false) Category category
-    ) {
-        List<ConsultationHistoryResponseDTO> response = consultationService.getConsultationHistory(userId, category);
-        return ResponseEntity.ok(CommonResponse.success(response));
-    }
 
     /**
      * 솔루션 저장 - 해당 전문가만 가능
@@ -112,5 +89,22 @@ public class ConsultationController {
 
         String solution = consultationService.getSolution(consultationId, userId, userType);
         return ResponseEntity.ok(CommonResponse.success(solution));
+    }
+
+    /**
+     * 지난 상담 내역 조회 API
+     */
+    @Operation(
+            summary = "지난 상담 내역 조회",
+            description = "지난 상담 내역을 전체 조회합니다."
+    )
+    @GetMapping("/history")
+    public ResponseEntity<CommonResponse<List<ConsultationHistoryResponseDTO>>> getConsultationHistory(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "카테고리 (선택)")
+            @RequestParam(required = false) Category category
+    ) {
+        List<ConsultationHistoryResponseDTO> response = consultationService.getConsultationHistory(userId, category);
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

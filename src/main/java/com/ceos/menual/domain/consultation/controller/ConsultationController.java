@@ -5,6 +5,7 @@ import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
+import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
@@ -20,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -40,14 +42,14 @@ public class ConsultationController {
     @Operation(summary = "솔루션 저장", description = "상담에 대한 솔루션을 저장합니다 (해당 전문가만 가능)")
     public ResponseEntity<CommonResponse<Void>> saveSolution(
             @PathVariable Long consultationId,
-            @RequestBody SolutionRequestDTO solutionRequestDTO,
+            @Valid @RequestBody SolutionRequestDTO solutionRequestDTO,
             Authentication authentication
     ) {
         Long userId = (Long) authentication.getPrincipal();
         log.debug("POST 요청 - 사용자 ID: {}, 상담 ID: {}", userId, consultationId);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalException(ConsultationErrorCode.UNAUTHORIZED_CONSULTATION));
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
         if (user.getExpertProfile() == null) {
             throw new GlobalException(ConsultationErrorCode.EXPERT_PROFILE_NOT_FOUND);

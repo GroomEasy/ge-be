@@ -58,6 +58,7 @@ public class ConsultationService {
     /**
      * 솔루션 저장 - 해당 전문가만 가능
      */
+    @Transactional
     public Consultation saveSolution(Long consultationId, SolutionRequestDTO solutionRequestDTO, Long expertProfileId) {
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));

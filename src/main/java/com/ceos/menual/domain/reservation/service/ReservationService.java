@@ -35,15 +35,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -692,10 +690,79 @@ public class ReservationService {
                     })
                     .collect(Collectors.toList());
 
-            concernJson = ConcernJsonDTO.builder()
-                    .desiredStyle(concernJson.getDesiredStyle())
-                    .consultationPurpose(concernJson.getConsultationPurpose())
-                    .build();
+            // 기존 ConcernJsonDTO 데이터를 유지하고 이미지 경로만 업데이트
+            Map<String, String> imagePathMapping = new HashMap<>();
+            for (int i = 0; i < imageKeys.size(); i++) {
+                imagePathMapping.put(imageKeys.get(i), finalImageKeys.get(i));
+            }
+
+            if (concernJson.getFashion() != null && concernJson.getFashion().getImages() != null) {
+                FashionImageListDTO fashionImages = concernJson.getFashion().getImages();
+                FashionImageListDTO updatedFashionImages = FashionImageListDTO.builder()
+                        .front(updateImagePaths(fashionImages.getFront(), imagePathMapping))
+                        .left(updateImagePaths(fashionImages.getLeft(), imagePathMapping))
+                        .right(updateImagePaths(fashionImages.getRight(), imagePathMapping))
+                        .favorite(updateImagePaths(fashionImages.getFavorite(), imagePathMapping))
+                        .purpose(updateImagePaths(fashionImages.getPurpose(), imagePathMapping))
+                        .build();
+                
+                // FashionConcernDTO 재구성
+                com.ceos.menual.domain.reservation.dto.FashionConcernDTO updatedFashion = 
+                    com.ceos.menual.domain.reservation.dto.FashionConcernDTO.builder()
+                        .height(concernJson.getFashion().getHeight())
+                        .weight(concernJson.getFashion().getWeight())
+                        .topSize(concernJson.getFashion().getTopSize())
+                        .bottomSize(concernJson.getFashion().getBottomSize())
+                        .bodyTypeDisadvantages(concernJson.getFashion().getBodyTypeDisadvantages())
+                        .bodyTypeEtcText(concernJson.getFashion().getBodyTypeEtcText())
+                        .styleColors(concernJson.getFashion().getStyleColors())
+                        .styleFits(concernJson.getFashion().getStyleFits())
+                        .styleImages(concernJson.getFashion().getStyleImages())
+                        .styleEtcText(concernJson.getFashion().getStyleEtcText())
+                        .outfitItems(concernJson.getFashion().getOutfitItems())
+                        .outfitPriceRange(concernJson.getFashion().getOutfitPriceRange())
+                        .outfitEtcText(concernJson.getFashion().getOutfitEtcText())
+                        .images(updatedFashionImages)
+                        .build();
+                
+                concernJson = ConcernJsonDTO.builder()
+                        .type(concernJson.getType())
+                        .fashion(updatedFashion)
+                        .hair(concernJson.getHair())
+                        .desiredStyle(concernJson.getDesiredStyle())
+                        .consultationPurpose(concernJson.getConsultationPurpose())
+                        .build();
+            } else if (concernJson.getHair() != null && concernJson.getHair().getImages() != null) {
+                HairImageListDTO hairImages = concernJson.getHair().getImages();
+                HairImageListDTO updatedHairImages = HairImageListDTO.builder()
+                        .hairstyle(updateImagePaths(hairImages.getHairstyle(), imagePathMapping))
+                        .front(updateImagePaths(hairImages.getFront(), imagePathMapping))
+                        .left(updateImagePaths(hairImages.getLeft(), imagePathMapping))
+                        .right(updateImagePaths(hairImages.getRight(), imagePathMapping))
+                        .favorite(updateImagePaths(hairImages.getFavorite(), imagePathMapping))
+                        .difficulty(updateImagePaths(hairImages.getDifficulty(), imagePathMapping))
+                        .build();
+                
+                // HairConcernDTO 재구성
+                com.ceos.menual.domain.reservation.dto.HairConcernDTO updatedHair = 
+                    com.ceos.menual.domain.reservation.dto.HairConcernDTO.builder()
+                        .faceAdvantages(concernJson.getHair().getFaceAdvantages())
+                        .faceAdvantagesEtcText(concernJson.getHair().getFaceAdvantagesEtcText())
+                        .coveringParts(concernJson.getHair().getCoveringParts())
+                        .coveringPartsEtcText(concernJson.getHair().getCoveringPartsEtcText())
+                        .pursuedImages(concernJson.getHair().getPursuedImages())
+                        .stylingDifficulty(concernJson.getHair().getStylingDifficulty())
+                        .images(updatedHairImages)
+                        .build();
+                
+                concernJson = ConcernJsonDTO.builder()
+                        .type(concernJson.getType())
+                        .fashion(concernJson.getFashion())
+                        .hair(updatedHair)
+                        .desiredStyle(concernJson.getDesiredStyle())
+                        .consultationPurpose(concernJson.getConsultationPurpose())
+                        .build();
+            }
 
             // 업데이트된 JSON으로 저장
             String updatedConcernsJsonString = objectMapper.writeValueAsString(concernJson);
@@ -746,5 +813,17 @@ public class ReservationService {
 
             ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
             log.info("채팅방 생성 성공 - chatroomId: {}, type: {}", chatroom.getChatroomId(), chatroomType);
+    }
+
+    /**
+     * 이미지 경로 목록을 업데이트하는 헬퍼 메서드
+     */
+    private List<String> updateImagePaths(List<String> imagePaths, Map<String, String> imagePathMapping) {
+        if (imagePaths == null) {
+            return null;
+        }
+        return imagePaths.stream()
+                .map(oldPath -> imagePathMapping.getOrDefault(oldPath, oldPath))
+                .collect(Collectors.toList());
     }
 }

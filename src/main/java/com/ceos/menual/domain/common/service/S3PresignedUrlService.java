@@ -2,7 +2,6 @@ package com.ceos.menual.domain.common.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -67,14 +66,14 @@ public class S3PresignedUrlService {
 	 * @param fileName 파일명 (예: image.jpg, 1.jpg)
 	 * @return Presigned URL과 S3 Key
 	 */
-	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, String resourceId, String imageType, String fileName) {
+	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, Long resourceId, String imageType, String fileName) {
 		Long userId = getCurrentUserId();
 
 		validateResourceType(resourceType);
 		validateImageType(imageType);
 		validateFileName(fileName);
 
-		String s3Key = buildTemporaryS3Key(userId, resourceType, resourceId, imageType, fileName);
+		String s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), imageType, fileName);
 
 		log.debug("Presigned URL 발급 - 사용자: {}, S3 Key: {}", userId, s3Key);
 
@@ -166,7 +165,6 @@ public class S3PresignedUrlService {
 	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {
 		try {
 			validateResourceType("consultation");
-			validateResourceType("final");
 
 			// 1. 임시 위치의 파일을 최종 위치로 복사
 			log.info("S3 파일 복사 시작 - bucket: {}, from: {}, to: {}", bucketName, tempS3Key, finalS3Key);

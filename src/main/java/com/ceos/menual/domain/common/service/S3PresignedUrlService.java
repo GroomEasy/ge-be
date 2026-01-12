@@ -26,8 +26,8 @@ import lombok.extern.slf4j.Slf4j;
  * S3 Presigned URL 발급 서비스 (공통)
  * consultation, review 등 여러 도메인에서 사용 가능
  * 
- * 임시 파일 저장 경로: tmp/consultation/user-{userId}/{imageType}/{fileName}
- * 최종 파일 저장 경로: final/consultation/{consultationId}/{imageType}/{fileName}
+ * 임시 파일 저장 경로: tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
+ * 최종 파일 저장 경로: final/{resourceType}/{resourceId}/{imageType}/{fileName}
  */
 @Slf4j
 @Service
@@ -158,8 +158,8 @@ public class S3PresignedUrlService {
 	 * 2. 임시 위치의 파일 삭제 (재시도 로직 포함)
 	 * 3. 삭제 실패 시 정리 작업 기록
 	 * 
-	 * @param tempS3Key 임시 저장 경로 (tmp/consultation/user-{userId}/{imageType}/{fileName})
-	 * @param finalS3Key 최종 저장 경로 (final/consultation/{consultationId}/{imageType}/{fileName})
+	 * @param tempS3Key 임시 저장 경로 (tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName})
+	 * @param finalS3Key 최종 저장 경로 (final/{resourceType}/{resourceId}/{imageType}/{fileName})
 	 * @throws RuntimeException 복사 실패 또는 삭제 재시도가 완전히 실패한 경우
 	 */
 	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {

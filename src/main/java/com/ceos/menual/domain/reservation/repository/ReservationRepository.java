@@ -3,11 +3,15 @@ package com.ceos.menual.domain.reservation.repository;
 import com.ceos.menual.entity.Reservation;
 import com.ceos.menual.entity.enums.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
@@ -47,5 +51,41 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findByReservationStatusAndExpiresAtBefore(
             ReservationStatus status,
             LocalDateTime expiresAt
+    );
+
+    /**
+     * 결제 확인용 Reservation 조회 (PESSIMISTIC_WRITE 락)
+     * 
+     * 동시성 문제 해결:
+     * - 여러 관리자가 동시에 confirmPaymentByAdmin()을 호출해도
+     * - 첫 번째 트랜잭션만 성공, 나머지는 대기 후 INVALID_RESERVATION_STATUS 예외 발생
+     * - Consultation 중복 생성 방지
+     * 
+     * @param reservationId 예약 ID
+     * @return 배타적 락이 획득된 Reservation
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reservation r WHERE r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long reservationId);
+
+    /**
+     * 원자적 상태 업데이트: UNPAID → PAID
+     * 
+     * SQL 레벨에서 원자성 보장:
+     * - WHERE 조건에서 UNPAID 상태만 대상
+     * - 업데이트되는 행이 정확히 1개만 보장
+     * - 레이스 컨디션 방지
+     * 
+     * @param reservationId 예약 ID
+     * @param consultationId 생성된 상담 ID
+     * @return 업데이트된 행 수 (1 = 성공, 0 = 다른 상태 또는 이미 업데이트됨)
+     */
+    @Modifying
+    @Query("UPDATE Reservation r SET r.reservationStatus = 'PAID', " +
+            "r.consultation.id = :consultationId, r.expiresAt = null " +
+            "WHERE r.id = :reservationId AND r.reservationStatus = 'UNPAID'")
+    int updateStatusToPaidIfUnpaid(
+            @Param("reservationId") Long reservationId,
+            @Param("consultationId") Long consultationId
     );
 }

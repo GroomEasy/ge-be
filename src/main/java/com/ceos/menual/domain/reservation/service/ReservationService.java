@@ -68,9 +68,14 @@ public class ReservationService {
      * 관리자: 결제 확인 및 Consultation 생성
      * 사용자가 은행 송금으로 입금한 후, 관리자가 확인하면 호출
      * 
+     * 동시성 안전성:
+     * - PESSIMISTIC_WRITE 락으로 경합 제어
+     * - 첫 번째 요청만 성공, 나머지는 대기 후 INVALID_RESERVATION_STATUS 예외
+     * - Consultation 중복 생성 방지
+     * 
      * 동시에 S3의 임시 저장 이미지를 최종 저장 위치로 이동
-     * tmp/consultation/user-{userId}/{imageType}/{fileName}
-     *     → final/consultation/{consultationId}/{imageType}/{fileName}
+     * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
+     *     → final/{resourceType}/{resourceId}/{imageType}/{fileName}
      */
     @Transactional
     public CompletePaymentResponseDTO confirmPaymentByAdmin(
@@ -79,12 +84,17 @@ public class ReservationService {
     ) {
         log.info("관리자 결제 확인 및 상담 생성 시작 - reservationId: {}", reservationId);
 
-        // 예약 조회
-        Reservation reservation = reservationRepository.findById(reservationId)
+        // PESSIMISTIC_WRITE 락을 사용한 예약 조회
+        // - 동시 요청 중 첫 번째만 성공
+        // - 나머지는 대기 후 상태 재확인
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
 
         // 예약 상태 검증 (UNPAID 상태만 결제 가능)
+        // 락 획득 후 상태 재확인 (락 대기 중 다른 트랜잭션이 상태를 변경했을 수 있음)
         if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("예약 상태 불일치 (동시성 처리됨) - reservationId: {}, status: {}", 
+                reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
 
@@ -99,9 +109,13 @@ public class ReservationService {
                 .build();
 
         Consultation savedConsultation = consultationRepository.save(consultation);
+        log.info("Consultation 생성 완료 - consultationId: {}, reservationId: {}", 
+            savedConsultation.getId(), reservationId);
 
         // 예약 상태를 PAID로 변경하고 consultation과 연결
         reservation.updateStatusToPaid(savedConsultation);
+        reservationRepository.save(reservation);
+        log.info("예약 상태 업데이트 완료 - UNPAID → PAID, reservationId: {}", reservationId);
 
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
@@ -148,7 +162,7 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.MISSING_FASHION_CONCERN_DATA);
         }
         
-        // 모든 이미지 키를 하나의 리스트로 수집
+        // 모든 이미지 키를 하나의 리스트로 수집 및 검증
         List<String> allImageKeys = new ArrayList<>();
         if (requestDTO.getFashion().getImages() != null) {
             if (requestDTO.getFashion().getImages().getFront() != null) {
@@ -168,18 +182,28 @@ public class ReservationService {
             }
         }
         
+        // 이미지 키 형식 검증
+        if (!allImageKeys.isEmpty()) {
+            List<String> invalidImageKeys = validateImageKeysFormat(allImageKeys);
+            if (!invalidImageKeys.isEmpty()) {
+                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}", 
+                    reservationId, invalidImageKeys);
+                throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+            }
+        }
+        
         FashionConcernJsonDTO fashionConcern = FashionConcernJsonDTO.builder()
                 .type(Category.FASHION.name())
                 .fashion(requestDTO.getFashion())
                 .build();
         
-        log.info("패션 상담 고민지 저장 - reservationId: {}", reservationId);
+        log.info("패션 상담 고민지 저장 - reservationId: {}, imageCount: {}", reservationId, allImageKeys.size());
 
         // JSON 문자열로 변환
         try {
             String concernJsonString = objectMapper.writeValueAsString(fashionConcern);
             reservation.updateConcerns(concernJsonString);
-            log.info("패션 상담 고민지 업데이트 완료 - reservationId: {}", reservationId);
+            log.info("패션 상담 고민지 업데이트 완료 - reservationId: {}, totalImages: {}", reservationId, allImageKeys.size());
         } catch (Exception e) {
             log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
@@ -216,7 +240,7 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.MISSING_HAIR_CONCERN_DATA);
         }
         
-        // 모든 이미지 키를 하나의 리스트로 수집
+        // 모든 이미지 키를 하나의 리스트로 수집 및 검증
         List<String> allImageKeys = new ArrayList<>();
         if (requestDTO.getHair().getImages() != null) {
             if (requestDTO.getHair().getImages().getHairstyle() != null) {
@@ -239,18 +263,28 @@ public class ReservationService {
             }
         }
         
+        // 이미지 키 형식 검증
+        if (!allImageKeys.isEmpty()) {
+            List<String> invalidImageKeys = validateImageKeysFormat(allImageKeys);
+            if (!invalidImageKeys.isEmpty()) {
+                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}", 
+                    reservationId, invalidImageKeys);
+                throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+            }
+        }
+        
         HairConcernJsonDTO hairConcern = HairConcernJsonDTO.builder()
                 .type(Category.HAIR.name())
                 .hair(requestDTO.getHair())
                 .build();
         
-        log.info("헤어 상담 고민지 저장 - reservationId: {}", reservationId);
+        log.info("헤어 상담 고민지 저장 - reservationId: {}, imageCount: {}", reservationId, allImageKeys.size());
 
         // JSON 문자열로 변환
         try {
             String concernJsonString = objectMapper.writeValueAsString(hairConcern);
             reservation.updateConcerns(concernJsonString);
-            log.info("헤어 상담 고민지 업데이트 완료 - reservationId: {}", reservationId);
+            log.info("헤어 상담 고민지 업데이트 완료 - reservationId: {}, totalImages: {}", reservationId, allImageKeys.size());
         } catch (Exception e) {
             log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
@@ -639,30 +673,54 @@ public class ReservationService {
 
             Long userId = reservation.getGeneralProfile().getUser().getId();
             Long consultationId = consultation.getId();
+            Long reservationId = reservation.getId();
+            String expectedReservationPrefix = String.format("reservation-%d", reservationId);
 
-            // 사전 검증: 모든 이미지 키가 유효한 형식인지 확인 (이동 작업 전)
+            // 사전 검증: 모든 이미지 키가 유효한 형식이고 현재 예약에 속하는지 확인 (이동 작업 전)
             List<String> invalidImageKeys = validateImageKeysFormat(imageKeys);
             if (!invalidImageKeys.isEmpty()) {
-                log.error("잘못된 이미지 키 형식 발견 - 이동 작업 중단 - consultationId: {}, invalidKeys: {}", 
-                    consultationId, invalidImageKeys);
+                log.error("잘못된 이미지 키 형식 발견 - 이동 작업 중단 - reservationId: {}, consultationId: {}, invalidKeys: {}", 
+                    reservationId, consultationId, invalidImageKeys);
                 throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
             }
 
-            // 모든 키가 유효한 경우에만 이미지 이동 시작
+            // 리소스 소유권 검증: 모든 이미지 키가 현재 예약의 reservation ID와 일치하는지 확인 (보안)
+            // 이중 방어: 입력 단계에서도 검증했지만, 이동 단계에서도 반드시 강제
+            List<String> unauthorizedImageKeys = new ArrayList<>();
+            for (String imageKey : imageKeys) {
+                String[] parts = imageKey.split("/");
+                // 정확한 형식: tmp/consultation/reservation-{id}/{imageType}/{fileName}
+                // parts[0]=tmp, parts[1]=consultation, parts[2]=reservation-{id}, parts[3]={imageType}, parts[4]={fileName}
+                if (parts.length < 5) {
+                    unauthorizedImageKeys.add(imageKey);
+                    log.error("부족한 경로 구성요소 - 예상 5개, 실제: {}, imageKey: {}", parts.length, imageKey);
+                    continue;
+                }
+                
+                String reservationIdPart = parts[2];
+                // 정확한 일치 검증 (equals 사용) - startsWith는 불안전
+                if (!reservationIdPart.equals(expectedReservationPrefix)) {
+                    unauthorizedImageKeys.add(imageKey);
+                    log.warn("다른 예약의 이미지 키 감지 (데이터 유출 시도?) - " +
+                        "reservationId: {}, consultationId: {}, expected: {}, actual: {}, imageKey: {}",
+                        reservationId, consultationId, expectedReservationPrefix, reservationIdPart, imageKey);
+                }
+            }
+
+            if (!unauthorizedImageKeys.isEmpty()) {
+                log.error("권한 없는 이미지 키 발견 - 이동 작업 중단 (보안) - " +
+                    "reservationId: {}, consultationId: {}, unauthorizedKeys: {}", 
+                    reservationId, consultationId, unauthorizedImageKeys);
+                throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
+            }
+
+            // 모든 키가 유효하고 소유권이 확인된 경우에만 이미지 이동 시작
             for (String imageKey : imageKeys) {
                 String[] parts = imageKey.split("/");
                 
-                if (parts.length < 4) {
-                    log.error("예상치 못한 이미지 키 형식 - consultationId: {}, imageKey: {}", 
-                        consultationId, imageKey);
-                    throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
-                }
-
-                // reservation ID 검증
-                String reservationIdPart = parts[2];
-                if (!reservationIdPart.startsWith("reservation-")) {
-                    log.error("잘못된 예약 ID 형식 - consultationId: {}, imageKey: {}", 
-                        consultationId, imageKey);
+                if (parts.length < 5) {
+                    log.error("예상치 못한 이미지 키 형식 - reservationId: {}, consultationId: {}, imageKey: {}", 
+                        reservationId, consultationId, imageKey);
                     throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
                 }
 
@@ -674,15 +732,17 @@ public class ReservationService {
 
                 s3PresignedUrlService.moveImageFromTempToFinal(imageKey, finalS3Key);
 
-                log.info("이미지 이동 완료 - from: {}, to: {}", imageKey, finalS3Key);
+                log.info("이미지 이동 완료 - reservationId: {}, from: {}, to: {}", 
+                    reservationId, imageKey, finalS3Key);
             }
 
             // ConcernJsonDTO의 imageKeys를 최종 경로로 업데이트
             // 모든 이미지 키는 이미 검증되었으므로 안전하게 변환
+            // parts.length >= 5 보장됨 (위에서 < 5 체크하고 예외 발생)
             List<String> finalImageKeys = imageKeys.stream()
                     .map(imageKey -> {
                         String[] parts = imageKey.split("/");
-                        // 사전 검증에서 이미 확인했으므로 parts.length >= 4 보장
+                        // parts = [tmp, consultation, reservation-{id}, {imageType}, {fileName}]
                         String imageType = parts[3];
                         String fileName = parts[4];
                         return String.format("final/consultation/%d/%s/%s", 
@@ -770,8 +830,15 @@ public class ReservationService {
 
             log.info("고민지 이미지 경로 업데이트 완료 - consultationId: {}", consultationId);
 
+        } catch (GlobalException e) {
+            // GlobalException은 그대로 rethrow (의도적인 예외 유지)
+            log.error("S3 이미지 이동 중 검증 오류 - consultationId: {}, resultCode: {}", 
+                consultation.getId(), e.getResultCode(), e);
+            throw e;
         } catch (Exception e) {
-            log.error("S3 이미지 이동 중 오류 발생 - consultationId: {}", consultation.getId(), e);
+            // JSON 처리 오류 등 예상치 못한 예외만 여기서 처리
+            log.error("S3 이미지 이동 중 예상치 못한 오류 발생 - consultationId: {}", 
+                consultation.getId(), e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
     }

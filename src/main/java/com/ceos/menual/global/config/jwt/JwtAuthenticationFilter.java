@@ -82,26 +82,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     // SecurityContext에 인증 정보를 등록하는 메서드
+    // fail-closed: 알려진 타입(ADMIN, EXPERT, MEMBER)만 인증 설정
     private void setAuthentication(HttpServletRequest request, Long userId, String userType) {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         
-        // userType에 따라 권한 부여
+        // 알려진 userType만 처리 (fail-closed)
         if ("ADMIN".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-            log.debug("ROLE_ADMIN 권한 추가됨");
+            log.debug("ROLE_ADMIN 권한 추가됨 - userId: {}", userId);
         } else if ("EXPERT".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_EXPERT"));
-            log.debug("ROLE_EXPERT 권한 추가됨");
+            log.debug("ROLE_EXPERT 권한 추가됨 - userId: {}", userId);
         } else if ("MEMBER".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_MEMBER"));
-            log.debug("ROLE_MEMBER 권한 추가됨");
+            log.debug("ROLE_MEMBER 권한 추가됨 - userId: {}", userId);
         } else {
-            // 기본 권한 (정의되지 않은 타입의 경우)
-            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-            log.debug("ROLE_USER 권한 추가됨 (기본값) - userType: {}", userType);
+            // 알려지지 않은 userType: 인증 설정하지 않음 (fail-closed)
+            log.warn("알려지지 않은 사용자 타입으로 인증 설정 거부 - userId: {}, userType: {}", userId, userType);
+            return;  // 인증 객체를 생성하지 않고 반환
         }
         
-        log.debug("설정된 권한: {}", authorities);
+        log.debug("설정된 권한: {} - userId: {}", authorities, userId);
         
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userId,
@@ -110,6 +111,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        log.info("인증 설정 완료 - userId: {}, userType: {}", userId, userType);
     }
 
     // Cookie에서 Token을 꺼내는 메서드

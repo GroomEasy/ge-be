@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -37,25 +38,71 @@ public class ConsultationController {
 
     /**
      * 솔루션 저장 - 해당 전문가만 가능
+     * 
+     * PreAuthorize: ROLE_EXPERT만 접근 가능 (선언적 보안)
+     * Safe principal extraction: 문자열 파싱 + null-safe 변환
+     * Extra defense: controller 단계에서 expertProfile 검증
      */
     @PostMapping("/{consultationId}/solution")
+    @PreAuthorize("hasRole('ROLE_EXPERT')")
     @Operation(summary = "솔루션 저장", description = "상담에 대한 솔루션을 저장합니다 (해당 전문가만 가능)")
     public ResponseEntity<CommonResponse<Void>> saveSolution(
             @PathVariable Long consultationId,
             @Valid @RequestBody SolutionRequestDTO solutionRequestDTO,
             Authentication authentication
     ) {
-        Long userId = (Long) authentication.getPrincipal();
-        log.debug("POST 요청 - 사용자 ID: {}, 상담 ID: {}", userId, consultationId);
+        // Safe principal extraction: 문자열 파싱 + null-safe 변환
+        Long userId;
+        try {
+            if (authentication == null) {
+                log.error("인증 정보가 없습니다 - consultationId: {}", consultationId);
+                throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+            }
+            
+            Object principal = authentication.getPrincipal();
+            
+            // instanceof 체크 (type-safe)
+            if (principal instanceof Long) {
+                userId = (Long) principal;
+            } else if (principal instanceof String) {
+                // 문자열인 경우 parseLong 시도
+                try {
+                    userId = Long.parseLong((String) principal);
+                } catch (NumberFormatException e) {
+                    log.error("사용자 ID 파싱 실패 - principal: {}", principal, e);
+                    throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+                }
+            } else {
+                log.error("예상치 못한 principal 타입 - type: {}", principal.getClass().getName());
+                throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+            }
+        } catch (GlobalException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Principal 추출 중 오류 - consultationId: {}", consultationId, e);
+            throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+        }
 
+        log.debug("솔루션 저장 요청 - 사용자 ID: {}, 상담 ID: {}", userId, consultationId);
+
+        // DB에서 사용자 확인 (중복 방어)
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.error("사용자를 찾을 수 없습니다 - userId: {}", userId);
+                    return new GlobalException(UserErrorCode.USER_NOT_FOUND);
+                });
 
+        // 전문가 프로필 확인 (방어 심화)
         if (user.getExpertProfile() == null) {
+            log.error("전문가 프로필이 없습니다 - userId: {}, consultationId: {}", userId, consultationId);
             throw new GlobalException(ConsultationErrorCode.EXPERT_PROFILE_NOT_FOUND);
         }
 
         Long expertProfileId = user.getExpertProfile().getId();
+        log.info("솔루션 저장 권한 검증 완료 - userId: {}, expertProfileId: {}, consultationId: {}", 
+            userId, expertProfileId, consultationId);
+
+        // Service 호출 (최종 권한 검증은 service에서 수행)
         consultationService.saveSolution(consultationId, solutionRequestDTO, expertProfileId);
 
         return ResponseEntity.ok(new CommonResponse<>(GlobalErrorCode.SUCCESS));

@@ -57,19 +57,39 @@ public class ConsultationService {
     }
     /**
      * 솔루션 저장 - 해당 전문가만 가능
+     * 
+     * null-safe: ExpertProfile 없을 시 명확한 에러코드 반환
+     * 권한 검증: 해당 전문가만 솔루션 저장 가능
+     * Dirty checking: @Transactional에서 자동 저장 (명시적 save 불필요)
      */
     @Transactional
     public Consultation saveSolution(Long consultationId, SolutionRequestDTO solutionRequestDTO, Long expertProfileId) {
+        log.info("솔루션 저장 시작 - consultationId: {}, expertProfileId: {}", consultationId, expertProfileId);
+
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
 
-        // 해당 전문가만 솔루션을 저장할 수 있음
+        // ExpertProfile null-check (NPE 방지)
+        if (consultation.getExpertProfile() == null) {
+            log.error("상담과 연결된 전문가 프로필이 없습니다 (데이터 무결성 오류) - consultationId: {}", consultationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_EXPERT_PROFILE_NOT_FOUND);
+        }
+
+        // 해당 전문가만 솔루션을 저장할 수 있음 (권한 검증)
         if (!consultation.getExpertProfile().getId().equals(expertProfileId)) {
+            log.warn("권한 없음 - 요청한 전문가: {}, 상담의 전문가: {}", 
+                expertProfileId, consultation.getExpertProfile().getId());
             throw new GlobalException(ConsultationErrorCode.UNAUTHORIZED_CONSULTATION);
         }
 
+        // 솔루션 업데이트
         consultation.updateSolution(solutionRequestDTO.getSolution());
-        return consultationRepository.save(consultation);
+        
+        // Dirty checking: @Transactional에서 자동 저장 (명시적 save 불필요)
+        log.info("솔루션 저장 완료 - consultationId: {}, solutionLength: {}", 
+            consultationId, solutionRequestDTO.getSolution() != null ? solutionRequestDTO.getSolution().length() : 0);
+        
+        return consultation;
     }
 
     /**

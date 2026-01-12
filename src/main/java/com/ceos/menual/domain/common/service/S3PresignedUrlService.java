@@ -2,7 +2,6 @@ package com.ceos.menual.domain.common.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -27,8 +26,8 @@ import lombok.extern.slf4j.Slf4j;
  * S3 Presigned URL 발급 서비스 (공통)
  * consultation, review 등 여러 도메인에서 사용 가능
  * 
- * 임시 파일 저장 경로: tmp/consultation/user-{userId}/{imageType}/{fileName}
- * 최종 파일 저장 경로: final/consultation/{consultationId}/{imageType}/{fileName}
+ * 임시 파일 저장 경로: tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
+ * 최종 파일 저장 경로: final/{resourceType}/{resourceId}/{imageType}/{fileName}
  */
 @Slf4j
 @Service
@@ -42,6 +41,9 @@ public class S3PresignedUrlService {
 
 	@Value("${aws.s3.cleanup.retry-interval-ms:1000}")
 	private Long retryIntervalMs;
+
+	@Value("${aws.s3.region}")
+	private String awsRegion;
 
 	private final S3Presigner s3Presigner;
 	private final S3Client s3Client;
@@ -57,23 +59,26 @@ public class S3PresignedUrlService {
 	/**
 	 * Presigned URL 발급 (업로드용 - 임시 저장)
 	 * 
-	 * 경로 구조: tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 * 경로 구조: tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
 	 * 
 	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param imageType 이미지 타입 (hairstyle, front, left-side, right-side, favorite, purpose)
+	 * @param resourceId 리소스 ID (예약/상담 ID)
+	 * @param imageType 이미지 타입
+	 *   - 헤어: hairstyle, front, left, right, favorite, difficulty
+	 *   - 패션: front, left, right, favorite, purpose
 	 * @param fileName 파일명 (예: image.jpg, 1.jpg)
 	 * @return Presigned URL과 S3 Key
 	 */
-	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, String imageType, String fileName) {
-		// 현재 사용자 ID 가져오기
+	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, Long resourceId, String imageType, String fileName) {
 		Long userId = getCurrentUserId();
 
 		validateResourceType(resourceType);
 		validateImageType(imageType);
 		validateFileName(fileName);
 
-		// S3 Key 생성 - imageType에 따라 경로 구조가 다름
-		String s3Key = buildTemporaryS3Key(userId, resourceType, imageType, fileName);
+		String s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), imageType, fileName);
+
+		log.debug("Presigned URL 발급 - 사용자: {}, S3 Key: {}", userId, s3Key);
 
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 			.bucket(bucketName)
@@ -90,16 +95,16 @@ public class S3PresignedUrlService {
 		return GeneratePresignedUrlResponse.builder()
 			.s3Key(s3Key)
 			.uploadUrl(uploadUrl)
-			.expiresIn(900L) // 15분 = 900초
+			.expiresIn(900L)
 			.build();
 	}
 
 	/**
 	 * 임시 저장 경로 생성
-	 * tmp/consultation/user-{userId}/{imageType}/{fileName}
+	 * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
 	 */
-	private String buildTemporaryS3Key(Long userId, String resourceType, String imageType, String fileName) {
-		return String.format("tmp/%s/user-%d/%s/%s", resourceType, userId, imageType, fileName);
+	private String buildTemporaryS3Key(Long userId, String resourceType, String resourceId, String imageType, String fileName) {
+		return String.format("tmp/%s/reservation-%s/%s/%s", resourceType, resourceId, imageType, fileName);
 	}
 
 	/**
@@ -156,14 +161,13 @@ public class S3PresignedUrlService {
 	 * 2. 임시 위치의 파일 삭제 (재시도 로직 포함)
 	 * 3. 삭제 실패 시 정리 작업 기록
 	 * 
-	 * @param tempS3Key 임시 저장 경로 (tmp/consultation/user-{userId}/{imageType}/{fileName})
-	 * @param finalS3Key 최종 저장 경로 (final/consultation/{consultationId}/{imageType}/{fileName})
+	 * @param tempS3Key 임시 저장 경로 (tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName})
+	 * @param finalS3Key 최종 저장 경로 (final/{resourceType}/{resourceId}/{imageType}/{fileName})
 	 * @throws RuntimeException 복사 실패 또는 삭제 재시도가 완전히 실패한 경우
 	 */
 	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {
 		try {
 			validateResourceType("consultation");
-			validateResourceType("final");
 
 			// 1. 임시 위치의 파일을 최종 위치로 복사
 			log.info("S3 파일 복사 시작 - bucket: {}, from: {}, to: {}", bucketName, tempS3Key, finalS3Key);
@@ -301,10 +305,18 @@ public class S3PresignedUrlService {
 		if (!resourceType.matches("^[a-z]+$")) {
 			throw new IllegalArgumentException("리소스 타입은 영문 소문자만 허용됩니다.");
 		}
+		// 허용된 리소스 타입만 접수
+		if (!resourceType.equals("consultation") && !resourceType.equals("review") && !resourceType.equals("portfolio")) {
+			throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio만 가능)");
+		}
 	}
 
 	/**
 	 * 이미지 타입 검증
+	 * 
+	 * 헤어 상담: hairstyle, front, left, right, favorite, difficulty
+	 * 패션 상담: front, left, right, favorite, purpose
+	 * 솔루션: solution
 	 */
 	private void validateImageType(String imageType) {
 		if (imageType == null || imageType.trim().isEmpty()) {
@@ -312,6 +324,18 @@ public class S3PresignedUrlService {
 		}
 		if (!imageType.matches("^[a-z0-9\\-]+$")) {
 			throw new IllegalArgumentException("이미지 타입은 영문 소문자, 숫자, 하이픈만 허용됩니다.");
+		}
+		// 허용된 이미지 타입만 접수
+		String[] allowedTypes = {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose", "solution"};
+		boolean isValid = false;
+		for (String type : allowedTypes) {
+			if (imageType.equals(type)) {
+				isValid = true;
+				break;
+			}
+		}
+		if (!isValid) {
+			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다. (hairstyle, front, left, right, favorite, difficulty, purpose, solution만 가능)");
 		}
 	}
 
@@ -341,6 +365,20 @@ public class S3PresignedUrlService {
 		private String uploadUrl;
 		private String downloadUrl;
 		private Long expiresIn;
+	}
+
+	/**
+	 * S3 파일의 공개 URL 생성
+	 * 
+	 * @param s3Key S3 객체 키 (final/solution/{consultationId}/{fileName})
+	 * @return 공개 S3 URL
+	 */
+	public String generateS3Url(String s3Key) {
+		if (s3Key == null || s3Key.trim().isEmpty()) {
+			return null;
+		}
+		// S3 URL 형식: https://bucket-name.s3.region.amazonaws.com/key
+		return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, awsRegion, s3Key);
 	}
 }
 

@@ -21,10 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -64,24 +61,58 @@ public class ChatroomService {
         User expertUser = expertProfile.getUser();
         User memberUser = generalProfile.getUser();
 
-        String categoryName = expertProfile.getCategory().getDescription();
+        ChatroomType chatroomType = request.getChatroomType();
 
-        // 새로운 채팅방 생성
-        log.info("새 채팅방 생성 - consultationId: {}, type: {}", consultationId, request.getChatroomType());
+        // 같은 타입의 활성 채팅방이 있는지 확인
+        Optional<Chatroom> activeChatroom = chatroomRepository
+                .findActiveChatroomByMemberAndExpertAndType(
+                        memberUser.getId(),
+                        expertUser.getId(),
+                        chatroomType
+                );
 
-        Chatroom chatroom = Chatroom.builder()
-                .consultationId(consultationId)
-                .chatroomType(request.getChatroomType())
-                .member(memberUser)
-                .expert(expertUser)
-                .build();
+        if (activeChatroom.isPresent()) {
+            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, memberId: {}, expertId: {}",
+                    chatroomType, activeChatroom.get().getId(), memberUser.getId(), expertUser.getId());
+            throw new GlobalException(ChatErrorCode.CONSULTATION_ALREADY_IN_PROGRESS);
+        }
 
-        Chatroom savedChatroom = chatroomRepository.save(chatroom);
+        // 같은 타입의 비활성 채팅방이 있는지 확인
+        Optional<Chatroom> inactiveChatroom = chatroomRepository
+                .findLatestInactiveChatroomByMemberAndExpertAndType(
+                        memberUser.getId(),
+                        expertUser.getId(),
+                        chatroomType
+                );
+
+        Chatroom chatroom;
+
+        if (inactiveChatroom.isPresent()) {
+            // 기존 채팅방 재활성화
+            chatroom = inactiveChatroom.get();
+            chatroom.activate();
+            chatroom.updateConsultation(consultationId);
+
+            log.info("기존 {} 채팅방 재활성화 - chatroomId: {}, consultationId: {}",
+                    chatroomType, chatroom.getId(), consultationId);
+        } else {
+            // 새로운 채팅방 생성
+            log.info("새 {} 채팅방 생성 - consultationId: {}", chatroomType, consultationId);
+
+            chatroom = Chatroom.builder()
+                    .consultationId(consultationId)
+                    .chatroomType(chatroomType)
+                    .member(memberUser)
+                    .expert(expertUser)
+                    .build();
+
+            chatroom = chatroomRepository.save(chatroom);
+
+            log.info("채팅방 생성 완료 - chatroomId: {}, consultationId: {}, type: {}",
+                    chatroom.getId(), consultationId, chatroomType);
+        }
 
         // 응답 DTO 생성
-        log.info("채팅방 생성 완료 - chatroomId: {}, consultationId: {}, type: {}",
-                savedChatroom.getId(), consultationId, request.getChatroomType());
-
         ChatroomResponseDTO.ExpertInfo expertInfo = ChatroomResponseDTO.ExpertInfo.builder()
                 .userId(expertId)
                 .nickname(expertUser.getNickname())
@@ -93,7 +124,7 @@ public class ChatroomService {
                 .nickname(memberUser.getNickname())
                 .build();
 
-        return ChatroomResponseDTO.of(savedChatroom, expertInfo, memberInfo);
+        return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
     }
 
     /**

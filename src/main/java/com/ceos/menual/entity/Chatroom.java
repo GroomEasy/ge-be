@@ -47,4 +47,17 @@ public class Chatroom extends BaseEntity {
         this.consultationId = consultationId;
         this.isActive = true;
     }
+
+    // ====== 비즈니스 메서드 ======= //
+    public void activate() {
+        this.isActive = true;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
+    public void updateConsultation(Long newConsultationId) {
+        this.consultationId = newConsultationId;
+    }
 }

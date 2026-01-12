@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.ceos.menual.domain.review.dto.response.AvailableReviewResponseDTO;
+import com.ceos.menual.domain.review.dto.response.CompletedReviewResponseDTO;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.querydsl.core.Tuple;
@@ -157,6 +159,82 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 				})
 				.collect(Collectors.toList());
 	}
+
+	@Override
+	public List<AvailableReviewResponseDTO> findAvailableReviews(Long generalProfileId) {
+		return queryFactory
+				.select(Projections.constructor(
+						AvailableReviewResponseDTO.class,
+						c.id,
+						u.nickname,
+						u.profileImage,
+						ep.category,
+						c.scheduleTime,
+						ep.introduction
+				))
+				.from(c)
+				.join(c.expertProfile, ep)
+				.join(ep.user, u)
+				.where(
+						c.generalProfile.id.eq(generalProfileId),
+						c.reviewWritten.isFalse(), // 후기 미작성
+						c.status.in(
+								com.ceos.menual.entity.enums.ConsultationStatus.IN_PROGRESS,
+								com.ceos.menual.entity.enums.ConsultationStatus.COMPLETED
+						)
+				)
+				.orderBy(c.scheduleTime.desc())
+				.fetch();
+	}
+
+	@Override
+	public List<CompletedReviewResponseDTO> findCompletedReviews(Long generalProfileId) {
+		// Review + Consultation + ExpertProfile + User 조회
+		List<Tuple> results = queryFactory
+				.select(
+						r.id,
+						c.scheduleTime,
+						u.nickname,
+						r.rating,
+						r.content
+				)
+				.from(r)
+				.join(r.consultation, c)
+				.join(c.expertProfile, ep)
+				.join(ep.user, u)
+				.where(
+						c.generalProfile.id.eq(generalProfileId),
+						c.reviewWritten.isTrue() // 후기 작성 완료
+				)
+				.orderBy(c.scheduleTime.desc())
+				.fetch();
+
+		if (results.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// reviewId 추출
+		List<Long> reviewIds = results.stream()
+				.map(t -> t.get(r.id))
+				.collect(Collectors.toList());
+
+		// 후기 이미지 배치 조회
+		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
+
+		// DTO 조립
+		return results.stream()
+				.map(tuple -> CompletedReviewResponseDTO.builder()
+						.reviewId(tuple.get(r.id))
+						.consultationDate(tuple.get(c.scheduleTime))
+						.expertName(tuple.get(u.nickname))
+						.rating(tuple.get(r.rating))
+						.content(tuple.get(r.content))
+						.imageUrls(imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
+						.build())
+				.collect(Collectors.toList());
+	}
+
+	// ======== 헬퍼 메서드 ======== //
 
 	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> reviewIds) {
 

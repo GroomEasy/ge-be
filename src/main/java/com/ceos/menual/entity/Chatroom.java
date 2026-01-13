@@ -32,7 +32,7 @@ public class Chatroom extends BaseEntity {
     @JoinColumn(name = "expert_id", nullable = false)
     private User expert;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long consultationId;
 
     // 채팅방 활성화 여부
@@ -46,5 +46,18 @@ public class Chatroom extends BaseEntity {
         this.chatroomType = chatroomType;
         this.consultationId = consultationId;
         this.isActive = true;
+    }
+
+    // ====== 비즈니스 메서드 ======= //
+    public void activate() {
+        this.isActive = true;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
+    public void updateConsultation(Long newConsultationId) {
+        this.consultationId = newConsultationId;
     }
 }

@@ -34,6 +34,7 @@ public class UserInfoResponseDTO {
 
         return UserInfoResponseDTO.builder()
                 .userId(user.getId())
+                .userType(user.getUserType())
                 .nickname(user.getNickname())
                 .userType(user.getUserType())
                 .expertLikeCount(expertLikeCount)

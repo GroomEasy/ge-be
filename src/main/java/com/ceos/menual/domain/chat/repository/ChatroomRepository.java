@@ -34,4 +34,45 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
     List<Chatroom> findAllByParticipantIdAndType(@Param("memberId") Long memberId,
                                                  @Param("chatroomType") ChatroomType chatroomType);
 
+    /**
+     * 회원과 전문가 간의 특정 타입의 활성 채팅방 조회
+     */
+    @Query("SELECT c FROM Chatroom c " +
+            "WHERE c.member.id = :memberId " +
+            "AND c.expert.id = :expertId " +
+            "AND c.chatroomType = :chatroomType " +
+            "AND c.isActive = true")
+    Optional<Chatroom> findActiveChatroomByMemberAndExpertAndType(
+            @Param("memberId") Long memberId,
+            @Param("expertId") Long expertId,
+            @Param("chatroomType") ChatroomType chatroomType
+    );
+
+    /**
+     * 회원과 전문가 간의 특정 타입의 비활성 채팅방 조회 (가장 최근 것)
+     */
+    @Query("SELECT c FROM Chatroom c " +
+            "WHERE c.member.id = :memberId " +
+            "AND c.expert.id = :expertId " +
+            "AND c.chatroomType = :chatroomType " +
+            "AND c.isActive = false " +
+            "ORDER BY c.createdAt DESC")
+    Optional<Chatroom> findLatestInactiveChatroomByMemberAndExpertAndType(
+            @Param("memberId") Long memberId,
+            @Param("expertId") Long expertId,
+            @Param("chatroomType") ChatroomType chatroomType
+    );
+
+    /**
+     * 관리자-전문가 ADMIN 타입 채팅방 조회
+     */
+    @Query("SELECT c FROM Chatroom c " +
+            "WHERE c.member.id = :adminId " +
+            "AND c.expert.id = :expertId " +
+            "AND c.chatroomType = 'ADMIN' " +
+            "AND c.isActive = true")
+    Optional<Chatroom> findActiveAdminChatroomByAdminAndExpert(
+            @Param("adminId") Long adminId,
+            @Param("expertId") Long expertId
+    );
 }

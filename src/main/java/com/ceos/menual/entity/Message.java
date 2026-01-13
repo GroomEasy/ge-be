@@ -2,6 +2,7 @@ package com.ceos.menual.entity;
 
 import com.ceos.menual.domain.chat.dto.request.ChatMessageDTO;
 import com.ceos.menual.entity.enums.MessageType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -43,6 +44,7 @@ public class Message extends BaseEntity {
     @Column(name = "is_read")
     private boolean isRead;
 
+    @Schema(description = "고민지 메세지에는 reservationId, 솔루션지 메세지에는 consultationId")
     @Column(name = "related_id")
     private Long relatedId; // 고민지/솔루션지 ID 등
 

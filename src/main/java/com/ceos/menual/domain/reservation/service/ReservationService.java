@@ -2,6 +2,8 @@ package com.ceos.menual.domain.reservation.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.repository.ChatroomRepository;
+import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
@@ -38,10 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -58,6 +57,8 @@ public class ReservationService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final ChatroomService chatroomService;
     private final ConsultationScheduleRepository consultationScheduleRepository;
+    private final ChatMessageService chatMessageService;
+    private final ChatroomRepository chatroomRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -72,7 +73,7 @@ public class ReservationService {
      * - PESSIMISTIC_WRITE 락으로 경합 제어
      * - 첫 번째 요청만 성공, 나머지는 대기 후 INVALID_RESERVATION_STATUS 예외
      * - Consultation 중복 생성 방지
-     * 
+     *
      * 동시에 S3의 임시 저장 이미지를 최종 저장 위치로 이동
      * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
      *     → final/{resourceType}/{resourceId}/{imageType}/{fileName}
@@ -93,7 +94,7 @@ public class ReservationService {
         // 예약 상태 검증 (UNPAID 상태만 결제 가능)
         // 락 획득 후 상태 재확인 (락 대기 중 다른 트랜잭션이 상태를 변경했을 수 있음)
         if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
-            log.warn("예약 상태 불일치 (동시성 처리됨) - reservationId: {}, status: {}", 
+            log.warn("예약 상태 불일치 (동시성 처리됨) - reservationId: {}, status: {}",
                 reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -109,7 +110,7 @@ public class ReservationService {
                 .build();
 
         Consultation savedConsultation = consultationRepository.save(consultation);
-        log.info("Consultation 생성 완료 - consultationId: {}, reservationId: {}", 
+        log.info("Consultation 생성 완료 - consultationId: {}, reservationId: {}",
             savedConsultation.getId(), reservationId);
 
         // 예약 상태를 PAID로 변경하고 consultation과 연결
@@ -120,8 +121,8 @@ public class ReservationService {
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
         
-        // 채팅방 생성
-        createChatroomsForConsultation(savedConsultation);
+        // 채팅방 자동 생성 및 고민지 전송
+        createChatroomsAndSendConcern(savedConsultation, reservation);
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
@@ -181,12 +182,12 @@ public class ReservationService {
                 allImageKeys.addAll(requestDTO.getFashion().getImages().getPurpose());
             }
         }
-        
+
         // 이미지 키 형식 검증
         if (!allImageKeys.isEmpty()) {
             List<String> invalidImageKeys = validateImageKeysFormat(allImageKeys);
             if (!invalidImageKeys.isEmpty()) {
-                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}", 
+                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}",
                     reservationId, invalidImageKeys);
                 throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
             }
@@ -262,12 +263,12 @@ public class ReservationService {
                 allImageKeys.addAll(requestDTO.getHair().getImages().getDifficulty());
             }
         }
-        
+
         // 이미지 키 형식 검증
         if (!allImageKeys.isEmpty()) {
             List<String> invalidImageKeys = validateImageKeysFormat(allImageKeys);
             if (!invalidImageKeys.isEmpty()) {
-                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}", 
+                log.error("잘못된 이미지 키 형식 발견 - 저장 중단 - reservationId: {}, invalidKeys: {}",
                     reservationId, invalidImageKeys);
                 throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
             }
@@ -573,7 +574,7 @@ public class ReservationService {
      * 
      * 지원 형식:
      * tmp/consultation/reservation-{resourceId}/{imageType}/{fileName}
-     * 
+     *
      * @param imageKey 검증할 이미지 키
      * @return 유효하면 true, 아니면 false
      */
@@ -645,10 +646,10 @@ public class ReservationService {
             }
 
             ConcernJsonDTO concernJson = objectMapper.readValue(concernsJsonString, ConcernJsonDTO.class);
-            
+
             // 패션 또는 헤어 상담 고민지에서 이미지 키 추출
             List<String> imageKeys = new ArrayList<>();
-            
+
             if (concernJson.getFashion() != null && concernJson.getFashion().getImages() != null) {
                 FashionImageListDTO fashionImages = concernJson.getFashion().getImages();
                 if (fashionImages.getFront() != null) imageKeys.addAll(fashionImages.getFront());
@@ -679,7 +680,7 @@ public class ReservationService {
             // 사전 검증: 모든 이미지 키가 유효한 형식이고 현재 예약에 속하는지 확인 (이동 작업 전)
             List<String> invalidImageKeys = validateImageKeysFormat(imageKeys);
             if (!invalidImageKeys.isEmpty()) {
-                log.error("잘못된 이미지 키 형식 발견 - 이동 작업 중단 - reservationId: {}, consultationId: {}, invalidKeys: {}", 
+                log.error("잘못된 이미지 키 형식 발견 - 이동 작업 중단 - reservationId: {}, consultationId: {}, invalidKeys: {}",
                     reservationId, consultationId, invalidImageKeys);
                 throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
             }
@@ -696,7 +697,7 @@ public class ReservationService {
                     log.error("부족한 경로 구성요소 - 예상 5개, 실제: {}, imageKey: {}", parts.length, imageKey);
                     continue;
                 }
-                
+
                 String reservationIdPart = parts[2];
                 // 정확한 일치 검증 (equals 사용) - startsWith는 불안전
                 if (!reservationIdPart.equals(expectedReservationPrefix)) {
@@ -709,7 +710,7 @@ public class ReservationService {
 
             if (!unauthorizedImageKeys.isEmpty()) {
                 log.error("권한 없는 이미지 키 발견 - 이동 작업 중단 (보안) - " +
-                    "reservationId: {}, consultationId: {}, unauthorizedKeys: {}", 
+                    "reservationId: {}, consultationId: {}, unauthorizedKeys: {}",
                     reservationId, consultationId, unauthorizedImageKeys);
                 throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
             }
@@ -717,9 +718,9 @@ public class ReservationService {
             // 모든 키가 유효하고 소유권이 확인된 경우에만 이미지 이동 시작
             for (String imageKey : imageKeys) {
                 String[] parts = imageKey.split("/");
-                
+
                 if (parts.length < 5) {
-                    log.error("예상치 못한 이미지 키 형식 - reservationId: {}, consultationId: {}, imageKey: {}", 
+                    log.error("예상치 못한 이미지 키 형식 - reservationId: {}, consultationId: {}, imageKey: {}",
                         reservationId, consultationId, imageKey);
                     throw new GlobalException(ReservationErrorCode.INVALID_IMAGE_KEY_FORMAT);
                 }
@@ -732,7 +733,7 @@ public class ReservationService {
 
                 s3PresignedUrlService.moveImageFromTempToFinal(imageKey, finalS3Key);
 
-                log.info("이미지 이동 완료 - reservationId: {}, from: {}, to: {}", 
+                log.info("이미지 이동 완료 - reservationId: {}, from: {}, to: {}",
                     reservationId, imageKey, finalS3Key);
             }
 
@@ -765,9 +766,9 @@ public class ReservationService {
                         .favorite(updateImagePaths(fashionImages.getFavorite(), imagePathMapping))
                         .purpose(updateImagePaths(fashionImages.getPurpose(), imagePathMapping))
                         .build();
-                
+
                 // FashionConcernDTO 재구성
-                com.ceos.menual.domain.reservation.dto.FashionConcernDTO updatedFashion = 
+                com.ceos.menual.domain.reservation.dto.FashionConcernDTO updatedFashion =
                     com.ceos.menual.domain.reservation.dto.FashionConcernDTO.builder()
                         .height(concernJson.getFashion().getHeight())
                         .weight(concernJson.getFashion().getWeight())
@@ -784,7 +785,7 @@ public class ReservationService {
                         .outfitEtcText(concernJson.getFashion().getOutfitEtcText())
                         .images(updatedFashionImages)
                         .build();
-                
+
                 concernJson = ConcernJsonDTO.builder()
                         .type(concernJson.getType())
                         .fashion(updatedFashion)
@@ -802,9 +803,9 @@ public class ReservationService {
                         .favorite(updateImagePaths(hairImages.getFavorite(), imagePathMapping))
                         .difficulty(updateImagePaths(hairImages.getDifficulty(), imagePathMapping))
                         .build();
-                
+
                 // HairConcernDTO 재구성
-                com.ceos.menual.domain.reservation.dto.HairConcernDTO updatedHair = 
+                com.ceos.menual.domain.reservation.dto.HairConcernDTO updatedHair =
                     com.ceos.menual.domain.reservation.dto.HairConcernDTO.builder()
                         .faceAdvantages(concernJson.getHair().getFaceAdvantages())
                         .faceAdvantagesEtcText(concernJson.getHair().getFaceAdvantagesEtcText())
@@ -814,7 +815,7 @@ public class ReservationService {
                         .stylingDifficulty(concernJson.getHair().getStylingDifficulty())
                         .images(updatedHairImages)
                         .build();
-                
+
                 concernJson = ConcernJsonDTO.builder()
                         .type(concernJson.getType())
                         .fashion(concernJson.getFashion())
@@ -832,54 +833,130 @@ public class ReservationService {
 
         } catch (GlobalException e) {
             // GlobalException은 그대로 rethrow (의도적인 예외 유지)
-            log.error("S3 이미지 이동 중 검증 오류 - consultationId: {}, resultCode: {}", 
+            log.error("S3 이미지 이동 중 검증 오류 - consultationId: {}, resultCode: {}",
                 consultation.getId(), e.getResultCode(), e);
             throw e;
         } catch (Exception e) {
             // JSON 처리 오류 등 예상치 못한 예외만 여기서 처리
-            log.error("S3 이미지 이동 중 예상치 못한 오류 발생 - consultationId: {}", 
+            log.error("S3 이미지 이동 중 예상치 못한 오류 발생 - consultationId: {}",
                 consultation.getId(), e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
     }
 
     /**
-     * 상담 확정 시 채팅방 자동 생성
-     * - 상담 타입에 따라 MESSAGE 또는 VIDEO 채팅방 생성
+     * 상담 확정 시 채팅방 자동 생성 및 고민지 전송
      */
     @Transactional
-    public void createChatroomsForConsultation(Consultation consultation) {
+    public void createChatroomsAndSendConcern(Consultation consultation, Reservation reservation) {
         log.info("채팅방 자동 생성 시작 - consultationId: {}, type: {}",
                 consultation.getId(), consultation.getType());
 
-        // 전문가 ID 추출 (채팅방 생성 주체)
         Long expertId = consultation.getExpertProfile().getUser().getId();
+        Long memberId = consultation.getGeneralProfile().getUser().getId();
         Long consultationId = consultation.getId();
 
         // 상담 타입에 따라 채팅방 생성
+        ChatroomType chatroomType;
         if (consultation.getType() == ConsultationType.MESSAGE) {
-            // 메시지 상담 MESSAGE 채팅방 생성
-            createChatroom(expertId, consultationId, ChatroomType.MESSAGE);
-
+            chatroomType = ChatroomType.MESSAGE;
         } else if (consultation.getType() == ConsultationType.VIDEO) {
-            // 화상 상담 VIDEO 채팅방 생성
-            createChatroom(expertId, consultationId, ChatroomType.VIDEO);
+            chatroomType = ChatroomType.VIDEO;
+        } else {
+            throw new GlobalException(ReservationErrorCode.INVALID_CONSULTATION_TYPE);
+        }
+        // 채팅방 생성
+        Long chatroomId = createChatroom(expertId, consultationId, chatroomType);
+
+        // 고민지가 있으면 자동 전송
+        if (reservation.getConcernsJson() != null && !reservation.getConcernsJson().isEmpty()) {
+            chatMessageService.sendConcernMessage(
+                    chatroomId,
+                    memberId,
+                    reservation.getConcernsJson(),
+                    reservation.getId()
+            );
+            log.info("고민지 자동 전송 완료 - chatroomId: {}, reservationId: {}",
+                    chatroomId, reservation.getId());
         }
 
-        log.info("채팅방 자동 생성 완료 - consultationId: {}", consultationId);
+        // 관리자 시스템 메시지 전송 (전문가에게 알림)
+        Long adminUserId = 999L;
+        Long adminChatroomId = createOrGetAdminChatroom(adminUserId, expertId);
+
+        // 관리자-전문가 채팅방에 알림 전송
+        String memberName = consultation.getGeneralProfile().getUser().getNickname();
+        LocalDateTime scheduledDateTime = reservation.getScheduledDateTime();
+
+        chatMessageService.sendReservationNotificationToExpert(
+                adminChatroomId,
+                adminUserId,
+                memberName,
+                scheduledDateTime,
+                consultation.getType(),
+                consultationId
+        );
+        log.info("관리자 시스템 메시지 전송 완료 - chatroomId: {}", chatroomId);
+
+        log.info("채팅방 자동 생성 및 고민지 전송 완료 - consultationId: {}, chatroomId: {}",
+                consultationId, chatroomId);
+    }
+
+    /**
+     * 관리자-전문가 알림 채팅방 생성 또는 조회
+     */
+    private Long createOrGetAdminChatroom(Long adminUserId, Long expertId) {
+        log.info("관리자-전문가 채팅방 조회 시작 - adminId: {}, expertId: {}", adminUserId, expertId);
+
+        // 관리자 User 조회
+        User adminUser = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 전문가 User 조회
+        User expertUser = userRepository.findById(expertId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 기존 관리자-전문가 채팅방이 있는지 확인
+        Optional<Chatroom> existingAdminChatroom = chatroomRepository
+                .findActiveAdminChatroomByAdminAndExpert(adminUserId, expertId);
+
+        if (existingAdminChatroom.isPresent()) {
+            log.info("기존 관리자-전문가 채팅방 사용 - chatroomId: {}",
+                    existingAdminChatroom.get().getId());
+            return existingAdminChatroom.get().getId();
+        }
+
+        // 새로운 관리자-전문가 채팅방 생성
+        Chatroom adminChatroom = Chatroom.builder()
+                .consultationId(null)
+                .chatroomType(ChatroomType.ADMIN)
+                .member(adminUser)
+                .expert(expertUser)
+                .build();
+
+        Chatroom savedAdminChatroom = chatroomRepository.save(adminChatroom);
+
+        log.info("새 관리자-전문가 채팅방 생성 완료 - chatroomId: {}", savedAdminChatroom.getId());
+
+        return savedAdminChatroom.getId();
     }
 
     /**
      * 특정 타입의 채팅방 생성
+     * @return 생성된 채팅방 ID
      */
-    private void createChatroom(Long expertId, Long consultationId, ChatroomType chatroomType) {
+    private Long createChatroom(Long expertId, Long consultationId, ChatroomType chatroomType) {
         ChatroomCreateRequestDTO request = ChatroomCreateRequestDTO.builder()
                 .consultationId(consultationId)
                 .chatroomType(chatroomType)
                 .build();
 
-            ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
-            log.info("채팅방 생성 성공 - chatroomId: {}, type: {}", chatroom.getChatroomId(), chatroomType);
+        ChatroomResponseDTO chatroom = chatroomService.createChatroom(expertId, consultationId, request);
+
+        log.info("채팅방 생성 성공 - chatroomId: {}, type: {}",
+                chatroom.getChatroomId(), chatroomType);
+
+        return chatroom.getChatroomId();
     }
 
     /**
@@ -893,4 +970,5 @@ public class ReservationService {
                 .map(oldPath -> imagePathMapping.getOrDefault(oldPath, oldPath))
                 .collect(Collectors.toList());
     }
+
 }

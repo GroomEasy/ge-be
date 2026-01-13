@@ -2,6 +2,7 @@ package com.ceos.menual.domain.reservation.service;
 
 import com.ceos.menual.domain.chat.dto.request.ChatroomCreateRequestDTO;
 import com.ceos.menual.domain.chat.dto.response.ChatroomResponseDTO;
+import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
@@ -39,10 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -60,6 +58,7 @@ public class ReservationService {
     private final ChatroomService chatroomService;
     private final ConsultationScheduleRepository consultationScheduleRepository;
     private final ChatMessageService chatMessageService;
+    private final ChatroomRepository chatroomRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -881,8 +880,65 @@ public class ReservationService {
                     chatroomId, reservation.getId());
         }
 
+        // 관리자 시스템 메시지 전송 (전문가에게 알림)
+        Long adminUserId = 999L;
+        Long adminChatroomId = createOrGetAdminChatroom(adminUserId, expertId);
+
+        // 관리자-전문가 채팅방에 알림 전송
+        String memberName = consultation.getGeneralProfile().getUser().getNickname();
+        LocalDateTime scheduledDateTime = reservation.getScheduledDateTime();
+
+        chatMessageService.sendReservationNotificationToExpert(
+                adminChatroomId,
+                adminUserId,
+                memberName,
+                scheduledDateTime,
+                consultation.getType(),
+                consultationId
+        );
+        log.info("관리자 시스템 메시지 전송 완료 - chatroomId: {}", chatroomId);
+
         log.info("채팅방 자동 생성 및 고민지 전송 완료 - consultationId: {}, chatroomId: {}",
                 consultationId, chatroomId);
+    }
+
+    /**
+     * 관리자-전문가 알림 채팅방 생성 또는 조회
+     */
+    private Long createOrGetAdminChatroom(Long adminUserId, Long expertId) {
+        log.info("관리자-전문가 채팅방 조회 시작 - adminId: {}, expertId: {}", adminUserId, expertId);
+
+        // 관리자 User 조회
+        User adminUser = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 전문가 User 조회
+        User expertUser = userRepository.findById(expertId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 기존 관리자-전문가 채팅방이 있는지 확인
+        Optional<Chatroom> existingAdminChatroom = chatroomRepository
+                .findActiveAdminChatroomByAdminAndExpert(adminUserId, expertId);
+
+        if (existingAdminChatroom.isPresent()) {
+            log.info("기존 관리자-전문가 채팅방 사용 - chatroomId: {}",
+                    existingAdminChatroom.get().getId());
+            return existingAdminChatroom.get().getId();
+        }
+
+        // 새로운 관리자-전문가 채팅방 생성
+        Chatroom adminChatroom = Chatroom.builder()
+                .consultationId(null)
+                .chatroomType(ChatroomType.ADMIN)
+                .member(adminUser)
+                .expert(expertUser)
+                .build();
+
+        Chatroom savedAdminChatroom = chatroomRepository.save(adminChatroom);
+
+        log.info("새 관리자-전문가 채팅방 생성 완료 - chatroomId: {}", savedAdminChatroom.getId());
+
+        return savedAdminChatroom.getId();
     }
 
     /**

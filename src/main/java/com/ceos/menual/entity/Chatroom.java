@@ -32,7 +32,7 @@ public class Chatroom extends BaseEntity {
     @JoinColumn(name = "expert_id", nullable = false)
     private User expert;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long consultationId;
 
     // 채팅방 활성화 여부

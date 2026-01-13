@@ -71,11 +71,12 @@ public class ChatroomService {
                         chatroomType
                 );
 
-        if (activeChatroom.isPresent()) {
-            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, memberId: {}, expertId: {}",
-                    chatroomType, activeChatroom.get().getId(), memberUser.getId(), expertUser.getId());
-            throw new GlobalException(ChatErrorCode.CONSULTATION_ALREADY_IN_PROGRESS);
-        }
+        // TODO: 개발 단계에서는 검증 X
+//        if (activeChatroom.isPresent()) {
+//            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, memberId: {}, expertId: {}",
+//                    chatroomType, activeChatroom.get().getId(), memberUser.getId(), expertUser.getId());
+//            throw new GlobalException(ChatErrorCode.CONSULTATION_ALREADY_IN_PROGRESS);
+//        }
 
         // 같은 타입의 비활성 채팅방이 있는지 확인
         Optional<Chatroom> inactiveChatroom = chatroomRepository

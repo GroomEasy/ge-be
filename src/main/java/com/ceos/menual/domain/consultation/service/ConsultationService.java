@@ -7,14 +7,12 @@ import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
+import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
-import com.ceos.menual.entity.Chatroom;
-import com.ceos.menual.entity.Consultation;
+import com.ceos.menual.entity.*;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
-import com.ceos.menual.entity.GeneralProfile;
-import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +35,7 @@ public class ConsultationService {
     private final S3PresignedUrlService s3PresignedUrlService;
     private final ChatroomRepository chatroomRepository;
     private final ChatMessageService chatMessageService;
+    private final ReservationRepository reservationRepository;
 
     /**
      * 지난 상담 내역 조회 (전체)
@@ -65,6 +64,67 @@ public class ConsultationService {
 
         return consultations;
     }
+
+    /**
+     * 고민지 조회 - 해당 전문가 또는 상담 회원만 가능
+     */
+    @Transactional(readOnly = true)
+    public String getConcern(Long consultationId, Long userId, String userType) {
+        log.info("고민지 조회 시작 - consultationId: {}, userId: {}, userType: {}",
+                consultationId, userId, userType);
+
+        // 상담 정보 조회
+        Consultation consultation = consultationRepository.findByIdWithProfiles(consultationId)
+                .orElseThrow(() -> new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND));
+
+        // Null 체크
+        if (consultation.getExpertProfile() == null || consultation.getExpertProfile().getUser() == null) {
+            log.error("상담 ID: {}의 전문가 프로필 또는 사용자가 없습니다", consultationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND);
+        }
+
+        if (consultation.getGeneralProfile() == null || consultation.getGeneralProfile().getUser() == null) {
+            log.error("상담 ID: {}의 회원 프로필 또는 사용자가 없습니다", consultationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND);
+        }
+
+        Long expertUserId = consultation.getExpertProfile().getUser().getId();
+        Long memberUserId = consultation.getGeneralProfile().getUser().getId();
+
+        log.debug("권한 검증 - 요청 사용자 ID: {}, 타입: {}", userId, userType);
+        log.debug("전문가 User ID: {}, 회원 User ID: {}", expertUserId, memberUserId);
+
+        // 해당 전문가 또는 상담 회원만 조회 가능
+        boolean isExpert = "EXPERT".equals(userType) && expertUserId.equals(userId);
+        boolean isMember = "MEMBER".equals(userType) && memberUserId.equals(userId);
+
+        log.debug("isExpert: {}, isMember: {}", isExpert, isMember);
+
+        if (!isExpert && !isMember) {
+            log.warn("권한 없음 - 사용자: {}, 타입: {}", userId, userType);
+            throw new GlobalException(ConsultationErrorCode.UNAUTHORIZED_CONSULTATION);
+        }
+
+        // Reservation에서 고민지 조회
+        Reservation reservation = reservationRepository.findByConsultationId(consultationId)
+                .orElseThrow(() -> {
+                    log.error("상담 ID: {}에 연결된 예약을 찾을 수 없습니다", consultationId);
+                    return new GlobalException(ConsultationErrorCode.RESERVATION_NOT_FOUND);
+                });
+
+        String concernsJson = reservation.getConcernsJson();
+
+        if (concernsJson == null || concernsJson.isEmpty()) {
+            log.warn("고민지가 없습니다 - consultationId: {}", consultationId);
+            return null;  // 또는 빈 문자열 "" 반환
+        }
+
+        log.info("고민지 조회 완료 - consultationId: {}, concernsJsonLength: {}",
+                consultationId, concernsJson.length());
+
+        return concernsJson;
+    }
+
     /**
      * 솔루션 저장 - 해당 전문가만 가능
      * 

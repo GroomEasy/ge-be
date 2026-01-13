@@ -88,4 +88,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("reservationId") Long reservationId,
             @Param("consultationId") Long consultationId
     );
+
+    /**
+     * consultationId로 Reservation 조회
+     */
+    Optional<Reservation> findByConsultationId(Long consultationId);
 }

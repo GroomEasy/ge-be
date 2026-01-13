@@ -1,11 +1,15 @@
 package com.ceos.menual.domain.consultation.service;
 
+import com.ceos.menual.domain.chat.exception.ChatErrorCode;
+import com.ceos.menual.domain.chat.repository.ChatroomRepository;
+import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
+import com.ceos.menual.entity.Chatroom;
 import com.ceos.menual.entity.Consultation;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
@@ -31,6 +35,8 @@ public class ConsultationService {
     private final UserRepository userRepository;
     private final ConsultationRepository consultationRepository;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final ChatroomRepository chatroomRepository;
+    private final ChatMessageService chatMessageService;
 
     /**
      * 지난 상담 내역 조회 (전체)
@@ -99,7 +105,10 @@ public class ConsultationService {
         // Dirty checking: @Transactional에서 자동 저장 (명시적 save 불필요)
         log.info("솔루션 저장 완료 - consultationId: {}, solutionLength: {}", 
             consultationId, solutionText != null ? solutionText.length() : 0);
-        
+
+        // 회원에게 솔루션지 알림 전송
+        sendSolutionNotificationToMember(consultation);
+
         return consultation;
     }
 
@@ -198,6 +207,48 @@ public class ConsultationService {
         matcher.appendTail(result);
         
         return result.toString();
+    }
+
+    /**
+     * 회원에게 솔루션지 도착 알림 전송
+     */
+    private void sendSolutionNotificationToMember(Consultation consultation) {
+        Long consultationId = consultation.getId();
+
+        try {
+            // consultationId로 활성 채팅방 조회 (MESSAGE 또는 VIDEO)
+            Chatroom chatroom = chatroomRepository.findActiveConsultationChatroom(consultationId)
+                    .orElseThrow(() -> {
+                        log.error("상담 채팅방을 찾을 수 없습니다 - consultationId: {}", consultationId);
+                        return new GlobalException(ChatErrorCode.CHATROOM_NOT_FOUND);
+                    });
+
+            // 전문가 ID 추출
+            Long expertId = consultation.getExpertProfile().getUser().getId();
+
+            // 회원 닉네임 추출
+            String memberNickname = consultation.getGeneralProfile().getUser().getNickname();
+
+            // 솔루션지 메시지 전송
+            chatMessageService.sendSolutionMessage(
+                    chatroom.getId(),
+                    expertId,
+                    memberNickname,
+                    consultationId
+            );
+
+            log.info("솔루션지 알림 전송 완료 - consultationId: {}, chatroomId: {}",
+                    consultationId, chatroom.getId());
+
+        } catch (GlobalException e) {
+            // GlobalException은 그대로 throw (트랜잭션 롤백)
+            log.error("솔루션지 알림 전송 실패 - consultationId: {}", consultationId, e);
+            throw e;
+        } catch (Exception e) {
+            // 예상치 못한 예외도 로깅 후 throw (트랜잭션 롤백)
+            log.error("솔루션지 알림 전송 중 예상치 못한 오류 - consultationId: {}", consultationId, e);
+            throw new GlobalException(ChatErrorCode.ERROR_SAVING_MESSAGE);
+        }
     }
 
 }

@@ -18,7 +18,7 @@ public enum UserErrorCode implements ResultCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "존재하지 않는 사용자입니다."),
     GENERAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1107, "일반 회원 프로필이 존재하지 않습니다."),
     NOT_MEMBER(HttpStatus.FORBIDDEN, 1108, "일반 회원이 아닙니다."),
-    ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, 1009, "관리자 권한이 필요합니다.");
+    ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, 1109, "관리자 권한이 필요합니다.");
 
 
 

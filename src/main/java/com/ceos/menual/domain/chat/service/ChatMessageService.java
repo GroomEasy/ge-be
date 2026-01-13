@@ -106,7 +106,8 @@ public class ChatMessageService {
         messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
 
         log.info("솔루션지 메시지 전송 완료 - messageId: {}, chatroomId: {}",
-                savedMessage.getId(), chatroomId);    }
+                savedMessage.getId(), chatroomId);
+    }
 
     /**
      *  관리자 시스템 메시지 전송 (상담 예약 알림)
@@ -160,7 +161,8 @@ public class ChatMessageService {
         messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
 
         log.info("상담 예약 알림 전송 완료 - messageId: {}, chatroomId: {}",
-                savedMessage.getId(), chatroomId);    }
+                savedMessage.getId(), chatroomId);
+    }
 
     /**
      * 예약 알림 메시지 포맷 생성

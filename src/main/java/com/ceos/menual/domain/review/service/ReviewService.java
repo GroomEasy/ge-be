@@ -9,6 +9,7 @@ import com.ceos.menual.domain.review.dto.response.AvailableReviewResponseDTO;
 import com.ceos.menual.domain.review.dto.response.CompletedReviewResponseDTO;
 import com.ceos.menual.domain.review.dto.response.CreateReviewResponseDTO;
 import com.ceos.menual.domain.review.exception.ReviewErrorCode;
+import com.ceos.menual.domain.review.repository.HashtagRepository;
 import com.ceos.menual.domain.review.repository.ReviewJpaRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
@@ -35,6 +36,7 @@ public class ReviewService {
 	private final UserRepository userRepository;
 	private final ConsultationRepository consultationRepository;
 	private final ReviewJpaRepository reviewJpaRepository;
+	private final HashtagRepository hashtagRepository;
 
 	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category, int page, int size) {
 		return reviewRepository.findRecentReviews(category, page, size);
@@ -125,6 +127,9 @@ public class ReviewService {
 		// 후기 작성 가능 여부 검증
 		validateReviewCreation(consultation);
 
+		// 해시태그 검증
+		validateHashtags(request.getHashtags());
+
 		// Review 엔티티 생성
 		Review review = Review.builder()
 				.consultation(consultation)
@@ -150,6 +155,11 @@ public class ReviewService {
 			}
 		}
 
+		// 해시태그 처리 추가!
+		if (request.getHashtags() != null && !request.getHashtags().isEmpty()) {
+			processHashtags(savedReview, request.getHashtags());
+		}
+
 		// Consultation의 reviewWritten을 true로 변경
 		consultation.markReviewAsWritten();
 
@@ -157,6 +167,8 @@ public class ReviewService {
 
 		return CreateReviewResponseDTO.of(savedReview.getId(), consultation.getId());
 	}
+
+	// =========== 비즈니스 메서드 ============ //
 
 	/**
 	 * 후기 작성 가능 여부 검증
@@ -173,5 +185,70 @@ public class ReviewService {
 			throw new GlobalException(ReviewErrorCode.CONSULTATION_NOT_COMPLETED);
 		}
 	}
+
+	/**
+	 * 해시태그 검증
+	 */
+	private void validateHashtags(List<String> hashtags) {
+		if (hashtags == null || hashtags.isEmpty()) {
+			return;
+		}
+
+		// 개수 검증
+		if (hashtags.size() > 5) {
+			throw new GlobalException(ReviewErrorCode.TOO_MANY_HASHTAGS);
+		}
+
+		// 각 해시태그 검증
+		for (String hashtag : hashtags) {
+			// 빈 문자열 체크
+			if (hashtag == null || hashtag.trim().isEmpty()) {
+				throw new GlobalException(ReviewErrorCode.EMPTY_HASHTAG);
+			}
+
+			String trimmedHashtag = hashtag.trim();
+
+			// 실제 문자 개수로 길이 검증 (한글 기준 6글자)
+			int actualLength = trimmedHashtag.codePointCount(0, trimmedHashtag.length());
+			if (actualLength > 6) {
+				throw new GlobalException(ReviewErrorCode.HASHTAG_TOO_LONG);
+			}
+		}
+	}
+
+	/**
+	 * 해시태그 처리
+	 * - 기존 해시태그가 있으면 재사용
+	 * - 없으면 새로 생성
+	 * - 사용 횟수 증가
+	 */
+	private void processHashtags(Review review, List<String> hashtagNames) {
+		for (String hashtagName : hashtagNames) {
+			String trimmedName = hashtagName.trim();
+
+			// 기존 해시태그 찾기 or 새로 생성
+			Hashtag hashtag = hashtagRepository.findByName(trimmedName)
+					.orElseGet(() -> {
+						Hashtag newHashtag = Hashtag.builder()
+								.name(trimmedName)
+								.usageCount(0)
+								.build();
+						return hashtagRepository.save(newHashtag);
+					});
+
+			// 사용 횟수 증가
+			hashtag.incrementUsageCount();
+
+			// ReviewHashtag 중간 테이블 생성
+			ReviewHashtag reviewHashtag = ReviewHashtag.builder()
+					.review(review)
+					.hashtag(hashtag)
+					.build();
+
+			// Review에 추가
+			review.addHashtag(reviewHashtag);
+		}
+	}
+
 
 }

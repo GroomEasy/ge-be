@@ -37,6 +37,33 @@ public class ConsultationController {
     private final UserRepository userRepository;
 
     /**
+     * 고민지 조회 - 해당 전문가 또는 상담 회원만 가능
+     */
+    @GetMapping("/{consultationId}/concern")
+    @Operation(summary = "고민지 조회", description = "상담의 고민지를 조회합니다 (해당 전문가 또는 상담 회원만 가능)")
+    public ResponseEntity<CommonResponse<String>> getConcern(
+            @PathVariable Long consultationId,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        log.debug("고민지 조회 요청 - 사용자 ID: {}, 상담 ID: {}", userId, consultationId);
+
+        String userType = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .peek(auth -> log.debug("검토 중인 권한: {}", auth))
+                .filter(auth -> auth.equals("ROLE_EXPERT") || auth.equals("ROLE_MEMBER"))
+                .map(auth -> auth.replace("ROLE_", ""))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("사용자 ID: {}는 ROLE_EXPERT 또는 ROLE_MEMBER 역할이 없습니다", userId);
+                    return new GlobalException(ConsultationErrorCode.INVALID_USER_ROLE);
+                });
+
+        String concern = consultationService.getConcern(consultationId, userId, userType);
+        return ResponseEntity.ok(CommonResponse.success(concern));
+    }
+
+    /**
      * 솔루션 저장 - 해당 전문가만 가능
      * 
      * PreAuthorize: ROLE_EXPERT만 접근 가능 (선언적 보안)

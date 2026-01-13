@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.consultation.repository;
 
 import com.ceos.menual.entity.Consultation;
+import com.ceos.menual.entity.Reservation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +26,12 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             "LEFT JOIN FETCH gp.user u2 " +         // 의뢰인의 User 정보
             "WHERE c.id = :id")
     Optional<Consultation> findByIdWithAllRelations(@Param("id") Long id);
+
+
+    /**
+     * consultationId로 Reservation 조회
+     */
+    @Query("SELECT r FROM Reservation r WHERE r.consultation.id = :consultationId")
+    Optional<Reservation> findByConsultationId(@Param("consultationId") Long consultationId);
+
 }

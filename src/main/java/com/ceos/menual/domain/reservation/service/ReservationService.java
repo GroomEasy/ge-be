@@ -81,7 +81,8 @@ public class ReservationService {
     @Transactional
     public CompletePaymentResponseDTO confirmPaymentByAdmin(
             Long reservationId,
-            CompletePaymentRequestDTO requestDTO
+            CompletePaymentRequestDTO requestDTO,
+            Long adminUserId
     ) {
         log.info("관리자 결제 확인 및 상담 생성 시작 - reservationId: {}", reservationId);
 
@@ -122,7 +123,7 @@ public class ReservationService {
         moveImagesToFinalLocation(reservation, savedConsultation);
         
         // 채팅방 자동 생성 및 고민지 전송
-        createChatroomsAndSendConcern(savedConsultation, reservation);
+        createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
@@ -848,7 +849,7 @@ public class ReservationService {
      * 상담 확정 시 채팅방 자동 생성 및 고민지 전송
      */
     @Transactional
-    public void createChatroomsAndSendConcern(Consultation consultation, Reservation reservation) {
+    public void createChatroomsAndSendConcern(Consultation consultation, Reservation reservation, Long adminUserId) {
         log.info("채팅방 자동 생성 시작 - consultationId: {}, type: {}",
                 consultation.getId(), consultation.getType());
 
@@ -881,7 +882,6 @@ public class ReservationService {
         }
 
         // 관리자 시스템 메시지 전송 (전문가에게 알림)
-        Long adminUserId = 999L;
         Long adminChatroomId = createOrGetAdminChatroom(adminUserId, expertId);
 
         // 관리자-전문가 채팅방에 알림 전송
@@ -911,6 +911,10 @@ public class ReservationService {
         // 관리자 User 조회
         User adminUser = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (adminUser.getUserType() != UserType.ADMIN) {
+            throw new GlobalException(UserErrorCode.ADMIN_PERMISSION_REQUIRED);
+        }
 
         // 전문가 User 조회
         User expertUser = userRepository.findById(expertId)

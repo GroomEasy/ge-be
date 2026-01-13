@@ -72,6 +72,21 @@ public class Message extends BaseEntity {
                 .build();
     }
 
+    // Entity -> DTO 변환
+    public ChatMessageDTO toDTO() {
+        return ChatMessageDTO.builder()
+                .messageId(this.id)
+                .chatroomId(this.chatroomId)
+                .senderId(this.senderId)
+                .messageType(this.messageType)
+                .content(this.content)
+                .imageUrl(this.imageUrl)
+                .relatedId(this.relatedId)
+                .createdAt(this.getCreatedAt())
+                .isRead(this.isRead)
+                .build();
+    }
+
     public void markAsRead() {
         this.isRead = true;
     }

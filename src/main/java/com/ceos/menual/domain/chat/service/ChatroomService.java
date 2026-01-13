@@ -79,8 +79,8 @@ public class ChatroomService {
 //        }
 
         // 같은 타입의 비활성 채팅방이 있는지 확인
-        Optional<Chatroom> inactiveChatroom = chatroomRepository
-                .findLatestInactiveChatroomByMemberAndExpertAndType(
+        List<Chatroom> inactiveChatrooms = chatroomRepository
+                .findInactiveChatroomsByMemberAndExpertAndType(
                         memberUser.getId(),
                         expertUser.getId(),
                         chatroomType
@@ -88,15 +88,16 @@ public class ChatroomService {
 
         Chatroom chatroom;
 
-        if (inactiveChatroom.isPresent()) {
-            // 기존 채팅방 재활성화
-            chatroom = inactiveChatroom.get();
+        if (!inactiveChatrooms.isEmpty()) {
+            // 가장 최근 비활성 채팅방 재활성화
+            chatroom = inactiveChatrooms.get(0);
             chatroom.activate();
             chatroom.updateConsultation(consultationId);
 
             log.info("기존 {} 채팅방 재활성화 - chatroomId: {}, consultationId: {}",
                     chatroomType, chatroom.getId(), consultationId);
         } else {
+
             // 새로운 채팅방 생성
             log.info("새 {} 채팅방 생성 - consultationId: {}", chatroomType, consultationId);
 

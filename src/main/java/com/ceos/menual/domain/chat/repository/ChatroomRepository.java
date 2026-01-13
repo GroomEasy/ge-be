@@ -57,7 +57,7 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
             "AND c.chatroomType = :chatroomType " +
             "AND c.isActive = false " +
             "ORDER BY c.createdAt DESC")
-    Optional<Chatroom> findLatestInactiveChatroomByMemberAndExpertAndType(
+    List<Chatroom> findInactiveChatroomsByMemberAndExpertAndType(
             @Param("memberId") Long memberId,
             @Param("expertId") Long expertId,
             @Param("chatroomType") ChatroomType chatroomType

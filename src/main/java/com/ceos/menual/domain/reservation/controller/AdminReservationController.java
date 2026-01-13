@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -34,12 +35,13 @@ public class AdminReservationController {
     public ResponseEntity<CommonResponse<CompletePaymentResponseDTO>> confirmPaymentByAdmin(
             @Parameter(description = "예약 ID", required = true, example = "1")
             @PathVariable Long reservationId,
-
-            @Valid @RequestBody CompletePaymentRequestDTO request
+            @Valid @RequestBody CompletePaymentRequestDTO request,
+            @AuthenticationPrincipal Long adminUserId
     ) {
         CompletePaymentResponseDTO response = reservationService.confirmPaymentByAdmin(
                 reservationId,
-                request
+                request,
+                adminUserId
         );
         return ResponseEntity.ok(CommonResponse.success(response));
     }

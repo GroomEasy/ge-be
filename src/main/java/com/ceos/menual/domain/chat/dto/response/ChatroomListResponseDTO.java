@@ -25,7 +25,7 @@ public class ChatroomListResponseDTO {
     @Schema(description = "연관된 상담/컨설팅 ID", example = "55")
     private Long consultationId;
 
-    @Schema(description = "채팅방 타입 (MESSAGE, VIDEO, NOTICE)", example = "MESSAGE")
+    @Schema(description = "채팅방 타입 (MESSAGE, VIDEO, ADMIN)", example = "MESSAGE")
     private ChatroomType chatroomType;
 
     @Schema(description = "상대방 ID (회원 또는 멘토 ID)", example = "3")

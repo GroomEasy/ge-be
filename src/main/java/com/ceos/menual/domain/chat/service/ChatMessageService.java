@@ -5,10 +5,14 @@ import com.ceos.menual.domain.chat.dto.response.SocketResponseDTO;
 import com.ceos.menual.domain.chat.exception.ChatErrorCode;
 import com.ceos.menual.domain.chat.repository.ChatMessageRepository;
 import com.ceos.menual.domain.chat.repository.ChatroomRepository;
+import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.Chatroom;
 import com.ceos.menual.entity.Message;
+import com.ceos.menual.entity.User;
 import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.MessageType;
+import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +32,7 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatroomRepository chatroomRepository;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final UserRepository userRepository;
 
     /**
      * 고민지 메시지 자동 전송
@@ -57,13 +62,8 @@ public class ChatMessageService {
         Message savedMessage = chatMessageRepository.save(concernMessage);
 
         // WebSocket으로 실시간 전송
-        ChatMessageDTO messageDTO = ChatMessageDTO.builder()
-                .chatroomId(chatroomId)
-                .senderId(memberId)
-                .content(concernsJson)
-                .messageType(MessageType.CONCERN)
-                .relatedId(reservationId)
-                .build();
+        ChatMessageDTO messageDTO = savedMessage.toDTO();
+
 
         SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(chatroomId, messageDTO);
         messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
@@ -97,21 +97,16 @@ public class ChatMessageService {
                 .relatedId(consultationId)
                 .build();
 
-        chatMessageRepository.save(solutionMessage);
+        Message savedMessage = chatMessageRepository.save(solutionMessage);
 
-        // WebSocket으로 실시간 전송
-        ChatMessageDTO messageDTO = ChatMessageDTO.builder()
-                .chatroomId(chatroomId)
-                .senderId(expertId)
-                .content(solutionContent)
-                .messageType(MessageType.SOLUTION)
-                .relatedId(consultationId)
-                .build();
+        // 저장된 엔티티에서 DTO로 변환
+        ChatMessageDTO messageDTO = savedMessage.toDTO();
 
         SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(chatroomId, messageDTO);
         messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
 
-        log.info("솔루션지 메시지 전송 완료 - chatroomId: {}", chatroomId);
+        log.info("솔루션지 메시지 전송 완료 - messageId: {}, chatroomId: {}",
+                savedMessage.getId(), chatroomId);
     }
 
     /**
@@ -128,6 +123,14 @@ public class ChatMessageService {
     ) {
         log.info("상담 예약 알림 전송 시작 - chatroomId: {}, consultationType: {}",
                 chatroomId, consultationType);
+
+        // 관리자 권한 검증
+        User adminUser = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (adminUser.getUserType() != UserType.ADMIN) {
+            throw new GlobalException(ChatErrorCode.UNAUTHORIZED_SYSTEM_MESSAGE);
+        }
 
         // 채팅방 존재 확인
         Chatroom chatroom = chatroomRepository.findById(chatroomId)
@@ -149,21 +152,16 @@ public class ChatMessageService {
                 .relatedId(consultationId)
                 .build();
 
-        chatMessageRepository.save(systemMessage);
+        Message savedMessage = chatMessageRepository.save(systemMessage);
 
-        // WebSocket으로 실시간 전송
-        ChatMessageDTO messageDTO = ChatMessageDTO.builder()
-                .chatroomId(chatroomId)
-                .senderId(adminUserId)
-                .content(notificationContent)
-                .messageType(MessageType.SYSTEM)
-                .relatedId(consultationId)
-                .build();
+        // 저장된 엔티티에서 DTO로 변환
+        ChatMessageDTO messageDTO = savedMessage.toDTO();
 
         SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(chatroomId, messageDTO);
         messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
 
-        log.info("상담 예약 알림 전송 완료 - chatroomId: {}", chatroomId);
+        log.info("상담 예약 알림 전송 완료 - messageId: {}, chatroomId: {}",
+                savedMessage.getId(), chatroomId);
     }
 
     /**

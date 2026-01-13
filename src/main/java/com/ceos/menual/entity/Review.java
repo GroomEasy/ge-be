@@ -35,10 +35,13 @@ public class Review extends BaseEntity {
 	@Builder.Default
 	private List<ReviewImage> images = new ArrayList<>();
 
+	@OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<ReviewHashtag> hashtags = new ArrayList<>();
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "category")
 	private Category category;
-
 
 	@Builder.Default
 	private Integer likeCount = 0;
@@ -66,4 +69,12 @@ public class Review extends BaseEntity {
 		images.remove(image);
 	}
 
+	public void addHashtag(ReviewHashtag reviewHashtag) {
+		hashtags.add(reviewHashtag);
+		reviewHashtag.setReview(this);
+	}
+
+	public void removeHashtag(ReviewHashtag reviewHashtag) {
+		hashtags.remove(reviewHashtag);
+	}
 }

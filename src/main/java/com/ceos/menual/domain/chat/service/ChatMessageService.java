@@ -76,7 +76,7 @@ public class ChatMessageService {
      * 솔루션지 메시지 전송
      */
     @Transactional
-    public void sendSolutionMessage(Long chatroomId, Long expertId, String solutionContent, Long consultationId) {
+    public void sendSolutionMessage(Long chatroomId, Long expertId, String memberNickname, Long consultationId) {
         log.info("솔루션지 메시지 전송 시작 - chatroomId: {}, expertId: {}", chatroomId, expertId);
 
         // 채팅방 존재 확인
@@ -87,6 +87,9 @@ public class ChatMessageService {
         if (!chatroom.getExpert().getId().equals(expertId)) {
             throw new GlobalException(ChatErrorCode.CHATROOM_ACCESS_DENIED);
         }
+
+        // 솔루션지 알림 메시지 생성
+        String solutionContent = memberNickname + "님을 위한 솔루션지가 도착했습니다.";
 
         // 솔루션 메시지 생성 및 저장
         Message solutionMessage = Message.builder()
@@ -99,7 +102,7 @@ public class ChatMessageService {
 
         Message savedMessage = chatMessageRepository.save(solutionMessage);
 
-        // 저장된 엔티티에서 DTO로 변환
+        // WebSocket으로 실시간 전송
         ChatMessageDTO messageDTO = savedMessage.toDTO();
 
         SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(chatroomId, messageDTO);

@@ -75,4 +75,15 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
             @Param("adminId") Long adminId,
             @Param("expertId") Long expertId
     );
+
+    /**
+     * consultationId로 채팅방 조회 (단 하나의 활성 채팅방)
+     * MESSAGE 또는 VIDEO 타입 중 활성화된 채팅방 반환
+     */
+    @Query("SELECT c FROM Chatroom c " +
+            "WHERE c.consultationId = :consultationId " +
+            "AND c.isActive = true " +
+            "AND c.chatroomType IN ('MESSAGE', 'VIDEO')")
+    Optional<Chatroom> findActiveConsultationChatroom(@Param("consultationId") Long consultationId);
+
 }

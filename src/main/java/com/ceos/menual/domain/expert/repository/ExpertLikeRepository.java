@@ -7,8 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface ExpertLikeRepository extends JpaRepository<ExpertLike, Long> {
-
+public interface ExpertLikeRepository extends JpaRepository<ExpertLike, Long>, ExpertLikeRepositoryCustom {
     // 전문가 찜 API 용
     boolean existsByGeneralProfileAndExpertProfile(GeneralProfile generalProfile, ExpertProfile expertProfile);
 

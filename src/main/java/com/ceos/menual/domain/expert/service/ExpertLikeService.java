@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.expert.service;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
+import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
@@ -9,10 +10,13 @@ import com.ceos.menual.entity.ExpertLike;
 import com.ceos.menual.entity.ExpertProfile;
 import com.ceos.menual.entity.GeneralProfile;
 import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.global.exception.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -95,5 +99,21 @@ public class ExpertLikeService {
                 .orElseThrow(() -> new GlobalException(ExpertErrorCode.LIKE_NOT_FOUND));
 
         expertLikeRepository.delete(expertLike);
+    }
+
+    /**
+     * 내가 찜한 전문가 목록 조회
+     */
+    public List<ExpertSummaryResponseDTO> getLikedExperts(Long userId, Category category, int page, int size) {
+        // 일반 회원 프로필 ID 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        GeneralProfile generalProfile = user.getGeneralProfile();
+        if (generalProfile == null) {
+            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+        }
+
+        return expertLikeRepository.findLikedExpertList(generalProfile.getId(), category, page, size);
     }
 }

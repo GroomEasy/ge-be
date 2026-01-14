@@ -61,7 +61,6 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 
 	@Override
 	public List<ExpertRankingResponseDTO> findTop3ByCategory(Category category, Long currentUserId) {
-		QExpertLike el = QExpertLike.expertLike;
 
 		return queryFactory
 				.select(Projections.constructor(

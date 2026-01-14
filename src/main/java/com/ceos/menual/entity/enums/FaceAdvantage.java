@@ -30,8 +30,10 @@ public enum FaceAdvantage {
         if (value == null) {
             return null;
         }
+        // 띄어쓰기 제거 후 비교
+        String normalizedValue = value.replaceAll("\\s+", "");
         for (FaceAdvantage advantage : FaceAdvantage.values()) {
-            if (advantage.korean.equals(value)) {
+            if (advantage.korean.replaceAll("\\s+", "").equals(normalizedValue)) {
                 return advantage;
             }
         }

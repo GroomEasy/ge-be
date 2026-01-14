@@ -28,7 +28,7 @@ public class ExpertRankingResponseDTO {
 	private boolean isLiked;
 
 	// 파라미터로 Category(Enum)를 받아서 String으로 변환하여 저장
-	public ExpertRankingResponseDTO(String name, Category category, String profileImage, String introduction) {
+	public ExpertRankingResponseDTO(String name, Category category, String profileImage, String introduction, Boolean isLiked) {
 		this.name = name;
 
 		if (category != null) {
@@ -36,10 +36,10 @@ public class ExpertRankingResponseDTO {
 		} else {
 			this.category = null;
 		}
+
 		this.profileImage = profileImage;
 		this.introduction = introduction;
 		this.isLiked = isLiked;
-
-		}
+	}
 
 }

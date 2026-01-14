@@ -39,7 +39,7 @@ public class ExpertLikeRepositoryImpl implements ExpertLikeRepositoryCustom {
                         r.rating.avg().coalesce(0.0),
                         r.count()
                 )
-                .from(el) // [핵심] ExpertLike 에서 시작
+                .from(el)
                 .join(el.expertProfile, ep)
                 .join(ep.user, u)
                 .leftJoin(c).on(c.expertProfile.eq(ep))
@@ -62,7 +62,6 @@ public class ExpertLikeRepositoryImpl implements ExpertLikeRepositoryCustom {
                 .map(t -> t.get(u.id))
                 .collect(Collectors.toList());
 
-        // [주의] 이 메서드도 같이 복사해와야 합니다 (혹은 별도 컴포넌트로 분리)
         Map<Long, List<String>> imagesMap = getReviewImagesInBatch(userIds);
 
         return results.stream()
@@ -85,7 +84,6 @@ public class ExpertLikeRepositoryImpl implements ExpertLikeRepositoryCustom {
         return category != null ? ep.category.eq(category) : null;
     }
 
-    // ExpertRepositoryImpl에 있던거 복사해오기
     private Map<Long, List<String>> getReviewImagesInBatch(List<Long> userIds) {
         List<Tuple> images = queryFactory
                 .select(ep.user.id, ri.imageUrl)

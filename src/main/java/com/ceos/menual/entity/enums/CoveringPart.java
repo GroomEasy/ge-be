@@ -13,6 +13,8 @@ public enum CoveringPart {
     NOSE("코", "Nose"),
     MOUTH("입", "Mouth"),
     FACE_SHAPE("얼굴형", "Face shape"),
+    JAW("턱", "Jaw"),
+    CHEEKBONE("광대", "Cheekbone"),
     IMAGE_HARMONY("이미지조화", "Image harmony"),
     NOT_SURE("모르겠음", "Not sure"),
     OTHER("기타", "Other");
@@ -30,8 +32,10 @@ public enum CoveringPart {
         if (value == null) {
             return null;
         }
+        // 띄어쓰기 제거 후 비교
+        String normalizedValue = value.replaceAll("\\s+", "");
         for (CoveringPart part : CoveringPart.values()) {
-            if (part.korean.equals(value)) {
+            if (part.korean.replaceAll("\\s+", "").equals(normalizedValue)) {
                 return part;
             }
         }

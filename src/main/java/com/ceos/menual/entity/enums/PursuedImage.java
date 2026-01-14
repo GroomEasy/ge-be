@@ -30,8 +30,10 @@ public enum PursuedImage {
         if (value == null) {
             return null;
         }
+        // 띄어쓰기 제거 후 비교
+        String normalizedValue = value.replaceAll("\\s+", "");
         for (PursuedImage image : PursuedImage.values()) {
-            if (image.korean.equals(value)) {
+            if (image.korean.replaceAll("\\s+", "").equals(normalizedValue)) {
                 return image;
             }
         }

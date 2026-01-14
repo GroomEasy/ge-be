@@ -105,7 +105,7 @@ public class ExpertLikeService {
      * 내가 찜한 전문가 목록 조회
      */
     public List<ExpertSummaryResponseDTO> getLikedExperts(Long userId, Category category, int page, int size) {
-        // 1. 일반 회원 프로필 ID 조회
+        // 일반 회원 프로필 ID 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 

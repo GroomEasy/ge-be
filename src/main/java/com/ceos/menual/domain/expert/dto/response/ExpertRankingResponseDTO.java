@@ -24,6 +24,9 @@ public class ExpertRankingResponseDTO {
 	@Schema(description = "한 줄 소개", example = "안녕하세요! 헤어 전문가 김철수입니다.")
 	private String introduction;
 
+	@Schema(description = "찜 여부", example = "true")
+	private boolean isLiked;
+
 	// 파라미터로 Category(Enum)를 받아서 String으로 변환하여 저장
 	public ExpertRankingResponseDTO(String name, Category category, String profileImage, String introduction) {
 		this.name = name;
@@ -35,6 +38,8 @@ public class ExpertRankingResponseDTO {
 		}
 		this.profileImage = profileImage;
 		this.introduction = introduction;
-	}
+		this.isLiked = isLiked;
+
+		}
 
 }

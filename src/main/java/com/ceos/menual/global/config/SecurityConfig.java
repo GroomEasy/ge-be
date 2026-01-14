@@ -37,7 +37,19 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
+                        // Preflight Request 허용
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // GET 요청만 허용할 엔드포인트
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                // 전문가 관련
+                                "/api/expert", "/api/expert/**",
+
+                                // 리뷰 관련
+                                "/api/review", "/api/review/**"
+                        ).permitAll()
+
+                        // 메서드 종류 상관없이 모두 허용할 엔드포인트
                         .requestMatchers(
                                 // health check
                                 "/actuator/health",
@@ -50,15 +62,6 @@ public class SecurityConfig {
                                 // 사용자 관련
                                 "/api/user/signup",
                                 "/api/user/social-signup",
-
-                                // TODO: http GET 메소드만 허용
-                                // 전문가 관련
-                                "/api/expert",
-                                "/api/expert/**",
-
-                                // 리뷰 관련
-                                "/api/review",
-                                "/api/review/**",
 
                                 // Swagger
                                 "/v3/api-docs",

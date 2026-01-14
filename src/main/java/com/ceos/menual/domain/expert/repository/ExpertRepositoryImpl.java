@@ -8,6 +8,8 @@ import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.jpa.JPAExpressions;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
@@ -27,6 +29,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	private static final QConsultation c = QConsultation.consultation;
 	private static final QReview r = QReview.review;
 	private static final QReviewImage ri = QReviewImage.reviewImage;
+	private static final QExpertLike el = QExpertLike.expertLike;
 
 
 	@Override
@@ -57,7 +60,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	}
 
 	@Override
-	public List<ExpertRankingResponseDTO> findTop3ByCategory(Category category) {
+	public List<ExpertRankingResponseDTO> findTop3ByCategory(Category category, Long currentUserId) {
 		QExpertLike el = QExpertLike.expertLike;
 
 		return queryFactory
@@ -66,7 +69,8 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 						ep.user.nickname,
 						ep.category,
 						ep.user.profileImage,
-						ep.introduction
+						ep.introduction,
+						isLikedExpression(currentUserId)
 				))
 				.from(ep)
 				.leftJoin(el)
@@ -181,6 +185,20 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 		}
 
 		return result;
+	}
+
+	// 찜 여부를 판단하는 QueryDSL 표현식
+	private BooleanExpression isLikedExpression(Long currentUserId) {
+		if (currentUserId == null) {
+			return Expressions.asBoolean(false);
+		}
+
+		return JPAExpressions
+				.selectOne()
+				.from(el)
+				.where(el.expertProfile.eq(ep)
+						.and(el.generalProfile.user.id.eq(currentUserId)))
+				.exists();
 	}
 
 	private BooleanExpression categoryEq(Category category) {

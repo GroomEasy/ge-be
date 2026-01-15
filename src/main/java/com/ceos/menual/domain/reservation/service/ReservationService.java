@@ -141,6 +141,9 @@ public class ReservationService {
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
 
+        // 채팅방 자동 생성 및 고민지 전송
+        createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
+
         // 결제 확정 이벤트 발행
         eventPublisher.publishEvent(new ReservationConfirmedEvent(
             reservationId,

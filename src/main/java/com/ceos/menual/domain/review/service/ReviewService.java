@@ -279,9 +279,8 @@ public class ReviewService {
 				// 공개 S3 URL 생성
 				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
 
-				// ReviewImage 엔티티 생성 (S3 key만 저장)
 				ReviewImage reviewImage = ReviewImage.builder()
-						.imageUrl(finalS3Key)
+						.imageUrl(finalImageUrl)
 						.displayOrder(i)
 						.build();
 

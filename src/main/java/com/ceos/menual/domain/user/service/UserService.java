@@ -8,6 +8,7 @@ import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.domain.user.repository.GeneralProfileRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.GeneralProfile;
 import com.ceos.menual.entity.User;
@@ -31,6 +32,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ExpertLikeRepository expertLikeRepository;
     private final ReviewRepository reviewRepository;
+    private final GeneralProfileRepository generalProfileRepository;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
@@ -60,7 +62,13 @@ public class UserService {
         // 저장
         User savedUser = userRepository.save(user);
 
-        // TODO: profile 만들기
+        // GeneralProfile 생성
+        GeneralProfile generalProfile = GeneralProfile.builder()
+                .user(savedUser)
+                .totalPoints(0)
+                .build();
+
+        generalProfileRepository.save(generalProfile);
 
         // 응답 생성
         return SignUpResponseDTO.builder()
@@ -92,6 +100,16 @@ public class UserService {
             request.getAgreeTerms(),
             request.getAgreePrivacy()
         );
+
+        // GeneralProfile 생성 (소셜 로그인 추가 정보 입력 시점에 생성)
+        if (user.getGeneralProfile() == null) {
+            GeneralProfile generalProfile = GeneralProfile.builder()
+                    .user(user)
+                    .totalPoints(0)
+                    .build();
+
+            generalProfileRepository.save(generalProfile);
+        }
 
         // 저장 후 응답 반환
         return SocialSignUpResponseDTO.builder()

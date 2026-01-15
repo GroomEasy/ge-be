@@ -63,3 +63,13 @@ logging:
   level:
     org.springframework.security: WARN
     com.ceos.menual: INFO
+
+zoom:
+  client-id: ${ZOOM_CLIENT_ID:}
+  client-secret: ${ZOOM_CLIENT_SECRET:}
+  redirect-uri: ${ZOOM_REDIRECT_URI:}
+  scope: ${ZOOM_SCOPE:meeting:write user:read}
+
+  # 콜백 처리 후 프론트로 리다이렉트
+  success-redirect-uri: ${ZOOM_OAUTH_SUCCESS_REDIRECT_URI:}
+  failure-redirect-uri: ${ZOOM_OAUTH_FAILURE_REDIRECT_URI:}

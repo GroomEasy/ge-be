@@ -47,11 +47,13 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/social-login",
 
+                                // Zoom OAuth 콜백 (Zoom 서버에서 redirect될 수 있어 permitAll)
+                                "/api/experts/zoom/callback",
+
                                 // 사용자 관련
                                 "/api/user/signup",
                                 "/api/user/social-signup",
 
-                                // TODO: http GET 메소드만 허용
                                 // 전문가 관련
                                 "/api/expert",
                                 "/api/expert/**",

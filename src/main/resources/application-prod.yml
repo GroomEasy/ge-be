@@ -13,3 +13,5 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+zoom:
+  redirect-uri: https://api.menual.site/api/experts/zoom/callback

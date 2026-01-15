@@ -881,7 +881,6 @@ public class ReservationService {
             chatMessageService.sendConcernMessage(
                     chatroomId,
                     memberId,
-                    reservation.getConcernsJson(),
                     reservation.getId()
             );
             log.info("고민지 자동 전송 완료 - chatroomId: {}, reservationId: {}",

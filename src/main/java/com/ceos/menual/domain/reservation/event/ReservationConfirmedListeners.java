@@ -21,34 +21,34 @@ public class ReservationConfirmedListeners {
     private final ReservationService reservationService;
     private final ZoomMeetingService zoomMeetingService;
 
-    /**
-     * 채팅방 생성/고민지 전송
-     * - 트랜잭션 커밋 이후 실행(채팅방 생성 실패가 결제확정 롤백을 유발하지 않도록)
-     */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onReservationConfirmedEssential(ReservationConfirmedEvent event) {
-        log.info("ReservationConfirmedEvent received (essential) - reservationId={}, consultationId={}, adminUserId={}",
-            event.reservationId(), event.consultationId(), event.adminUserId());
-
-        try {
-            Reservation reservation = reservationRepository.findById(event.reservationId())
-                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
-
-            if (reservation.getConsultation() == null) {
-                throw new GlobalException(ReservationErrorCode.CONSULTATION_NOT_LINKED);
-            }
-
-            reservationService.createChatroomsAndSendConcern(
-                reservation.getConsultation(),
-                reservation,
-                event.adminUserId()
-            );
-        } catch (Exception e) {
-            // 결제확정 자체는 완료된 상태이므로, 여기서는 로깅만 하고 종료합니다.
-            log.error("ReservationConfirmed essential job failed - reservationId={}, consultationId={}",
-                event.reservationId(), event.consultationId(), e);
-        }
-    }
+//    /**
+//     * 채팅방 생성/고민지 전송
+//     * - 트랜잭션 커밋 이후 실행(채팅방 생성 실패가 결제확정 롤백을 유발하지 않도록)
+//     */
+//    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+//    public void onReservationConfirmedEssential(ReservationConfirmedEvent event) {
+//        log.info("ReservationConfirmedEvent received (essential) - reservationId={}, consultationId={}, adminUserId={}",
+//            event.reservationId(), event.consultationId(), event.adminUserId());
+//
+//        try {
+//            Reservation reservation = reservationRepository.findById(event.reservationId())
+//                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+//
+//            if (reservation.getConsultation() == null) {
+//                throw new GlobalException(ReservationErrorCode.CONSULTATION_NOT_LINKED);
+//            }
+//
+//            reservationService.createChatroomsAndSendConcern(
+//                reservation.getConsultation(),
+//                reservation,
+//                event.adminUserId()
+//            );
+//        } catch (Exception e) {
+//            // 결제확정 자체는 완료된 상태이므로, 여기서는 로깅만 하고 종료합니다.
+//            log.error("ReservationConfirmed essential job failed - reservationId={}, consultationId={}",
+//                event.reservationId(), event.consultationId(), e);
+//        }
+//    }
 
     /**
      * 부가 후처리: Zoom 미팅 생성 및 링크 전송

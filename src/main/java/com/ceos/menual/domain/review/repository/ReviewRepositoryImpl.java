@@ -221,6 +221,9 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 		// 후기 이미지 배치 조회
 		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
 
+		// 후기 해시태그 배치 조회
+		Map<Long, List<String>> hashtagsMap = getReviewHashtagsInBatch(reviewIds);
+
 		// DTO 조립
 		return results.stream()
 				.map(tuple -> CompletedReviewResponseDTO.builder()
@@ -230,6 +233,7 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						.rating(tuple.get(r.rating))
 						.content(tuple.get(r.content))
 						.imageUrls(imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
+						.hashtags(hashtagsMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
 						.build())
 				.collect(Collectors.toList());
 	}
@@ -290,6 +294,34 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 		}
 
 		return result;
+	}
+
+	/**
+	 * 후기 해시태그 배치 조회
+	 */
+	private Map<Long, List<String>> getReviewHashtagsInBatch(List<Long> reviewIds) {
+		if (reviewIds == null || reviewIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+
+		QReviewHashtag rh = QReviewHashtag.reviewHashtag;
+		QHashtag h = QHashtag.hashtag;
+
+		List<Tuple> hashtagTuples = queryFactory
+				.select(rh.review.id, h.name)
+				.from(rh)
+				.join(rh.hashtag, h)
+				.where(rh.review.id.in(reviewIds))
+				.fetch();
+
+		return hashtagTuples.stream()
+				.collect(Collectors.groupingBy(
+						tuple -> tuple.get(rh.review.id),
+						Collectors.mapping(
+								tuple -> tuple.get(h.name),
+								Collectors.toList()
+						)
+				));
 	}
 
 	private BooleanExpression categoryEq(Category category) {

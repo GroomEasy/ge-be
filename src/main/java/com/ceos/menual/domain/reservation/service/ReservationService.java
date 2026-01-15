@@ -103,12 +103,28 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
 
+        // 상담 타입에 따른 초기 상태 결정
+        ConsultationStatus initialStatus;
+        if (reservation.getConsultationType() == ConsultationType.MESSAGE) {
+            // 메시지 상담: 즉시 진행 중
+            initialStatus = ConsultationStatus.IN_PROGRESS;
+            log.info("메시지 상담 - 초기 상태: IN_PROGRESS - reservationId: {}", reservationId);
+        } else if (reservation.getConsultationType() == ConsultationType.VIDEO) {
+            // 화상 상담: 예약된 시간까지 대기
+            initialStatus = ConsultationStatus.READY;
+            log.info("화상 상담 - 초기 상태: READY - reservationId: {}", reservationId);
+        } else {
+            log.error("알 수 없는 상담 타입 - reservationId: {}, type: {}",
+                    reservationId, reservation.getConsultationType());
+            throw new GlobalException(ReservationErrorCode.INVALID_CONSULTATION_TYPE);
+        }
+
         // Consultation 생성
         Consultation consultation = Consultation.builder()
                 .expertProfile(reservation.getExpertProfile())
                 .generalProfile(reservation.getGeneralProfile())
                 .type(reservation.getConsultationType())
-                .status(ConsultationStatus.READY) // 초기 상태: 준비됨 (결제 확인 후)
+                .status(initialStatus)  // 상담 타입에 따른 초기 상태
                 .scheduleTime(reservation.getScheduledDateTime())
                 .reviewWritten(false)
                 .build();
@@ -881,7 +897,6 @@ public class ReservationService {
             chatMessageService.sendConcernMessage(
                     chatroomId,
                     memberId,
-                    reservation.getConcernsJson(),
                     reservation.getId()
             );
             log.info("고민지 자동 전송 완료 - chatroomId: {}, reservationId: {}",

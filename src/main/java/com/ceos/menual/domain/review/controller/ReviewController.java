@@ -78,7 +78,7 @@ public class ReviewController {
 	 */
 	@Operation(
 			summary = "작성 완료된 후기 목록 조회",
-			description = "작성 완료된 후기 목록을 조회합니다. (reviewWritten = true)"
+			description = "내가 작성한 후기 목록을 조회합니다. (reviewWritten = true)"
 	)
 	@GetMapping("/completed")
 	public ResponseEntity<CommonResponse<List<CompletedReviewResponseDTO>>> getCompletedReviews(

@@ -900,9 +900,9 @@ public class ReservationService {
             chatMessageService.sendConcernMessage(
                     chatroomId,
                     memberId,
-                    reservation.getId()
+                    consultationId
             );
-            log.info("고민지 자동 전송 완료 - chatroomId: {}, reservationId: {}",
+            log.info("고민지 자동 전송 완료 - chatroomId: {}, consultationId: {}",
                     chatroomId, reservation.getId());
         }
 

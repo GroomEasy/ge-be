@@ -1,6 +1,7 @@
 package com.ceos.menual.entity;
 
 import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.global.converter.ZoomTokenEncryptor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -64,9 +65,11 @@ public class ExpertProfile extends BaseEntity {
 	private String zoomUserId;
 
 	@Column(columnDefinition = "TEXT")
+	@Convert(converter = ZoomTokenEncryptor.class)
 	private String zoomAccessToken;
 
 	@Column(columnDefinition = "TEXT")
+	@Convert(converter = ZoomTokenEncryptor.class)
 	private String zoomRefreshToken;
 
 	private LocalDateTime zoomTokenExpiresAt;

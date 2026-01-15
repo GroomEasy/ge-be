@@ -641,7 +641,7 @@ public class ReservationService {
 
     /**
      * S3 임시 저장된 이미지를 최종 위치로 이동
-     * tmp/consultation/user-{userId}/{imageType}/{fileName}
+     * tmp/consultation/reservation-{reservationId}/{imageType}/{fileName}
      *     → final/consultation/{consultationId}/{imageType}/{fileName}
      */
     private void moveImagesToFinalLocation(Reservation reservation, Consultation consultation) {

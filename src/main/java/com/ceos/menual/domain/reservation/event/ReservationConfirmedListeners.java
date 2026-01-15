@@ -8,7 +8,6 @@ import com.ceos.menual.global.exception.GlobalException;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.event.TransactionPhase;
@@ -24,25 +23,31 @@ public class ReservationConfirmedListeners {
 
     /**
      * 채팅방 생성/고민지 전송
-     * - 결제확인 트랜잭션 안에서 동기 실행
+     * - 트랜잭션 커밋 이후 실행(채팅방 생성 실패가 결제확정 롤백을 유발하지 않도록)
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationConfirmedEssential(ReservationConfirmedEvent event) {
         log.info("ReservationConfirmedEvent received (essential) - reservationId={}, consultationId={}, adminUserId={}",
             event.reservationId(), event.consultationId(), event.adminUserId());
 
-        Reservation reservation = reservationRepository.findById(event.reservationId())
-            .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        try {
+            Reservation reservation = reservationRepository.findById(event.reservationId())
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
 
-        if (reservation.getConsultation() == null) {
-            throw new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND);
+            if (reservation.getConsultation() == null) {
+                throw new GlobalException(ReservationErrorCode.CONSULTATION_NOT_LINKED);
+            }
+
+            reservationService.createChatroomsAndSendConcern(
+                reservation.getConsultation(),
+                reservation,
+                event.adminUserId()
+            );
+        } catch (Exception e) {
+            // 결제확정 자체는 완료된 상태이므로, 여기서는 로깅만 하고 종료합니다.
+            log.error("ReservationConfirmed essential job failed - reservationId={}, consultationId={}",
+                event.reservationId(), event.consultationId(), e);
         }
-
-        reservationService.createChatroomsAndSendConcern(
-            reservation.getConsultation(),
-            reservation,
-            event.adminUserId()
-        );
     }
 
     /**

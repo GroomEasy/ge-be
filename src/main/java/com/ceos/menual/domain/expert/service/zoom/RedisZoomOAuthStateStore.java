@@ -25,9 +25,8 @@ public class RedisZoomOAuthStateStore implements ZoomOAuthStateStore {
     @Override
     public Optional<Long> consume(String state) {
         String key = PREFIX + state;
-        String val = redis.opsForValue().get(key);
+        String val = redis.opsForValue().getAndDelete(key);
         if (val == null) return Optional.empty();
-        redis.delete(key); // 1회성
         try {
             return Optional.of(Long.parseLong(val));
         } catch (NumberFormatException e) {

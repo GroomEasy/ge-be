@@ -84,7 +84,7 @@ public class ZoomMeetingService {
 
     private String getValidAccessToken(ExpertProfile expertProfile) {
         LocalDateTime expiresAt = expertProfile.getZoomTokenExpiresAt();
-        boolean expired = expiresAt != null && expiresAt.isBefore(LocalDateTime.now().minusSeconds(30));
+        boolean expired = expiresAt == null || expiresAt.isBefore(LocalDateTime.now().minusSeconds(30));
         if (!expired) return expertProfile.getZoomAccessToken();
 
         ZoomTokenResponseDTO refreshed = zoomOauthClient.refreshAccessToken(

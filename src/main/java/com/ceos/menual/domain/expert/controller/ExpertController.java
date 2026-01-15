@@ -31,18 +31,19 @@ public class ExpertController {
 	private final ExpertService expertService;
 	private final ExpertLikeService expertLikeService;
 
-	/**
-	 * 전체 카테고리의 인기 전문가 TOP3 조회 API
-	 */
-	@Operation(
-		summary = "전체 인기 전문가 TOP3 조회",
-		description = "전체 카테고리에서 상담 완료 수 기준 TOP3 전문가를 조회합니다."
-	)
-	@GetMapping("/popular")
-	public ResponseEntity<CommonResponse<PopularExpertsResponseDTO>> getTop3Overall(){
-		PopularExpertsResponseDTO response = expertService.getTop3Overall();
-		return ResponseEntity.ok(CommonResponse.success(response));
-	}
+//	API 폐기
+//	/**
+//	 * 전체 카테고리의 인기 전문가 TOP3 조회 API
+//	 */
+//	@Operation(
+//		summary = "전체 인기 전문가 TOP3 조회",
+//		description = "전체 카테고리에서 상담 완료 수 기준 TOP3 전문가를 조회합니다."
+//	)
+//	@GetMapping("/popular")
+//	public ResponseEntity<CommonResponse<PopularExpertsResponseDTO>> getTop3Overall(){
+//		PopularExpertsResponseDTO response = expertService.getTop3Overall();
+//		return ResponseEntity.ok(CommonResponse.success(response));
+//	}
 
 	/**
 	 * 카테고리별 인기 전문가 TOP3 조회 API
@@ -54,9 +55,11 @@ public class ExpertController {
 	@GetMapping("/popular/{category}")
 	public ResponseEntity<CommonResponse<PopularExpertsResponseDTO>> getTop3ByCategory(
 			@Parameter(description = "카테고리명 (HAIR, FASHION, SKIN, MAKEUP 중 택1)", required = true)
-			@PathVariable("category") Category category
+			@PathVariable("category") Category category,
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long currentUserId
 	){
-		PopularExpertsResponseDTO response = expertService.getTop3ByCategory(category);
+		PopularExpertsResponseDTO response = expertService.getTop3ByCategory(category, currentUserId);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
@@ -130,6 +133,30 @@ public class ExpertController {
 	) {
 		expertLikeService.unlikeExpert(currentUserId, userId);
 		return ResponseEntity.ok(CommonResponse.success(null));
+	}
+
+	/**
+	 * 내가 찜한 전문가 목록 조회 API
+	 */
+	@Operation(
+			summary = "내가 찜한 전문가 목록 조회",
+			description = "현재 유저가 찜한 전문가 목록을 조회합니다."
+	)
+	@GetMapping("/likes")
+	public ResponseEntity<CommonResponse<List<ExpertSummaryResponseDTO>>> getLikedExperts(
+			@Parameter(description = "카테고리 (없으면 전체 조회)")
+			@RequestParam(required = false) Category category,
+
+			@Parameter(description = "페이지 번호 (0부터 시작)")
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+
+			@Parameter(description = "페이지 크기")
+			@RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
+
+			@Parameter(hidden = true) @AuthenticationPrincipal Long currentUserId
+	) {
+		List<ExpertSummaryResponseDTO> response = expertLikeService.getLikedExperts(currentUserId, category, page, size);
+		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
 	/**

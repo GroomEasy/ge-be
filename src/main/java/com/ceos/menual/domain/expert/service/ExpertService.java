@@ -47,8 +47,8 @@ public class ExpertService {
 		return new PopularExpertsResponseDTO(top3);
 	}
 
-	public PopularExpertsResponseDTO getTop3ByCategory(Category category) {
-		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3ByCategory(category);
+	public PopularExpertsResponseDTO getTop3ByCategory(Category category, Long currentUserId) {
+		List<ExpertRankingResponseDTO> top3 = expertRepository.findTop3ByCategory(category, currentUserId);
 		return new PopularExpertsResponseDTO(top3);
 	}
 

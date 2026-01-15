@@ -7,6 +7,7 @@ import com.ceos.menual.global.config.jwt.JwtExceptionFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,7 +38,22 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
+                        // Preflight Request 허용
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 전문가 찜 조회 API는 인증 필요
+                        .requestMatchers(HttpMethod.GET, "/api/expert/likes").authenticated()
+
+                        // GET 요청만 허용할 엔드포인트
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                // 전문가 관련
+                                "/api/expert", "/api/expert/**",
+
+                                // 리뷰 관련
+                                "/api/review", "/api/review/**"
+                        ).permitAll()
+
+                        // 메서드 종류 상관없이 모두 허용할 엔드포인트
                         .requestMatchers(
                                 // health check
                                 "/actuator/health",

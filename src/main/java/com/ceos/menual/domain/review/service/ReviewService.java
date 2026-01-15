@@ -2,6 +2,7 @@ package com.ceos.menual.domain.review.service;
 
 import java.util.List;
 
+import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.review.dto.request.CreateReviewRequestDTO;
@@ -37,6 +38,7 @@ public class ReviewService {
 	private final ConsultationRepository consultationRepository;
 	private final ReviewJpaRepository reviewJpaRepository;
 	private final HashtagRepository hashtagRepository;
+	private final S3PresignedUrlService s3PresignedUrlService;
 
 	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category, int page, int size) {
 		return reviewRepository.findRecentReviews(category, page, size);
@@ -142,20 +144,12 @@ public class ReviewService {
 		// Review 저장
 		Review savedReview = reviewJpaRepository.save(review);
 
-		// 이미지가 있으면 ReviewImage 생성 및 추가
+		// 이미지가 있으면 tmp → final 이동 후 ReviewImage 생성
 		if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
-			for (int i = 0; i < request.getImageUrls().size(); i++) {
-				ReviewImage reviewImage = ReviewImage.builder()
-						.imageUrl(request.getImageUrls().get(i))
-						.displayOrder(i)
-						.build();
-
-				// Review와 양방향 관계 설정
-				reviewImage.setReview(savedReview);
-			}
+			processReviewImages(savedReview, request.getImageUrls());
 		}
 
-		// 해시태그 처리 추가!
+		// 해시태그 처리
 		if (request.getHashtags() != null && !request.getHashtags().isEmpty()) {
 			processHashtags(savedReview, request.getHashtags());
 		}
@@ -247,6 +241,63 @@ public class ReviewService {
 
 			// Review에 추가
 			review.addHashtag(reviewHashtag);
+		}
+	}
+
+	/**
+	 * 후기 이미지 처리: tmp → final 이동 및 ReviewImage 생성
+	 */
+	private void processReviewImages(Review savedReview, List<String> tempImageUrls) {
+		Long reviewId = savedReview.getId();
+
+		for (int i = 0; i < tempImageUrls.size(); i++) {
+			String tempImageUrl = tempImageUrls.get(i);
+
+			try {
+				// 1. tmp 경로에서 정보 추출
+				// 예: tmp/review/reservation-67/front/image.png
+				String[] pathParts = tempImageUrl.split("/");
+
+				if (pathParts.length < 5) {
+					log.error("잘못된 이미지 경로 형식 - reviewId: {}, path: {}", reviewId, tempImageUrl);
+					throw new GlobalException(ReviewErrorCode.INVALID_IMAGE_PATH);
+				}
+
+				String imageType = pathParts[3];  // "front"
+				String fileName = pathParts[4];   // "image.png"
+
+				// 최종 S3 경로 생성
+				// final/review/{reviewId}/{imageType}/{fileName}
+				String finalS3Key = String.format("final/review/%d/%s/%s",
+						reviewId, imageType, fileName);
+
+				// S3에서 이미지 이동 (tmp → final)
+				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);
+				log.info("리뷰 이미지 이동 완료 - reviewId: {}, from: {}, to: {}",
+						reviewId, tempImageUrl, finalS3Key);
+
+				// 공개 S3 URL 생성
+				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
+
+				// ReviewImage 엔티티 생성 (S3 key만 저장)
+				ReviewImage reviewImage = ReviewImage.builder()
+						.imageUrl(finalS3Key)
+						.displayOrder(i)
+						.build();
+
+				// Review와 양방향 관계 설정
+				reviewImage.setReview(savedReview);
+
+				log.info("ReviewImage 생성 완료 - reviewId: {}, order: {}, url: {}",
+						reviewId, i, finalImageUrl);
+
+			} catch (GlobalException e) {
+				throw e;
+			} catch (Exception e) {
+				log.error("리뷰 이미지 처리 실패 - reviewId: {}, tempUrl: {}",
+						reviewId, tempImageUrl, e);
+				throw new GlobalException(ReviewErrorCode.IMAGE_PROCESSING_FAILED);
+			}
 		}
 	}
 

@@ -26,4 +26,5 @@ public class CompletedReviewResponseDTO {
     private Integer rating;
     private String content;
     private List<String> imageUrls; // 후기 사진
+    private List<String> hashtags;
 }

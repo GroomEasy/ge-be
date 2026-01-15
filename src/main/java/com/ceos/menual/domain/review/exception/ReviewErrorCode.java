@@ -17,7 +17,9 @@ public enum ReviewErrorCode implements ResultCode {
     INVALID_RATING(HttpStatus.BAD_REQUEST, 5106, "평점은 1~5 사이여야 합니다."),
     TOO_MANY_HASHTAGS(HttpStatus.BAD_REQUEST, 5107, "해시태그는 최대 5개까지 입력 가능합니다."),
     HASHTAG_TOO_LONG(HttpStatus.BAD_REQUEST, 5108, "해시태그는 20자를 초과할 수 없습니다."),
-    EMPTY_HASHTAG(HttpStatus.BAD_REQUEST, 5109, "빈 해시태그는 입력할 수 없습니다.");
+    EMPTY_HASHTAG(HttpStatus.BAD_REQUEST, 5109, "빈 해시태그는 입력할 수 없습니다."),
+    INVALID_IMAGE_PATH(HttpStatus.BAD_REQUEST, 5110, "잘못된 이미지 경로 형식입니다."),
+    IMAGE_PROCESSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 5111, "이미지 처리 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final int code;

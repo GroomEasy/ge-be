@@ -3,13 +3,17 @@ package com.ceos.menual.domain.expert.repository;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.ceos.menual.domain.expert.dto.response.ExpertPortfolioResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
+import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.global.exception.GlobalException;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
@@ -18,14 +22,21 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
+
+import static com.ceos.menual.entity.QExpertProfile.expertProfile;
+import static com.ceos.menual.entity.QHashtag.hashtag;
+import static com.ceos.menual.entity.QPortfolio.portfolio;
+import static com.ceos.menual.entity.QPortfolioHashtag.portfolioHashtag;
 
 @Repository
 @RequiredArgsConstructor
 public class ExpertRepositoryImpl implements ExpertRepository {
 	private final JPAQueryFactory queryFactory;
+	private final EntityManager entityManager;
 
 	private static final QUser u = QUser.user;
-	private static final QExpertProfile ep = QExpertProfile.expertProfile;
+	private static final QExpertProfile ep = expertProfile;
 	private static final QConsultation c = QConsultation.consultation;
 	private static final QReview r = QReview.review;
 	private static final QReviewImage ri = QReviewImage.reviewImage;
@@ -141,6 +152,195 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 						)
 						.build())
 				.collect(Collectors.toList());
+	}
+
+	@Override
+	public List<ExpertPortfolioResponseDTO> findPortfolioList(Long expertUserId, int page, int size) {
+		// 포트폴리오 기본 정보 조회
+		List<Tuple> results = queryFactory
+				.select(
+						portfolio.id,
+						portfolio.title,
+						portfolio.concern,
+						portfolio.solution,
+						portfolio.beforeImage,
+						portfolio.afterImage,
+						portfolio.isRepresentative
+				)
+				.from(portfolio)
+				.join(portfolio.expertProfile, expertProfile)
+				.where(expertProfile.user.id.eq(expertUserId))
+				.orderBy(
+						portfolio.isRepresentative.desc(),
+						portfolio.createdAt.desc()
+				)
+				.offset((long) page * size)
+				.limit(size)
+				.fetch();
+
+		if (results.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// 포트폴리오 ID 추출
+		List<Long> portfolioIds = results.stream()
+				.map(t -> t.get(portfolio.id))
+				.collect(Collectors.toList());
+
+		// 해시태그 배치 조회
+		Map<Long, List<String>> hashtagMap = getPortfolioHashtagsInBatch(portfolioIds);
+
+		// DTO 조립
+		return results.stream()
+				.map(tuple -> ExpertPortfolioResponseDTO.builder()
+						.id(tuple.get(portfolio.id))
+						.title(tuple.get(portfolio.title))
+						.concern(tuple.get(portfolio.concern))
+						.solution(tuple.get(portfolio.solution))
+						.beforeImage(tuple.get(portfolio.beforeImage))
+						.isRepresentative(tuple.get(portfolio.isRepresentative))
+						.afterImage(tuple.get(portfolio.afterImage))
+						.hashtags(hashtagMap.getOrDefault(tuple.get(portfolio.id), Collections.emptyList()))
+						.build())
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	@Transactional
+	public ExpertPortfolioResponseDTO savePortfolio(Portfolio portfolio, List<String> hashtagNames) {
+		// 포트폴리오 저장
+		entityManager.persist(portfolio);
+		entityManager.flush();
+
+		// 해시태그 처리
+		List<String> savedHashtags = new ArrayList<>();
+		if (hashtagNames != null && !hashtagNames.isEmpty()) {
+			for (String hashtagName : hashtagNames) {
+				// 해시태그 조회 또는 생성
+				Hashtag hashtag = queryFactory
+						.selectFrom(QHashtag.hashtag)
+						.where(QHashtag.hashtag.name.eq(hashtagName))
+						.fetchOne();
+
+				if (hashtag == null) {
+					// 새 해시태그 생성
+					hashtag = Hashtag.builder()
+							.name(hashtagName)
+							.build();
+					entityManager.persist(hashtag);
+					entityManager.flush();
+				}
+
+				// PortfolioHashtag 연결
+				PortfolioHashtag portfolioHashtag = PortfolioHashtag.builder()
+						.portfolio(portfolio)
+						.hashtag(hashtag)
+						.build();
+
+				entityManager.persist(portfolioHashtag);
+				savedHashtags.add(hashtagName);
+			}
+		}
+
+		// DTO 반환
+		return ExpertPortfolioResponseDTO.builder()
+				.id(portfolio.getId())
+				.title(portfolio.getTitle())
+				.concern(portfolio.getConcern())
+				.solution(portfolio.getSolution())
+				.beforeImage(portfolio.getBeforeImage())
+				.afterImage(portfolio.getAfterImage())
+				.isRepresentative(portfolio.getIsRepresentative())
+				.hashtags(savedHashtags)
+				.build();
+	}
+
+	@Override
+	@Transactional
+	public void setRepresentativePortfolio(Long expertUserId, Long portfolioId) {
+		QPortfolio p = QPortfolio.portfolio;
+		QExpertProfile ep = QExpertProfile.expertProfile;
+		QUser u = QUser.user;
+
+		// 해당 포트폴리오가 존재하고 본인 소유인지 확인
+		Portfolio targetPortfolio = queryFactory
+				.selectFrom(p)
+				.join(p.expertProfile, ep)
+				.join(ep.user, u)
+				.where(
+						p.id.eq(portfolioId),
+						u.id.eq(expertUserId)
+				)
+				.fetchOne();
+
+		if (targetPortfolio == null) {
+			throw new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND);
+		}
+
+		// 기존 대표 포트폴리오 모두 해제 (해당 전문가의)
+		queryFactory
+				.update(p)
+				.set(p.isRepresentative, false)
+				.where(
+						p.expertProfile.eq(targetPortfolio.getExpertProfile())
+				)
+				.execute();
+
+		// 새로운 포트폴리오를 대표로 지정
+		queryFactory
+				.update(p)
+				.set(p.isRepresentative, true)
+				.where(p.id.eq(portfolioId))
+				.execute();
+
+		// 영속성 컨텍스트 동기화
+		entityManager.flush();
+		entityManager.clear();
+	}
+
+	@Override
+	@Transactional
+	public void unsetRepresentativePortfolio(Long expertUserId) {
+		QPortfolio p = QPortfolio.portfolio;
+
+		// 해당 전문가의 포트폴리오 중 현재 대표인 것만 찾아서 해제
+		long updatedCount = queryFactory
+				.update(p)
+				.set(p.isRepresentative, false)
+				.where(
+						p.expertProfile.user.id.eq(expertUserId),
+						p.isRepresentative.eq(true)
+				)
+				.execute();
+
+		// 영속성 컨텍스트 동기화
+		entityManager.flush();
+		entityManager.clear();
+
+		if (updatedCount == 0) {
+			throw new GlobalException(ExpertErrorCode.NO_REPRESENTATIVE_PORTFOLIO);
+		}
+	}
+
+
+	// ============== 비즈니스 메서드 ================ //
+
+	/**
+	 * 해시태그 배치 조회 메서드
+	 */
+	private Map<Long, List<String>> getPortfolioHashtagsInBatch(List<Long> portfolioIds) {
+		List<Tuple> hashtagResults = queryFactory
+				.select(portfolioHashtag.portfolio.id, hashtag.name)
+				.from(portfolioHashtag)
+				.join(portfolioHashtag.hashtag, hashtag)
+				.where(portfolioHashtag.portfolio.id.in(portfolioIds))
+				.fetch();
+
+		return hashtagResults.stream()
+				.collect(Collectors.groupingBy(
+						t -> t.get(portfolioHashtag.portfolio.id),
+						Collectors.mapping(t -> t.get(hashtag.name), Collectors.toList())
+				));
 	}
 
 	/**

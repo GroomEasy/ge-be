@@ -10,6 +10,7 @@ import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import com.ceos.menual.domain.review.dto.response.ReviewSummaryResponseDTO;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ReviewRepositoryImpl implements ReviewRepository {
 
 	private final JPAQueryFactory queryFactory;
+	private final EntityManager entityManager;
 
 	private static final QReview r = QReview.review;
 	private static final QConsultation c = QConsultation.consultation;
@@ -242,6 +244,26 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 							.build();
 				})
 				.collect(Collectors.toList());
+	}
+
+	@Override
+	public void deleteByConsultationGeneralProfileId(Long generalProfileId) {
+		QReview review = QReview.review;
+		QConsultation consultation = QConsultation.consultation;
+
+		// 삭제할 Review 엔티티 조회
+		List<Review> reviews = queryFactory
+				.selectFrom(review)
+				.join(review.consultation, consultation).fetchJoin()
+				.where(consultation.generalProfile.id.eq(generalProfileId))
+				.fetch();
+
+		// JPA를 통해 삭제
+		reviews.forEach(entityManager::remove);
+
+		// 영속성 컨텍스트 동기화
+		entityManager.flush();
+		entityManager.clear();
 	}
 
 	// ======== 헬퍼 메서드 ======== //

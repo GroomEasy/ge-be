@@ -17,4 +17,7 @@ public interface ExpertLikeRepository extends JpaRepository<ExpertLike, Long>, E
 
     // 사용자(GeneralProfile)가 찜한 전문가 수 조회
     long countByGeneralProfileId(Long generalProfileId);
+
+    void deleteByGeneralProfileId(Long generalProfileId);
+
 }

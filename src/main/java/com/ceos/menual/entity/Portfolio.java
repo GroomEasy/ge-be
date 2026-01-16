@@ -1,18 +1,13 @@
 package com.ceos.menual.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -36,19 +31,35 @@ public class Portfolio extends BaseEntity {
 
 	// 고민
 	@Column(nullable = false)
-	private String problem;
+	private String concern;
 
 	// 솔루션
 	@Column(nullable = false)
 	private String solution;
-
-	// 기타 설명
-	@Column(nullable = false)
-	private String description;
 
 	// 시술 전 이미지
 	private String beforeImage;
 
 	// 시술 후 이미지
 	private String afterImage;
+
+	// 대표 포트폴리오 여부
+	@Builder.Default
+	@Column(nullable = false)
+	private Boolean isRepresentative = false;
+
+	@OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
+	@Builder.Default
+	private List<PortfolioHashtag> hashtags = new ArrayList<>();
+
+	// 연관관계 편의 메서드
+	public void addHashtag(PortfolioHashtag portfolioHashtag) {
+		hashtags.add(portfolioHashtag);
+		portfolioHashtag.setPortfolio(this);
+	}
+
+	public void removeHashtag(PortfolioHashtag portfolioHashtag) {
+		hashtags.remove(portfolioHashtag);
+	}
+
 }

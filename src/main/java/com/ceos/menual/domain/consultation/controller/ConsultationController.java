@@ -2,6 +2,7 @@ package com.ceos.menual.domain.consultation.controller;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
+import com.ceos.menual.domain.consultation.dto.response.ConcernResponseDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
@@ -41,7 +42,7 @@ public class ConsultationController {
      */
     @GetMapping("/{consultationId}/concern")
     @Operation(summary = "고민지 조회", description = "상담의 고민지를 조회합니다 (해당 전문가 또는 상담 회원만 가능)")
-    public ResponseEntity<CommonResponse<String>> getConcern(
+    public ResponseEntity<CommonResponse<ConcernResponseDTO>> getConcern(
             @PathVariable Long consultationId,
             Authentication authentication
     ) {
@@ -59,8 +60,8 @@ public class ConsultationController {
                     return new GlobalException(ConsultationErrorCode.INVALID_USER_ROLE);
                 });
 
-        String concern = consultationService.getConcern(consultationId, userId, userType);
-        return ResponseEntity.ok(CommonResponse.success(concern));
+        ConcernResponseDTO response = consultationService.getConcern(consultationId, userId, userType);
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 
     /**

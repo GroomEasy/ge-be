@@ -882,6 +882,7 @@ public class ReservationService {
         Long expertId = consultation.getExpertProfile().getUser().getId();
         Long memberId = consultation.getGeneralProfile().getUser().getId();
         Long consultationId = consultation.getId();
+        String memberNickname = consultation.getGeneralProfile().getUser().getNickname();
 
         // 상담 타입에 따라 채팅방 생성
         ChatroomType chatroomType;
@@ -895,12 +896,16 @@ public class ReservationService {
         // 채팅방 생성
         Long chatroomId = createChatroom(expertId, consultationId, chatroomType);
 
+        // 메시지 내용 구성
+        String concernContent = String.format("%s님을 위한 고민지가 도착했습니다.", memberNickname);
+
         // 고민지가 있으면 자동 전송
         if (reservation.getConcernsJson() != null && !reservation.getConcernsJson().isEmpty()) {
             chatMessageService.sendConcernMessage(
                     chatroomId,
                     memberId,
-                    consultationId
+                    consultationId,
+                    concernContent
             );
             log.info("고민지 자동 전송 완료 - chatroomId: {}, consultationId: {}",
                     chatroomId, reservation.getId());

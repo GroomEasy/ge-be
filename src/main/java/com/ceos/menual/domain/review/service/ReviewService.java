@@ -256,7 +256,6 @@ public class ReviewService {
 
 			try {
 				// tmp 경로 파싱
-				// 예: tmp/review/reservation-19/front/1.1.2 프로필 설정.png
 				String[] pathParts = tempImageUrl.split("/");
 
 				if (pathParts.length < 5) {
@@ -266,21 +265,12 @@ public class ReviewService {
 
 				// 인덱스 3: imageType (front), 인덱스 4: fileName
 				String imageType = pathParts[3];
-				String originalFileName = pathParts[4];
-
-				// 파일명 안전하게 처리 (S3 403 Signature 에러 방지)
-				String extension = "";
-				int lastDotIndex = originalFileName.lastIndexOf(".");
-				if (lastDotIndex != -1) {
-					extension = originalFileName.substring(lastDotIndex);
-				}
-				// 한글/공백 문제를 해결하기 위해 UUID 파일명 생성
-				String safeFileName = UUID.randomUUID().toString() + extension;
+				String fileName = pathParts[4];
 
 				// 최종 S3 경로 생성
-				// final/review/{reviewId}/{imageType}/{safeFileName}
+				// final/review/{reviewId}/{imageType}/{fileName}
 				String finalS3Key = String.format("final/review/%d/%s/%s",
-						reviewId, imageType, safeFileName);
+						reviewId, imageType, fileName);
 
 				// S3 이동 실행
 				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);
@@ -288,7 +278,6 @@ public class ReviewService {
 				log.info("리뷰 이미지 이동 완료 - reviewId: {}, from: {}, to: {}",
 						reviewId, tempImageUrl, finalS3Key);
 
-				// 공개 URL 생성 및 엔티티 저장
 				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
 
 				ReviewImage reviewImage = ReviewImage.builder()
@@ -296,10 +285,10 @@ public class ReviewService {
 						.displayOrder(i)
 						.build();
 
-				// 연관관계 설정
 				reviewImage.setReview(savedReview);
 
-				log.info("ReviewImage 생성 완료 - reviewId: {}, url: {}", reviewId, finalImageUrl);
+				log.info("ReviewImage 생성 완료 - reviewId: {}, order: {}, url: {}",
+						reviewId, i, finalImageUrl);
 
 			} catch (GlobalException e) {
 				throw e;

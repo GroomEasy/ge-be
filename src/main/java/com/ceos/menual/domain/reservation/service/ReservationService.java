@@ -8,6 +8,7 @@ import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
+import com.ceos.menual.domain.expert.service.zoom.ZoomMeetingService;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionImageListDTO;
@@ -27,7 +28,6 @@ import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
-import com.ceos.menual.domain.reservation.event.ReservationConfirmedEvent;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.*;
 import com.ceos.menual.entity.enums.Category;
@@ -37,7 +37,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,7 +60,7 @@ public class ReservationService {
     private final ConsultationScheduleRepository consultationScheduleRepository;
     private final ChatMessageService chatMessageService;
     private final ChatroomRepository chatroomRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final ZoomMeetingService zoomMeetingService;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -69,17 +68,23 @@ public class ReservationService {
     private static final int PAYMENT_WAITING_MINUTES = 60; // 60분 후에 만료
 
     /**
-     * 관리자: 결제 확인 및 Consultation 생성
-     * 사용자가 은행 송금으로 입금한 후, 관리자가 확인하면 호출
-     * 
-     * 동시성 안전성:
-     * - PESSIMISTIC_WRITE 락으로 경합 제어
-     * - 첫 번째 요청만 성공, 나머지는 대기 후 INVALID_RESERVATION_STATUS 예외
-     * - Consultation 중복 생성 방지
+     * 관리자: 결제 확정 처리(무통장 입금 확인)
      *
-     * 동시에 S3의 임시 저장 이미지를 최종 저장 위치로 이동
-     * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
-     *     → final/{resourceType}/{resourceId}/{imageType}/{fileName}
+     * 흐름:
+     * - 사용자가 입금(은행 송금) → 관리자가 결제 확정 버튼 클릭
+     * - 아래 작업들을 하나의 트랜잭션(@Transactional) 안에서 순서대로 수행
+     *
+     * 수행 작업:
+     * - 예약 상태 변경: UNPAID → PAID, 예약에 Consultation 연결
+     * - 상담(Consultation) 생성: 타입에 따라 초기 상태 설정(메시지=IN_PROGRESS, 화상=READY)
+     * - S3 이미지 이동: 임시(tmp) → 최종(final) 경로로 이동하고 고민지 JSON의 이미지 경로 갱신
+     * - 채팅 후처리: 상담 채팅방 생성, 고민지 메시지 전송, 관리자→전문가 알림 메시지 전송
+     * - (화상 상담일 때만) Zoom 미팅 생성 및 링크 저장
+     *
+     * 동시성 안전성:
+     * - PESSIMISTIC_WRITE 락으로 동일 reservationId에 대한 동시 결제 확정을 직렬화
+     * - 첫 번째 요청만 성공, 이후 요청은 상태 재검증 후 INVALID_RESERVATION_STATUS로 실패
+     * - 결과적으로 Consultation 중복 생성/중복 결제 확정을 방지
      */
     @Transactional
     public CompletePaymentResponseDTO confirmPaymentByAdmin(
@@ -144,12 +149,8 @@ public class ReservationService {
         // 채팅방 자동 생성 및 고민지 전송
         createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
 
-        // 결제 확정 이벤트 발행
-        eventPublisher.publishEvent(new ReservationConfirmedEvent(
-            reservationId,
-            savedConsultation.getId(),
-            adminUserId
-        ));
+        // 화상 상담의 경우 Zoom 미팅 생성 및 링크 저장
+        zoomMeetingService.createMeetingAndSave(savedConsultation.getId());
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());

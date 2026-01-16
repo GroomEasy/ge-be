@@ -302,15 +302,14 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	@Transactional
 	public void unsetRepresentativePortfolio(Long expertUserId) {
 		QPortfolio p = QPortfolio.portfolio;
-		QExpertProfile ep = QExpertProfile.expertProfile;
-		QUser u = QUser.user;
 
-		// 해당 전문가의 모든 대표 포트폴리오 해제
+		// 해당 전문가의 포트폴리오 중 현재 대표인 것만 찾아서 해제
 		long updatedCount = queryFactory
 				.update(p)
 				.set(p.isRepresentative, false)
 				.where(
-						p.expertProfile.user.id.eq(expertUserId)
+						p.expertProfile.user.id.eq(expertUserId),
+						p.isRepresentative.eq(true)
 				)
 				.execute();
 
@@ -318,7 +317,6 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 		entityManager.flush();
 		entityManager.clear();
 
-		// 만약 해제할 대표 포트폴리오가 없었다면 (선택적 검증)
 		if (updatedCount == 0) {
 			throw new GlobalException(ExpertErrorCode.NO_REPRESENTATIVE_PORTFOLIO);
 		}

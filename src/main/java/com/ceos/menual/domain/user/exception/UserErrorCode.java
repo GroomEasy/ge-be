@@ -18,7 +18,9 @@ public enum UserErrorCode implements ResultCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, 1106, "존재하지 않는 사용자입니다."),
     GENERAL_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1107, "일반 회원 프로필이 존재하지 않습니다."),
     NOT_MEMBER(HttpStatus.FORBIDDEN, 1108, "일반 회원이 아닙니다."),
-    ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, 1109, "관리자 권한이 필요합니다.");
+    ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, 1109, "관리자 권한이 필요합니다."),
+    USER_ALREADY_EXPERT(HttpStatus.CONFLICT, 1110, "이미 전문가입니다."),
+    INCOMPLETE_BANK_ACCOUNT_INFO(HttpStatus.BAD_REQUEST, 1111, "계좌 정보는 은행명, 계좌번호, 예금주명을 모두 입력해야 합니다.");
 
 
 

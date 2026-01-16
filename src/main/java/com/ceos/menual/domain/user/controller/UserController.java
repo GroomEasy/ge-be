@@ -1,8 +1,10 @@
 package com.ceos.menual.domain.user.controller;
 
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
+import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
+import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
@@ -67,6 +69,23 @@ public class UserController {
     public ResponseEntity<CommonResponse<UserInfoResponseDTO>> getMyInfo(
             @AuthenticationPrincipal Long userId) {
         UserInfoResponseDTO response = userService.getMyInfo(userId);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 전문가 전환
+     */
+    @Operation(
+            summary = "전문가 전환",
+            description = "일반 회원이 전문가로 전환합니다. GeneralProfile이 삭제되고 ExpertProfile이 생성됩니다."
+    )
+    @PostMapping("/conversion")
+    public ResponseEntity<CommonResponse<ExpertConversionResponseDTO>> convertToExpert(
+            @Parameter(description = "사용자 ID", required = true)
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody ExpertConversionRequestDTO requestDTO
+    ) {
+        ExpertConversionResponseDTO response = userService.convertToExpert(userId, requestDTO);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

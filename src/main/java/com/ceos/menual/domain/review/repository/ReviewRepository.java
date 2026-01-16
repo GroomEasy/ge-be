@@ -28,4 +28,6 @@ public interface ReviewRepository {
 	 */
 	List<CompletedReviewResponseDTO> findCompletedReviews(Long generalProfileId);
 
+	void deleteByConsultationGeneralProfileId(Long generalProfileId);
+
 }

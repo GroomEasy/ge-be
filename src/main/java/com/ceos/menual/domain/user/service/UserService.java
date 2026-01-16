@@ -2,37 +2,48 @@ package com.ceos.menual.domain.user.service;
 
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.review.repository.ReviewRepository;
+import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SocialSignUpRequestDTO;
+import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.SocialSignUpResponseDTO;
 import com.ceos.menual.domain.user.dto.response.UserInfoResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.domain.user.repository.ExpertProfileRepository;
 import com.ceos.menual.domain.user.repository.GeneralProfileRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
-import com.ceos.menual.entity.GeneralProfile;
-import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.AuthProvider;
 
 import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
+import com.querydsl.core.QueryFactory;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
 
+    private final JPAQueryFactory queryFactory;
+    private final EntityManager entityManager;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ExpertLikeRepository expertLikeRepository;
     private final ReviewRepository reviewRepository;
     private final GeneralProfileRepository generalProfileRepository;
+    private final ExpertProfileRepository expertProfileRepository;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
@@ -118,7 +129,90 @@ public class UserService {
             .build();
     }
 
-    // 관련 메서드
+
+    @Transactional
+    public ExpertConversionResponseDTO convertToExpert(Long userId, ExpertConversionRequestDTO requestDTO) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 이미 전문가인지 확인
+        if (user.getUserType() == UserType.EXPERT) {
+            throw new GlobalException(UserErrorCode.USER_ALREADY_EXPERT);
+        }
+
+        // 계좌 정보 일부만 입력된 경우 예외 처리
+        if (requestDTO.hasPartialBankAccountInfo()) {
+            throw new GlobalException(UserErrorCode.INCOMPLETE_BANK_ACCOUNT_INFO);
+        }
+
+        // GeneralProfile 조회 및 연관 데이터 삭제
+        GeneralProfile generalProfile = user.getGeneralProfile();
+        if (generalProfile != null) {
+            Long generalProfileId = generalProfile.getId();
+
+            // 연관 데이터 삭제 (JPA 방식 사용)
+            QReview review = QReview.review;
+            QConsultation consultation = QConsultation.consultation;
+
+            List<Review> reviews = queryFactory
+                    .selectFrom(review)
+                    .join(review.consultation, consultation).fetchJoin()
+                    .where(consultation.generalProfile.id.eq(generalProfileId))
+                    .fetch();
+
+            reviews.forEach(entityManager::remove);
+
+            // ExpertLike 삭제
+            expertLikeRepository.deleteByGeneralProfileId(generalProfileId);
+
+            // GeneralProfile 삭제
+            generalProfileRepository.delete(generalProfile);
+        }
+
+        // ExpertProfile 생성 및 저장
+        ExpertProfile.ExpertProfileBuilder expertProfileBuilder = ExpertProfile.builder()
+                .user(user)
+                .category(requestDTO.getCategory())
+                .specialities(requestDTO.getSpecialities() != null ? requestDTO.getSpecialities() : new ArrayList<>())
+                .introduction(requestDTO.getIntroduction())
+                .profileLink(requestDTO.getProfileLink())
+                .careerInfo(requestDTO.getCareerInfo())
+                .consultationSchedules(new ArrayList<>());
+
+        // ExpertBankAccount 생성 (정보가 완전히 입력된 경우에만)
+        if (requestDTO.hasCompleteBankAccountInfo()) {
+            ExpertBankAccount bankAccount = ExpertBankAccount.builder()
+                    .bankName(requestDTO.getBankName())
+                    .accountNumber(requestDTO.getAccountNumber())
+                    .accountHolder(requestDTO.getAccountHolder())
+                    .build();
+
+            expertProfileBuilder.expertBankAccount(bankAccount);
+        }
+
+        ExpertProfile expertProfile = expertProfileBuilder.build();
+
+        // ExpertBankAccount가 있으면 양방향 관계 설정
+        if (expertProfile.getExpertBankAccount() != null) {
+            expertProfile.getExpertBankAccount().setExpertProfile(expertProfile);
+        }
+
+        ExpertProfile savedExpertProfile = expertProfileRepository.save(expertProfile);
+
+        // UserType 변경 (맨 마지막에)
+        user.convertToExpert();
+
+        // 응답 생성
+        return ExpertConversionResponseDTO.builder()
+                .expertProfileId(savedExpertProfile.getId())
+                .userType(user.getUserType())
+                .category(savedExpertProfile.getCategory())
+                .nickname(user.getNickname())
+                .build();
+    }
+
+    // ============== 비즈니스 메서드 ============== //
 
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {

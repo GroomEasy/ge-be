@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.expert.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -10,14 +11,19 @@ import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
+import com.ceos.menual.domain.review.repository.ReviewRepository;
+import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
+import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.domain.user.repository.ExpertProfileRepository;
+import com.ceos.menual.domain.user.repository.GeneralProfileRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
-import com.ceos.menual.entity.ConsultationSchedule;
-import com.ceos.menual.entity.ExpertProfile;
-import com.ceos.menual.entity.User;
+import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

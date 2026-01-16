@@ -38,4 +38,8 @@ public class ExpertBankAccount extends BaseEntity{
 
 	@Column(nullable = false)
 	private String accountHolder;
+
+	public void setExpertProfile(ExpertProfile expertProfile) {
+		this.expertProfile = expertProfile;
+	}
 }

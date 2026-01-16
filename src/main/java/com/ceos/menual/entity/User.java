@@ -80,5 +80,8 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    public void convertToExpert() {
+        this.userType = UserType.EXPERT;
+    }
 }
 

@@ -241,9 +241,6 @@ public class UserService {
     /**
      * 현재 로그인한 사용자 정보 조회
      */
-    /**
-     * 현재 로그인한 사용자 정보 조회
-     */
     @Transactional(readOnly = true)
     public UserInfoResponseDTO getMyInfo(Long userId) {
         User user = userRepository.findById(userId)
@@ -274,7 +271,6 @@ public class UserService {
             expertLikeCount = expertLikeRepository.countByGeneralProfileId(gp.getId());
             reviewCount = reviewRepository.countByConsultationGeneralProfileId(gp.getId());
         }
-
         return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);
     }
 }

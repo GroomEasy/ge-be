@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.review.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
@@ -254,8 +255,8 @@ public class ReviewService {
 			String tempImageUrl = tempImageUrls.get(i);
 
 			try {
-				// 1. tmp 경로에서 정보 추출
-				// 예: tmp/review/reservation-67/front/image.png
+				// tmp 경로 파싱
+				// 예: tmp/review/reservation-19/front/1.1.2 프로필 설정.png
 				String[] pathParts = tempImageUrl.split("/");
 
 				if (pathParts.length < 5) {
@@ -263,20 +264,31 @@ public class ReviewService {
 					throw new GlobalException(ReviewErrorCode.INVALID_IMAGE_PATH);
 				}
 
-				String imageType = pathParts[3];  // "front"
-				String fileName = pathParts[4];   // "image.png"
+				// 인덱스 3: imageType (front), 인덱스 4: fileName
+				String imageType = pathParts[3];
+				String originalFileName = pathParts[4];
+
+				// 파일명 안전하게 처리 (S3 403 Signature 에러 방지)
+				String extension = "";
+				int lastDotIndex = originalFileName.lastIndexOf(".");
+				if (lastDotIndex != -1) {
+					extension = originalFileName.substring(lastDotIndex);
+				}
+				// 한글/공백 문제를 해결하기 위해 UUID 파일명 생성
+				String safeFileName = UUID.randomUUID().toString() + extension;
 
 				// 최종 S3 경로 생성
-				// final/review/{reviewId}/{imageType}/{fileName}
+				// final/review/{reviewId}/{imageType}/{safeFileName}
 				String finalS3Key = String.format("final/review/%d/%s/%s",
-						reviewId, imageType, fileName);
+						reviewId, imageType, safeFileName);
 
-				// S3에서 이미지 이동 (tmp → final)
+				// S3 이동 실행
 				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);
+
 				log.info("리뷰 이미지 이동 완료 - reviewId: {}, from: {}, to: {}",
 						reviewId, tempImageUrl, finalS3Key);
 
-				// 공개 S3 URL 생성
+				// 공개 URL 생성 및 엔티티 저장
 				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
 
 				ReviewImage reviewImage = ReviewImage.builder()
@@ -284,17 +296,15 @@ public class ReviewService {
 						.displayOrder(i)
 						.build();
 
-				// Review와 양방향 관계 설정
+				// 연관관계 설정
 				reviewImage.setReview(savedReview);
 
-				log.info("ReviewImage 생성 완료 - reviewId: {}, order: {}, url: {}",
-						reviewId, i, finalImageUrl);
+				log.info("ReviewImage 생성 완료 - reviewId: {}, url: {}", reviewId, finalImageUrl);
 
 			} catch (GlobalException e) {
 				throw e;
 			} catch (Exception e) {
-				log.error("리뷰 이미지 처리 실패 - reviewId: {}, tempUrl: {}",
-						reviewId, tempImageUrl, e);
+				log.error("리뷰 이미지 처리 실패 - reviewId: {}, tempUrl: {}", reviewId, tempImageUrl, e);
 				throw new GlobalException(ReviewErrorCode.IMAGE_PROCESSING_FAILED);
 			}
 		}

@@ -6,8 +6,9 @@ import java.util.stream.Collectors;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
-import com.ceos.menual.domain.expert.dto.response.ExpertInfoResponseDTO;
-import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
+import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
+import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
@@ -28,8 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
-import com.ceos.menual.domain.expert.dto.response.PopularExpertsResponseDTO;
 import com.ceos.menual.domain.expert.repository.ExpertRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -109,5 +108,101 @@ public class ExpertService {
 		return schedules.stream()
 				.map(ConsultationScheduleResponseDTO::from)
 				.collect(Collectors.toList());
+	}
+
+	/**
+	 * 전문가 포트폴리오 조회
+	 */
+	public List<ExpertPortfolioResponseDTO> getPortfolioList(Long expertUserId, int page, int size) {
+		// 전문가 조회 및 검증
+		User user = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		// 전문가 여부 확인
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		return expertRepository.findPortfolioList(expertUserId, page, size);
+	}
+
+	/**
+	 * 포트폴리오 등록
+	 */
+	@Transactional
+	public ExpertPortfolioResponseDTO createPortfolio(Long expertUserId, PortfolioCreateRequestDTO requestDTO) {
+		// 전문가 조회 및 검증
+		User user = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		ExpertProfile expertProfile = user.getExpertProfile();
+		if (expertProfile == null) {
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
+		}
+
+		// Portfolio 엔티티 생성
+		Portfolio portfolio = Portfolio.builder()
+				.expertProfile(expertProfile)
+				.title(requestDTO.getTitle())
+				.concern(requestDTO.getConcern())
+				.solution(requestDTO.getSolution())
+				.beforeImage(requestDTO.getBeforeImage())
+				.afterImage(requestDTO.getAfterImage())
+				.build();
+
+		// 저장 및 반환
+		return expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
+	}
+
+	/**
+	 * 대표 포트폴리오 지정
+	 */
+	@Transactional
+	public SetRepresentativePortfolioResponseDTO setRepresentativePortfolio(
+			Long expertUserId,
+			SetRepresentativePortfolioRequestDTO requestDTO
+	) {
+		// 전문가 검증
+		User user = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		// 대표 포트폴리오 변경
+		expertRepository.setRepresentativePortfolio(expertUserId, requestDTO.getPortfolioId());
+
+		// 응답 생성
+		return SetRepresentativePortfolioResponseDTO.builder()
+				.portfolioId(requestDTO.getPortfolioId())
+				.message("대표 포트폴리오가 변경되었습니다.")
+				.build();
+	}
+
+	/**
+	 * 대표 포트폴리오 해제
+	 */
+	@Transactional
+	public UnsetRepresentativePortfolioResponseDTO unsetRepresentativePortfolio(Long expertUserId) {
+		// 전문가 검증
+		User user = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		// 대표 포트폴리오 해제
+		expertRepository.unsetRepresentativePortfolio(expertUserId);
+
+		// 3. 응답 생성
+		return UnsetRepresentativePortfolioResponseDTO.builder()
+				.message("대표 포트폴리오가 해제되었습니다.")
+				.build();
 	}
 }

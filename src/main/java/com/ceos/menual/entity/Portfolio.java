@@ -44,7 +44,9 @@ public class Portfolio extends BaseEntity {
 	private String afterImage;
 
 	// 대표 포트폴리오 여부
-	private Boolean isRepresentative;
+	@Builder.Default
+	@Column(nullable = false)
+	private Boolean isRepresentative = false;
 
 	@OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default

@@ -28,6 +28,9 @@ public class ExpertPortfolioResponseDTO {
     @Schema(description = "해결 솔루션", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거")
     private String solution;
 
+    @Schema(description = "대표 이미지 여부", example = "false")
+    private Boolean isRepresentative;
+
     @Schema(description = "시술 전 이미지 URL", example = "https://image.com/before.jpg")
     private String beforeImage;
 

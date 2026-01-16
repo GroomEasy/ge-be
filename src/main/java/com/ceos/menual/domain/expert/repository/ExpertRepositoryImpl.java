@@ -198,6 +198,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 						.concern(tuple.get(portfolio.concern))
 						.solution(tuple.get(portfolio.solution))
 						.beforeImage(tuple.get(portfolio.beforeImage))
+						.isRepresentative(tuple.get(portfolio.isRepresentative))
 						.afterImage(tuple.get(portfolio.afterImage))
 						.hashtags(hashtagMap.getOrDefault(tuple.get(portfolio.id), Collections.emptyList()))
 						.build())
@@ -249,6 +250,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.solution(portfolio.getSolution())
 				.beforeImage(portfolio.getBeforeImage())
 				.afterImage(portfolio.getAfterImage())
+				.isRepresentative(portfolio.getIsRepresentative())
 				.hashtags(savedHashtags)
 				.build();
 	}
@@ -275,7 +277,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 			throw new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND);
 		}
 
-		// 2. 기존 대표 포트폴리오 모두 해제 (해당 전문가의)
+		// 기존 대표 포트폴리오 모두 해제 (해당 전문가의)
 		queryFactory
 				.update(p)
 				.set(p.isRepresentative, false)

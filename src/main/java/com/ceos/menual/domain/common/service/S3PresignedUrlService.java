@@ -167,7 +167,7 @@ public class S3PresignedUrlService {
 	 */
 	public void moveImageFromTempToFinal(String tempS3Key, String finalS3Key) {
 		try {
-			// validateResourceType("consultation");
+//			validateResourceType("consultation");
 
 			// 1. 임시 위치의 파일을 최종 위치로 복사
 			log.info("S3 파일 복사 시작 - bucket: {}, from: {}, to: {}", bucketName, tempS3Key, finalS3Key);

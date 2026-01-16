@@ -200,8 +200,8 @@ public class UserService {
 
         ExpertProfile savedExpertProfile = expertProfileRepository.save(expertProfile);
 
-        // UserType 변경 (맨 마지막에)
-        user.convertToExpert();
+        // UserType 변경 + ExpertProfile 설정 (한 번에 처리)
+        user.convertToExpert(savedExpertProfile);
 
         // 응답 생성
         return ExpertConversionResponseDTO.builder()

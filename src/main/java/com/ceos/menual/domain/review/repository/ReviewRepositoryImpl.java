@@ -196,7 +196,8 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						c.scheduleTime,
 						u.nickname,
 						r.rating,
-						r.content
+						r.content,
+						r.createdAt
 				)
 				.from(r)
 				.join(r.consultation, c)
@@ -226,15 +227,20 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 		// DTO 조립
 		return results.stream()
-				.map(tuple -> CompletedReviewResponseDTO.builder()
-						.reviewId(tuple.get(r.id))
-						.consultationDate(tuple.get(c.scheduleTime))
-						.expertName(tuple.get(u.nickname))
-						.rating(tuple.get(r.rating))
-						.content(tuple.get(r.content))
-						.imageUrls(imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
-						.hashtags(hashtagsMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
-						.build())
+				.map(tuple -> {
+					LocalDateTime createdAt = tuple.get(r.createdAt);
+
+					return CompletedReviewResponseDTO.builder()
+							.reviewId(tuple.get(r.id))
+							.consultationDate(tuple.get(c.scheduleTime))
+							.expertName(tuple.get(u.nickname))
+							.rating(tuple.get(r.rating))
+							.content(tuple.get(r.content))
+							.imageUrls(imagesMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
+							.hashtags(hashtagsMap.getOrDefault(tuple.get(r.id), Collections.emptyList()))
+							.createdAt(createdAt != null ? createdAt.toString() : null)
+							.build();
+				})
 				.collect(Collectors.toList());
 	}
 

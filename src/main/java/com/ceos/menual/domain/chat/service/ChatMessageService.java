@@ -38,7 +38,7 @@ public class ChatMessageService {
      * 고민지 메시지 자동 전송
      */
     @Transactional
-    public void sendConcernMessage(Long chatroomId, Long memberId, Long reservationId) {
+    public void sendConcernMessage(Long chatroomId, Long memberId, Long consultationId, String content) {
         log.info("고민지 메시지 전송 시작 - chatroomId: {}, memberId: {}", chatroomId, memberId);
 
         // 채팅방 존재 확인
@@ -54,8 +54,9 @@ public class ChatMessageService {
         Message concernMessage = Message.builder()
                 .chatroomId(chatroomId)
                 .senderId(memberId)
+                .content(content)
                 .messageType(MessageType.CONCERN)
-                .relatedId(reservationId)
+                .relatedId(consultationId)
                 .build();
 
         Message savedMessage = chatMessageRepository.save(concernMessage);

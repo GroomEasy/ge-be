@@ -117,7 +117,7 @@ public class ReviewService {
 			throw new GlobalException(ReviewErrorCode.UNAUTHORIZED_REVIEW_ACCESS);
 		}
 
-		// Consultation 조회 (fetch join으로 ExpertProfile도 함께)
+		// Consultation 조회
 		Consultation consultation = consultationRepository.findByIdWithProfiles(request.getConsultationId())
 				.orElseThrow(() -> new GlobalException(ReviewErrorCode.CONSULTATION_NOT_FOUND));
 

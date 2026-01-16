@@ -189,13 +189,14 @@ public class ExpertController {
 			description = "특정 전문가의 포트폴리오 목록을 페이징 방식으로 조회합니다. 대표 포트폴리오가 우선 노출됩니다."
 	)
 	@GetMapping("/{userId}/portfolios")
-	public ResponseEntity<List<ExpertPortfolioResponseDTO>> getPortfolios(
+	public ResponseEntity<CommonResponse<List<ExpertPortfolioResponseDTO>>> getPortfolios(
 			@Parameter(description = "전문가 UserId", required = true)
 			@PathVariable Long userId,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "3") int size) {
 
-		return ResponseEntity.ok(expertService.getPortfolioList(userId, page, size));
+		List<ExpertPortfolioResponseDTO> response = expertService.getPortfolioList(userId, page, size);
+		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 
 	/**

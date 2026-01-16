@@ -1,6 +1,7 @@
 package com.ceos.menual.entity;
 
 import com.ceos.menual.entity.enums.Category;
+import com.ceos.menual.global.converter.ZoomTokenEncryptor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +11,7 @@ import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -58,6 +60,20 @@ public class ExpertProfile extends BaseEntity {
 	//경력정보
 	private String careerInfo;
 
+	// ===== Zoom 연동 =====
+	private Boolean isZoomConnected;
+	private String zoomUserId;
+
+	@Column(columnDefinition = "TEXT")
+	@Convert(converter = ZoomTokenEncryptor.class)
+	private String zoomAccessToken;
+
+	@Column(columnDefinition = "TEXT")
+	@Convert(converter = ZoomTokenEncryptor.class)
+	private String zoomRefreshToken;
+
+	private LocalDateTime zoomTokenExpiresAt;
+
 
 	// 비즈니스 메서드
 	public void addConsultationSchedule(ConsultationSchedule schedule) {
@@ -68,6 +84,20 @@ public class ExpertProfile extends BaseEntity {
 	public void removeConsultationSchedule(ConsultationSchedule schedule) {
 		this.consultationSchedules.remove(schedule);
 		schedule.setExpertProfile(null);
+	}
+
+	public void connectZoom(String zoomUserId, String accessToken, String refreshToken, LocalDateTime tokenExpiresAt) {
+		this.zoomUserId = zoomUserId;
+		this.zoomAccessToken = accessToken;
+		this.zoomRefreshToken = refreshToken;
+		this.zoomTokenExpiresAt = tokenExpiresAt;
+		this.isZoomConnected = true;
+	}
+
+	public void updateZoomAccessToken(String accessToken, LocalDateTime tokenExpiresAt) {
+		this.zoomAccessToken = accessToken;
+		this.zoomTokenExpiresAt = tokenExpiresAt;
+		if (this.isZoomConnected == null) this.isZoomConnected = true;
 	}
 
 }

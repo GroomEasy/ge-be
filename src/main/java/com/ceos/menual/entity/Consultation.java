@@ -20,10 +20,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 
 @Entity
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 @Table(name = "consultations")
@@ -56,6 +57,14 @@ public class Consultation extends BaseEntity {
 	private Integer durationMinutes;
 	private String videoLink;
 
+	// Zoom 미팅 관련 (자동 생성)
+	private Long zoomMeetingId;
+
+	@Column(columnDefinition = "TEXT")
+	private String zoomJoinUrl;
+
+	private Boolean isZoomMeetingCreated;
+
 	//솔루션 관련
 	@Column(columnDefinition = "TEXT")
 	private String solution;
@@ -81,4 +90,10 @@ public class Consultation extends BaseEntity {
     public void markReviewAsWritten() {
         this.reviewWritten = true;
     }
+
+	public void attachZoomMeeting(Long meetingId, String joinUrl) {
+		this.zoomMeetingId = meetingId;
+		this.zoomJoinUrl = joinUrl;
+		this.isZoomMeetingCreated = true;
+	}
 }

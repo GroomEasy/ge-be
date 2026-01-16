@@ -24,4 +24,19 @@ public class WebClientConfig {
 			.defaultHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
 			.build();
 	}
+
+	@Bean
+	public WebClient zoomAuthWebClient() {
+		return WebClient.builder()
+			.baseUrl("https://zoom.us")
+			.defaultHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
+			.build();
+	}
+
+	@Bean
+	public WebClient zoomApiWebClient() {
+		return WebClient.builder()
+			.baseUrl("https://api.zoom.us")
+			.build();
+	}
 }

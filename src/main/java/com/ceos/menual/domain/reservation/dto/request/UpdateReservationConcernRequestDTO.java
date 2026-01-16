@@ -32,7 +32,7 @@ public class UpdateReservationConcernRequestDTO {
     @JsonProperty("hair")
     private HairConcernDTO hair;
 
-    @Schema(description = "S3 이미지 키 목록", example = "[\"tmp/consultation/user-123/purpose/1.jpg\"]", required = true)
+    @Schema(description = "S3 이미지 키 목록", example = "[\"tmp/consultation/reservation-123/{imageType}/{fileName}\"]", required = true)
     @NotEmpty(message = "최소 1개 이상의 이미지 키를 포함해야 합니다")
     private List<String> imageKeys;
 }

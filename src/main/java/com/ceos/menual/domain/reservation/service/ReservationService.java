@@ -27,6 +27,7 @@ import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
+import com.ceos.menual.domain.reservation.event.ReservationConfirmedEvent;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.*;
 import com.ceos.menual.entity.enums.Category;
@@ -36,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -59,6 +61,7 @@ public class ReservationService {
     private final ConsultationScheduleRepository consultationScheduleRepository;
     private final ChatMessageService chatMessageService;
     private final ChatroomRepository chatroomRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -121,9 +124,13 @@ public class ReservationService {
 
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
-        
-        // 채팅방 자동 생성 및 고민지 전송
-        createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
+
+        // 결제 확정 이벤트 발행
+        eventPublisher.publishEvent(new ReservationConfirmedEvent(
+            reservationId,
+            savedConsultation.getId(),
+            adminUserId
+        ));
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
@@ -634,7 +641,7 @@ public class ReservationService {
 
     /**
      * S3 임시 저장된 이미지를 최종 위치로 이동
-     * tmp/consultation/user-{userId}/{imageType}/{fileName}
+     * tmp/consultation/reservation-{reservationId}/{imageType}/{fileName}
      *     → final/consultation/{consultationId}/{imageType}/{fileName}
      */
     private void moveImagesToFinalLocation(Reservation reservation, Consultation consultation) {

@@ -241,29 +241,38 @@ public class UserService {
     /**
      * 현재 로그인한 사용자 정보 조회
      */
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
     @Transactional(readOnly = true)
     public UserInfoResponseDTO getMyInfo(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
-        Long expertLikeCount = 0L;
-        Long reviewCount = 0L;
+        Long expertLikeCount;
+        Long reviewCount;
 
-        // 전문가일 때: 나(전문가)와 관련된 통계 조회
-        if (user.getUserType() == UserType.EXPERT && user.getExpertProfile() != null) {
-            Long expertProfileId = user.getExpertProfile().getId();
-            expertLikeCount = expertLikeRepository.countByExpertProfileId(expertProfileId);
-            reviewCount = reviewRepository.countByConsultationExpertProfileId(expertProfileId);
+        // 전문가(EXPERT)인 경우
+        if (user.getUserType() == UserType.EXPERT) {
+            ExpertProfile ep = user.getExpertProfile();
+            if (ep == null) {
+                // 전문가 타입인데 프로필이 없는 비정상 상태
+                throw new GlobalException(UserErrorCode.EXPERT_PROFILE_NOT_FOUND);
+            }
+
+            expertLikeCount = expertLikeRepository.countByExpertProfileId(ep.getId());
+            reviewCount = reviewRepository.countByConsultationExpertProfileId(ep.getId());
         }
-        // 일반 유저일 때: 내(일반프로필)가 활동한 통계 조회
-        else if (user.getGeneralProfile() != null) {
-            Long generalProfileId = user.getGeneralProfile().getId();
-            expertLikeCount = expertLikeRepository.countByGeneralProfileId(generalProfileId);
-            reviewCount = reviewRepository.countByConsultationGeneralProfileId(generalProfileId);
-        }
-        // 프로필이 없는 경우
+        // 일반 유저(MEMBER/GENERAL)인 경우
         else {
-            throw new GlobalException(UserErrorCode.PROFILE_NOT_FOUND);
+            GeneralProfile gp = user.getGeneralProfile();
+            if (gp == null) {
+                // 일반 유저인데 프로필이 없는 비정상 상태
+                throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+            }
+
+            expertLikeCount = expertLikeRepository.countByGeneralProfileId(gp.getId());
+            reviewCount = reviewRepository.countByConsultationGeneralProfileId(gp.getId());
         }
 
         return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);

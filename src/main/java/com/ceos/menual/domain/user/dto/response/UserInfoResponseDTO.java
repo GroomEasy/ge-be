@@ -23,20 +23,20 @@ public class UserInfoResponseDTO {
     private Long reviewCount;
 
     public static UserInfoResponseDTO of(User user, Long expertLikeCount, Long reviewCount) {
-
         if (user == null) {
-                throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+            throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        Integer points = user.getGeneralProfile() != null
-                ? user.getGeneralProfile().getTotalPoints()
-                : 0;
+        // 전문가(EXPERT)이면 null, 일반 유저이면 프로필에서 포인트 추출
+        Integer points = null;
+        if (user.getUserType() == UserType.MEMBER && user.getGeneralProfile() != null) {
+            points = user.getGeneralProfile().getTotalPoints();
+        }
 
         return UserInfoResponseDTO.builder()
                 .userId(user.getId())
                 .userType(user.getUserType())
                 .nickname(user.getNickname())
-                .userType(user.getUserType())
                 .expertLikeCount(expertLikeCount)
                 .points(points)
                 .reviewCount(reviewCount)

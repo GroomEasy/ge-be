@@ -241,21 +241,36 @@ public class UserService {
     /**
      * 현재 로그인한 사용자 정보 조회
      */
+    @Transactional(readOnly = true)
     public UserInfoResponseDTO getMyInfo(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
-        GeneralProfile generalProfile = user.getGeneralProfile();
-        if (generalProfile == null) {
-            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+        Long expertLikeCount;
+        Long reviewCount;
+
+        // 전문가(EXPERT)인 경우
+        if (user.getUserType() == UserType.EXPERT) {
+            ExpertProfile ep = user.getExpertProfile();
+            if (ep == null) {
+                // 전문가 타입인데 프로필이 없는 비정상 상태
+                throw new GlobalException(UserErrorCode.EXPERT_PROFILE_NOT_FOUND);
+            }
+
+            expertLikeCount = expertLikeRepository.countByExpertProfileId(ep.getId());
+            reviewCount = reviewRepository.countByConsultationExpertProfileId(ep.getId());
         }
-        Long generalProfileId = generalProfile.getId();
+        // 일반 유저(MEMBER/GENERAL)인 경우
+        else {
+            GeneralProfile gp = user.getGeneralProfile();
+            if (gp == null) {
+                // 일반 유저인데 프로필이 없는 비정상 상태
+                throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+            }
 
-        // 찜한 전문가 수 조회
-        Long expertLikeCount = expertLikeRepository.countByGeneralProfileId(generalProfileId);
-
-        // 남긴 후기 수 조회
-        Long reviewCount = reviewRepository.countByConsultationGeneralProfileId(generalProfileId);
-
-        return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);    }
+            expertLikeCount = expertLikeRepository.countByGeneralProfileId(gp.getId());
+            reviewCount = reviewRepository.countByConsultationGeneralProfileId(gp.getId());
+        }
+        return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);
+    }
 }

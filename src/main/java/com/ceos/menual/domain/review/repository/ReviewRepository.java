@@ -30,4 +30,5 @@ public interface ReviewRepository {
 
 	void deleteByConsultationGeneralProfileId(Long generalProfileId);
 
+	Long countByConsultationExpertProfileId(Long expertProfileId);
 }

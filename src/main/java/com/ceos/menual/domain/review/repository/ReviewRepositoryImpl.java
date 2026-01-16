@@ -256,6 +256,19 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 		entityManager.clear();
 	}
 
+	/**
+	 * 전문가가 받은 총 리뷰 수 조회
+	 */
+	@Override
+	public Long countByConsultationExpertProfileId(Long expertProfileId) {
+		return queryFactory
+				.select(r.count())
+				.from(r)
+				.join(r.consultation, c) // 리뷰 -> 상담 조인
+				.where(c.expertProfile.id.eq(expertProfileId)) // 특정 전문가 조건
+				.fetchOne();
+	}
+
 	// ======== 헬퍼 메서드 ======== //
 
 	private Map<Long, List<String>> getReviewImagesInBatch(List<Long> reviewIds) {

@@ -15,7 +15,9 @@ public enum ExpertErrorCode  implements ResultCode {
     ALREADY_LIKED_EXPERT(HttpStatus.CONFLICT, 6004, "이미 해당 전문가를 찜했습니다."),
     LIKE_NOT_FOUND(HttpStatus.CONFLICT, 6005, "해당 전문가에 대한 찜을 찾을 수 없습니다."),
     PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, 6006, "포트폴리오를 찾을 수 없거나 본인의 포트폴리오가 아닙니다."),
-    NO_REPRESENTATIVE_PORTFOLIO(HttpStatus.NOT_FOUND, 6007, "해제할 대표 포트폴리오가 없습니다.");
+    NO_REPRESENTATIVE_PORTFOLIO(HttpStatus.NOT_FOUND, 6007, "해제할 대표 포트폴리오가 없습니다."),
+    NO_EXPERT_BANK_ACCOUNT(HttpStatus.NOT_FOUND, 6008, "해당 전문가의 계좌가 존재하지 않습니다.");
+
 
 
 

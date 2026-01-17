@@ -9,6 +9,8 @@ import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
+import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
+import com.ceos.menual.domain.expert.repository.ExpertRepository;
 import com.ceos.menual.domain.expert.service.zoom.ZoomMeetingService;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
@@ -19,11 +21,7 @@ import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.CompletePaymentResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.*;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository;
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
@@ -63,6 +61,7 @@ public class ReservationService {
     private final ChatroomRepository chatroomRepository;
     private final ZoomMeetingService zoomMeetingService;
     private final com.ceos.menual.global.config.slack.SlackNotificationService slackNotificationService;
+    private final ExpertRepository expertRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -960,6 +959,66 @@ public class ReservationService {
 
         log.info("채팅방 자동 생성 및 고민지 전송 완료 - consultationId: {}, chatroomId: {}",
                 consultationId, chatroomId);
+    }
+
+    /**
+     * 예약 주문서(결제 전 확인 페이지) 데이터 조회
+     */
+    public ReservationSheetResponseDTO getReservationSheet(Long userId, Long expertId, ConsultationType type) {
+
+        // 예약자(User - Payer) 조회 및 포인트 확인
+        User payer = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (payer.getGeneralProfile() == null) {
+            throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        // GeneralProfile.totalPoints는 Integer이므로 Long으로 변환
+        Long currentPoints = Long.valueOf(payer.getGeneralProfile().getTotalPoints());
+
+
+        // 전문가(Expert) 및 프로필 조회
+        User expertUser = userRepository.findById(expertId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (!expertUser.isExpert()) {
+            throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+        }
+        ExpertProfile expertProfile = expertUser.getExpertProfile();
+
+
+        // 전문가 계좌 정보 조회
+        ExpertBankAccount bankAccount = expertRepository.findBankAccountByExpertProfileId(expertProfile.getId())
+                .orElseThrow(() -> new GlobalException(ExpertErrorCode.NO_EXPERT_BANK_ACCOUNT));
+
+
+        // 가격 책정 로직
+        ConsultationSchedule schedule = consultationScheduleRepository
+                .findByExpertProfileIdAndConsultationTypeAndIsActiveTrue(expertProfile.getId(), type)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.CONSULTATION_TYPE_NOT_SUPPORTED));
+
+        Long price = Long.valueOf(schedule.getPrice());
+
+
+        // DTO 조립 및 반환
+        return ReservationSheetResponseDTO.builder()
+                .targetInfo(ReservationSheetResponseDTO.ReservationTargetInfo.builder()
+                        .expertNickname(expertUser.getNickname())
+                        .category(expertProfile.getCategory())
+                        .consultationType(type)
+                        .originalPrice(price) // 조회한 스케줄의 가격
+                        .build())
+                .payerInfo(ReservationSheetResponseDTO.PayerInfo.builder()
+                        .userNickname(payer.getNickname())
+                        .totalPoints(currentPoints)
+                        .build())
+                .accountInfo(ReservationSheetResponseDTO.PaymentAccountInfo.builder()
+                        .bankName(bankAccount.getBankName())
+                        .accountNumber(bankAccount.getAccountNumber())
+                        .accountHolder(bankAccount.getAccountHolder())
+                        .build())
+                .build();
     }
 
     /**

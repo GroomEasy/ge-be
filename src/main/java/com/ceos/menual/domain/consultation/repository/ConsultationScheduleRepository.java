@@ -34,4 +34,12 @@ public interface ConsultationScheduleRepository extends JpaRepository<Consultati
             @Param("consultationType") ConsultationType consultationType
     );
 
+    /**
+     * 전문가 프로필 ID + 상담 유형 + 활성화 여부로 스케줄(가격 정보) 조회
+     */
+    Optional<ConsultationSchedule> findByExpertProfileIdAndConsultationTypeAndIsActiveTrue(
+            Long expertProfileId,
+            ConsultationType consultationType
+    );
+
 }

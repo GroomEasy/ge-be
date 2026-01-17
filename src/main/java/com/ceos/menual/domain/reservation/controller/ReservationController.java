@@ -5,11 +5,9 @@ import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationReque
 import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.*;
 import com.ceos.menual.domain.reservation.service.ReservationService;
+import com.ceos.menual.entity.enums.ConsultationType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -170,4 +168,30 @@ public class ReservationController {
         reservationService.requestRefund(reservationId, userId);
         return ResponseEntity.ok(CommonResponse.success(null));
     }
+
+    /**
+     * 예약 주문서(결제 전 확인 페이지) 조회 API
+     */
+    @Operation(
+            summary = "예약 주문서 조회",
+            description = "결제 전 단계에서 전문가 정보, 상담 가격(서버 기준), 내 잔여 포인트, 계좌 정보 등을 조회합니다."
+    )
+    @GetMapping("/sheet")
+    public ResponseEntity<CommonResponse<ReservationSheetResponseDTO>> getReservationSheet(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Long userId,
+
+            @Parameter(description = "예약하려는 전문가의 ID", required = true, example = "3")
+            @RequestParam Long expertId,
+
+            @Parameter(description = "상담 유형 (VIDEO: 화상, MESSAGE: 문자)", required = true, example = "VIDEO")
+            @RequestParam ConsultationType type
+    ) {
+        // 서비스 호출
+        ReservationSheetResponseDTO response =
+                reservationService.getReservationSheet(userId, expertId, type);
+
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
 }

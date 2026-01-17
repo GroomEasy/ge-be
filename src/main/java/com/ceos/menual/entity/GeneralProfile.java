@@ -23,5 +23,14 @@ public class GeneralProfile extends BaseEntity {
 	private User user;
 
 	@Column(nullable = false)
-	private Integer totalPoints;
+	@Builder.Default
+	private Integer totalPoints = 0;
+
+	public void addPoints(int points) {
+		if (this.totalPoints == null) {
+			this.totalPoints = 0;
+		}
+		this.totalPoints += points;
+	}
+
 }

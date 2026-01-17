@@ -200,7 +200,7 @@ public class ExpertService {
 		// 대표 포트폴리오 해제
 		expertRepository.unsetRepresentativePortfolio(expertUserId);
 
-		// 3. 응답 생성
+		// 응답 생성
 		return UnsetRepresentativePortfolioResponseDTO.builder()
 				.message("대표 포트폴리오가 해제되었습니다.")
 				.build();

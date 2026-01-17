@@ -73,3 +73,7 @@ zoom:
   # 콜백 처리 후 프론트로 리다이렉트
   success-redirect-uri: ${ZOOM_OAUTH_SUCCESS_REDIRECT_URI:}
   failure-redirect-uri: ${ZOOM_OAUTH_FAILURE_REDIRECT_URI:}
+
+slack:
+  webhook:
+    url: ${SLACK_WEBHOOK_URL}

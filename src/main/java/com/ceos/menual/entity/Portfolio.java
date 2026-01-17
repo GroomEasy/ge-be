@@ -62,9 +62,6 @@ public class Portfolio extends BaseEntity {
 		hashtags.remove(portfolioHashtag);
 	}
 
-	public void setIsRepresentative(boolean isRepresentative) {
-		this.isRepresentative = isRepresentative;
-	}
 	public void updateBeforeImage(String beforeImage) {
 		this.beforeImage = beforeImage;
 	}
@@ -73,4 +70,7 @@ public class Portfolio extends BaseEntity {
 		this.afterImage = afterImage;
 	}
 
+	public void setIsRepresentative(boolean isRepresentative) {
+		this.isRepresentative = isRepresentative;
+	}
 }

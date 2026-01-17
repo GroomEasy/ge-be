@@ -260,6 +260,56 @@ public class S3PresignedUrlService {
 	}
 
 	/**
+	 * S3 객체 삭제 (보상/정리용)
+	 *
+	 * - 삭제 재시도 수행
+	 * - 모두 실패하면 정리 작업을 DB에 기록 (스케줄러가 재처리)
+	 *
+	 * @param s3Key 삭제할 S3 객체 키
+	 */
+	public void deleteObjectWithRetryOrEnqueue(String s3Key) {
+		if (s3Key == null || s3Key.trim().isEmpty()) {
+			return;
+		}
+
+		int attempt = 0;
+		Exception lastException = null;
+
+		log.info("S3 객체 삭제 시작 - bucket: {}, key: {}", bucketName, s3Key);
+
+		while (attempt < maxRetries) {
+			attempt++;
+			try {
+				DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+					.bucket(bucketName)
+					.key(s3Key)
+					.build();
+
+				s3Client.deleteObject(deleteObjectRequest);
+				log.info("S3 객체 삭제 성공 - bucket: {}, key: {}, attempt: {}/{}",
+					bucketName, s3Key, attempt, maxRetries);
+				return;
+			} catch (Exception e) {
+				lastException = e;
+				log.warn("S3 객체 삭제 실패 (재시도 가능) - bucket: {}, key: {}, attempt: {}/{}, error: {}",
+					bucketName, s3Key, attempt, maxRetries, e.getMessage());
+
+				if (attempt < maxRetries) {
+					try {
+						Thread.sleep(retryIntervalMs);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						log.warn("재시도 대기 중단됨", ie);
+					}
+				}
+			}
+		}
+
+		log.error("S3 객체 삭제 재시도 모두 실패 - 정리 작업 DB에 기록 - bucket: {}, key: {}", bucketName, s3Key);
+		persistCleanupTask(s3Key, null, lastException);
+	}
+
+	/**
 	 * 임시 파일 삭제 - 재시도 로직 포함
 	 * 
 	 * 삭제 실패 시:

@@ -161,15 +161,15 @@ public class ExpertService {
 
 		// 이미지 이동: tmp/portfolio/expert-{expertId}/{before|after}/{fileName} -> final/portfolio/{portfolioId}/{before|after}/{fileName}
 		Long portfolioId = portfolio.getId();
-		String beforeFinalUrl = movePortfolioImageToFinalIfNeeded(expertUserId, portfolioId, requestDTO.getBeforeImage());
-		String afterFinalUrl = movePortfolioImageToFinalIfNeeded(expertUserId, portfolioId, requestDTO.getAfterImage());
+		MovedPortfolioImages moved = moveBothPortfolioImagesOrRollback(
+				expertUserId,
+				portfolioId,
+				requestDTO.getBeforeImage(),
+				requestDTO.getAfterImage()
+		);
 
-		if (beforeFinalUrl != null && !beforeFinalUrl.isBlank()) {
-			portfolio.updateBeforeImage(beforeFinalUrl);
-		}
-		if (afterFinalUrl != null && !afterFinalUrl.isBlank()) {
-			portfolio.updateAfterImage(afterFinalUrl);
-		}
+		portfolio.updateBeforeImage(moved.beforeFinalUrl());
+		portfolio.updateAfterImage(moved.afterFinalUrl());
 
 		return ExpertPortfolioResponseDTO.builder()
 				.id(created.getId())
@@ -183,7 +183,7 @@ public class ExpertService {
 				.build();
 	}
 
-	private String movePortfolioImageToFinalIfNeeded(Long expertUserId, Long portfolioId, String imageKeyOrUrl) {
+	private String movePortfolioImageToFinalKey(Long expertUserId, Long portfolioId, String imageKeyOrUrl) {
 		if (imageKeyOrUrl == null || imageKeyOrUrl.trim().isEmpty()) {
 			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
 		}
@@ -219,7 +219,49 @@ public class ExpertService {
 
 		String finalS3Key = String.format("final/portfolio/%d/%s/%s", portfolioId, imageType, fileName);
 		s3PresignedUrlService.moveImageFromTempToFinal(s3Key, finalS3Key);
-		return s3PresignedUrlService.generateS3Url(finalS3Key);
+		return finalS3Key;
+	}
+
+	private record MovedPortfolioImages(String beforeFinalUrl, String afterFinalUrl, String beforeFinalKey, String afterFinalKey) {}
+
+	private MovedPortfolioImages moveBothPortfolioImagesOrRollback(
+			Long expertUserId,
+			Long portfolioId,
+			String beforeTmpKey,
+			String afterTmpKey
+	) {
+		String beforeFinalKey = null;
+		String afterFinalKey = null;
+
+		try {
+			beforeFinalKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, beforeTmpKey);
+			afterFinalKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, afterTmpKey);
+
+			return new MovedPortfolioImages(
+					s3PresignedUrlService.generateS3Url(beforeFinalKey),
+					s3PresignedUrlService.generateS3Url(afterFinalKey),
+					beforeFinalKey,
+					afterFinalKey
+			);
+		} catch (Exception e) {
+			// 보상 정리: 이미 옮긴 final 객체가 있으면 삭제 시도 (실패하면 cleanup task 기록)
+			try {
+				if (beforeFinalKey != null) {
+					s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(beforeFinalKey);
+				}
+			} catch (Exception ignore) {
+				// 보상 실패는 원인 예외를 가리지 않도록 무시
+			}
+			try {
+				if (afterFinalKey != null) {
+					s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(afterFinalKey);
+				}
+			} catch (Exception ignore) {
+				// 보상 실패는 원인 예외를 가리지 않도록 무시
+			}
+
+			throw e;
+		}
 	}
 
 	/**

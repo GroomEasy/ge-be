@@ -2,6 +2,7 @@ package com.ceos.menual.domain.review.service;
 
 import java.util.List;
 import java.util.UUID;
+import java.net.URI;
 
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
@@ -256,7 +257,10 @@ public class ReviewService {
 
 			try {
 				// tmp 경로 파싱
-				String[] pathParts = tempImageUrl.split("/");
+				// - key: tmp/review/consultation-{consultationId}/{fileName}
+				// - presigned URL: https://...amazonaws.com/tmp/review/consultation-{consultationId}/{fileName}?X-Amz-...
+				String normalizedTempKey = normalizeS3KeyFromMaybeUrl(tempImageUrl);
+				String[] pathParts = normalizedTempKey.split("/");
 
 				// 지원 포맷:
 				// - 신규: tmp/review/consultation-{consultationId}/{fileName}
@@ -280,10 +284,10 @@ public class ReviewService {
 				}
 
 				// S3 이동 실행
-				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);
+				s3PresignedUrlService.moveImageFromTempToFinal(normalizedTempKey, finalS3Key);
 
 				log.info("리뷰 이미지 이동 완료 - reviewId: {}, from: {}, to: {}",
-						reviewId, tempImageUrl, finalS3Key);
+						reviewId, normalizedTempKey, finalS3Key);
 
 				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
 
@@ -304,6 +308,38 @@ public class ReviewService {
 				throw new GlobalException(ReviewErrorCode.IMAGE_PROCESSING_FAILED);
 			}
 		}
+	}
+
+	/**
+	 * 입력이 S3 key 또는 URL(일반/프리사인드)일 수 있으므로 S3 key로 정규화.
+	 *
+	 * - URL이면 URI.path만 추출하고 선행 "/" 제거
+	 * - key이면 그대로 반환
+	 */
+	private String normalizeS3KeyFromMaybeUrl(String keyOrUrl) {
+		if (keyOrUrl == null) {
+			return null;
+		}
+
+		String trimmed = keyOrUrl.trim();
+		if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+			try {
+				URI uri = URI.create(trimmed);
+				String path = uri.getPath(); // query/fragment 제외
+				if (path == null) {
+					return trimmed;
+				}
+				if (path.startsWith("/")) {
+					path = path.substring(1);
+				}
+				return path;
+			} catch (Exception e) {
+				// 파싱 실패 시 원문 그대로 사용 (기존 예외 처리 흐름으로 위임)
+				return trimmed;
+			}
+		}
+
+		return trimmed;
 	}
 
 

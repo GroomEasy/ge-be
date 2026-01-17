@@ -62,4 +62,7 @@ public class Portfolio extends BaseEntity {
 		hashtags.remove(portfolioHashtag);
 	}
 
+	public void setIsRepresentative(Boolean isRepresentative) {
+		this.isRepresentative = isRepresentative;
+	}
 }

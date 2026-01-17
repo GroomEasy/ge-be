@@ -218,21 +218,23 @@ public class ExpertController {
 	}
 
 	/**
-	 * 대표 포트폴리오 지정
+	 * 대표 포트폴리오 토글 (설정/해제)
 	 */
 	@Operation(
-			summary = "대표 포트폴리오 지정",
-			description = "특정 포트폴리오를 대표 포트폴리오로 지정합니다. 기존 대표 포트폴리오는 자동으로 해제됩니다."
+			summary = "대표 포트폴리오 토글",
+			description = "특정 포트폴리오를 대표로 설정하거나 해제합니다. (이미 대표면 해제, 아니면 다른 대표 해제 후 설정)"
 	)
 	@PatchMapping("/portfolios/representative")
-	public ResponseEntity<CommonResponse<SetRepresentativePortfolioResponseDTO>> setRepresentativePortfolio(
+	public ResponseEntity<CommonResponse<ToggleRepresentativePortfolioResponseDTO>> toggleRepresentativePortfolio(
 			@Parameter(hidden = true)
 			@AuthenticationPrincipal Long expertUserId,
 
 			@Valid @RequestBody SetRepresentativePortfolioRequestDTO requestDTO
 	) {
-		SetRepresentativePortfolioResponseDTO response =
-				expertService.setRepresentativePortfolio(expertUserId, requestDTO);
+		// Service 호출 및 DTO 수신
+		ToggleRepresentativePortfolioResponseDTO response =
+				expertService.toggleRepresentativePortfolio(expertUserId, requestDTO);
+
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

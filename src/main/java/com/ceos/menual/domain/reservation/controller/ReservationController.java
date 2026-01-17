@@ -134,4 +134,40 @@ public class ReservationController {
         );
         return ResponseEntity.ok(CommonResponse.success(response));
     }
+
+    /**
+     * 임시 예약 취소 API
+     * 일반 사용자가 자신의 임시 예약(UNPAID)을 취소합니다.
+     */
+    @Operation(
+            summary = "임시 예약 취소",
+            description = "일반 사용자가 자신의 임시 예약(UNPAID)을 취소합니다. 관리자 승인 전에만 취소 가능합니다."
+    )
+    @PostMapping("/{reservationId}/cancel")
+    public ResponseEntity<CommonResponse<Void>> cancelTempReservation(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        reservationService.cancelTempReservation(reservationId, userId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
+    /**
+     * 환불 요청 API
+     * 일반 사용자가 자신의 결제 완료 예약(PAID)에 대해 환불을 요청합니다.
+     */
+    @Operation(
+            summary = "환불 요청",
+            description = "일반 사용자가 결제 완료된 예약(PAID)에 대해 환불을 요청합니다. 관리자 승인 후 환불 처리됩니다."
+    )
+    @PostMapping("/{reservationId}/refund/request")
+    public ResponseEntity<CommonResponse<Void>> requestRefund(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        reservationService.requestRefund(reservationId, userId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
 }

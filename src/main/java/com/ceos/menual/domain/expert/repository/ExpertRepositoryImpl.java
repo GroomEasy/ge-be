@@ -250,76 +250,44 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.solution(portfolio.getSolution())
 				.beforeImage(portfolio.getBeforeImage())
 				.afterImage(portfolio.getAfterImage())
-				.isRepresentative(portfolio.getIsRepresentative())
+				.isRepresentative(portfolio.isRepresentative())
 				.hashtags(savedHashtags)
 				.build();
 	}
 
-	@Override
-	@Transactional
-	public void setRepresentativePortfolio(Long expertUserId, Long portfolioId) {
-		QPortfolio p = QPortfolio.portfolio;
-		QExpertProfile ep = QExpertProfile.expertProfile;
-		QUser u = QUser.user;
 
-		// 해당 포트폴리오가 존재하고 본인 소유인지 확인
-		Portfolio targetPortfolio = queryFactory
-				.selectFrom(p)
-				.join(p.expertProfile, ep)
-				.join(ep.user, u)
+	/**
+	 * 포트폴리오 ID와 전문가 ID로 단일 조회 (소유권 확인용)
+	 */
+	@Override
+	public Optional<Portfolio> findPortfolioByExpertUserIdAndPortfolioId(Long expertUserId, Long portfolioId) {
+		Portfolio result = queryFactory
+				.selectFrom(portfolio)
+				.join(portfolio.expertProfile, ep)
 				.where(
-						p.id.eq(portfolioId),
-						u.id.eq(expertUserId)
+						portfolio.id.eq(portfolioId),
+						ep.user.id.eq(expertUserId)
 				)
 				.fetchOne();
 
-		if (targetPortfolio == null) {
-			throw new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND);
-		}
-
-		// 기존 대표 포트폴리오 모두 해제 (해당 전문가의)
-		queryFactory
-				.update(p)
-				.set(p.isRepresentative, false)
-				.where(
-						p.expertProfile.eq(targetPortfolio.getExpertProfile())
-				)
-				.execute();
-
-		// 새로운 포트폴리오를 대표로 지정
-		queryFactory
-				.update(p)
-				.set(p.isRepresentative, true)
-				.where(p.id.eq(portfolioId))
-				.execute();
-
-		// 영속성 컨텍스트 동기화
-		entityManager.flush();
-		entityManager.clear();
+		return Optional.ofNullable(result);
 	}
 
+	/**
+	 * 해당 전문가의 모든 포트폴리오의 대표 설정을 해제 (Bulk Update)
+	 * 예외를 던지지 않음 (0개여도 OK)
+	 */
 	@Override
 	@Transactional
-	public void unsetRepresentativePortfolio(Long expertUserId) {
-		QPortfolio p = QPortfolio.portfolio;
-
-		// 해당 전문가의 포트폴리오 중 현재 대표인 것만 찾아서 해제
-		long updatedCount = queryFactory
-				.update(p)
-				.set(p.isRepresentative, false)
-				.where(
-						p.expertProfile.user.id.eq(expertUserId),
-						p.isRepresentative.eq(true)
-				)
+	public void resetRepresentativePortfolio(Long expertUserId) {
+		queryFactory
+				.update(portfolio)
+				.set(portfolio.isRepresentative, false)
+				.where(portfolio.expertProfile.user.id.eq(expertUserId))
 				.execute();
 
-		// 영속성 컨텍스트 동기화
 		entityManager.flush();
 		entityManager.clear();
-
-		if (updatedCount == 0) {
-			throw new GlobalException(ExpertErrorCode.NO_REPRESENTATIVE_PORTFOLIO);
-		}
 	}
 
 

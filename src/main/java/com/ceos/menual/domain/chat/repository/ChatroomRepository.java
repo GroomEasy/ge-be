@@ -14,6 +14,8 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
     // 해당 상담(consultationId)에서 해당 타입(type)의 방이 이미 있는지 확인
     Optional<Chatroom> findByConsultationIdAndChatroomType(Long consultationId, ChatroomType type);
 
+    List<Chatroom> findByConsultationId(Long consultationId);
+
     // memberId나 expertId에 해당하는 id에 해당하는 채팅방 리스트 조회
     @Query("SELECT DISTINCT c FROM Chatroom c " +
             "LEFT JOIN FETCH c.member m " +
@@ -85,5 +87,6 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
             "AND c.isActive = true " +
             "AND c.chatroomType IN ('MESSAGE', 'VIDEO')")
     Optional<Chatroom> findActiveConsultationChatroom(@Param("consultationId") Long consultationId);
+
 
 }

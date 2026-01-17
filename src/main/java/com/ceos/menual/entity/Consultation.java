@@ -96,4 +96,11 @@ public class Consultation extends BaseEntity {
 		this.zoomJoinUrl = joinUrl;
 		this.isZoomMeetingCreated = true;
 	}
+
+	/**
+	 * 상담 거절 처리
+	 */
+	public void reject() {
+		this.status = ConsultationStatus.REJECTED;
+	}
 }

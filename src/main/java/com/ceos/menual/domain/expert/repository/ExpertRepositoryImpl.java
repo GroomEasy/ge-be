@@ -250,7 +250,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 				.solution(portfolio.getSolution())
 				.beforeImage(portfolio.getBeforeImage())
 				.afterImage(portfolio.getAfterImage())
-				.isRepresentative(portfolio.getIsRepresentative())
+				.isRepresentative(portfolio.isRepresentative())
 				.hashtags(savedHashtags)
 				.build();
 	}

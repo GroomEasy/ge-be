@@ -157,6 +157,7 @@ public class ExpertService {
 		// 저장 및 반환
 		return expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
 	}
+
 	/**
 	 * 대표 포트폴리오 토글 (설정/해제)
 	 */
@@ -180,8 +181,7 @@ public class ExpertService {
 
 		boolean finalState;
 
-		// 토글 로직 수행
-		if (Boolean.TRUE.equals(portfolio.getIsRepresentative())) {
+		if (portfolio.isRepresentative()) {
 			// 대표 -> 해제 (False)
 			portfolio.setIsRepresentative(false);
 			finalState = false;

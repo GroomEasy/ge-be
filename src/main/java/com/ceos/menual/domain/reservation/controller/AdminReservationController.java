@@ -45,5 +45,25 @@ public class AdminReservationController {
         );
         return ResponseEntity.ok(CommonResponse.success(response));
     }
+
+    /**
+     * 관리자: 결제 완료 예약 취소 API
+     * 관리자가 승인한 예약(PAID)을 취소합니다.
+     * 취소 시 상담을 REJECTED 상태로 변경하고, 관련 채팅방을 비활성화합니다.
+     */
+    @Operation(
+            summary = "결제 완료 예약 취소",
+            description = "관리자가 승인한 예약(PAID)을 취소합니다. 상담을 REJECTED로 변경하고 채팅방을 비활성화합니다."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{reservationId}/cancel")
+    public ResponseEntity<CommonResponse<Void>> cancelPaidReservation(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal Long adminUserId
+    ) {
+        reservationService.cancelPaidReservation(reservationId, adminUserId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
 }
 

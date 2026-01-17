@@ -159,13 +159,12 @@ public class ExpertService {
 	}
 
 	/**
-	 * 대표 포트폴리오 지정
+	 * 대표 포트폴리오 토글 (설정/해제)
 	 */
 	@Transactional
-	public SetRepresentativePortfolioResponseDTO setRepresentativePortfolio(
-			Long expertUserId,
-			SetRepresentativePortfolioRequestDTO requestDTO
-	) {
+	public ToggleRepresentativePortfolioResponseDTO toggleRepresentativePortfolio(Long expertUserId, SetRepresentativePortfolioRequestDTO requestDTO) {
+		log.info("대표 포트폴리오 토글 요청 - userId: {}, portfolioId: {}", expertUserId, requestDTO.getPortfolioId());
+
 		// 전문가 검증
 		User user = userRepository.findById(expertUserId)
 				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
@@ -174,35 +173,41 @@ public class ExpertService {
 			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
 		}
 
-		// 대표 포트폴리오 변경
-		expertRepository.setRepresentativePortfolio(expertUserId, requestDTO.getPortfolioId());
+		// 대상 포트폴리오 조회 (본인 소유 확인)
+		Portfolio portfolio = expertRepository.findPortfolioByExpertUserIdAndPortfolioId(
+				expertUserId,
+				requestDTO.getPortfolioId()
+		).orElseThrow(() -> new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND));
 
-		// 응답 생성
-		return SetRepresentativePortfolioResponseDTO.builder()
+		boolean finalState;
+
+		if (portfolio.isRepresentative()) {
+			// 대표 -> 해제 (False)
+			portfolio.setIsRepresentative(false);
+			finalState = false;
+		} else {
+			// 대표 아님 -> 기존 것들 모두 해제 후 -> 현재 것 설정 (True)
+
+			// 기존 대표 초기화
+			expertRepository.resetRepresentativePortfolio(expertUserId);
+
+			// 영속성 컨텍스트가 비워졌으므로 포트폴리오를 다시 조회해야 함 (Re-fetch)
+			Portfolio targetPortfolio = expertRepository.findPortfolioByExpertUserIdAndPortfolioId(
+					expertUserId,
+					requestDTO.getPortfolioId()
+			).orElseThrow(() -> new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND));
+
+			// 대표 설정
+			targetPortfolio.setIsRepresentative(true);
+			finalState = true;
+		}
+
+		log.info("대표 포트폴리오 토글 완료 - portfolioId: {}, finalState: {}", requestDTO.getPortfolioId(), finalState);
+
+		// 결과 DTO 반환
+		return ToggleRepresentativePortfolioResponseDTO.builder()
 				.portfolioId(requestDTO.getPortfolioId())
-				.message("대표 포트폴리오가 변경되었습니다.")
-				.build();
-	}
-
-	/**
-	 * 대표 포트폴리오 해제
-	 */
-	@Transactional
-	public UnsetRepresentativePortfolioResponseDTO unsetRepresentativePortfolio(Long expertUserId) {
-		// 전문가 검증
-		User user = userRepository.findById(expertUserId)
-				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
-
-		if (!user.isExpert()) {
-			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
-		}
-
-		// 대표 포트폴리오 해제
-		expertRepository.unsetRepresentativePortfolio(expertUserId);
-
-		// 3. 응답 생성
-		return UnsetRepresentativePortfolioResponseDTO.builder()
-				.message("대표 포트폴리오가 해제되었습니다.")
+				.isRepresentative(finalState)
 				.build();
 	}
 }

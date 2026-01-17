@@ -24,14 +24,17 @@ public interface ExpertRepository {
 	 */
 	ExpertPortfolioResponseDTO savePortfolio(Portfolio portfolio, List<String> hashtagNames);
 
-	/**
-	 * 대표 포트폴리오 지정 (기존 대표 해제 + 새 대표 지정)
-	 */
-	void setRepresentativePortfolio(Long expertUserId, Long portfolioId);
 
 	/**
-	 * 대표 포트폴리오 해제
+	 * 특정 포트폴리오 조회 (본인 소유 확인용)
 	 */
-	void unsetRepresentativePortfolio(Long expertUserId);
+	Optional<Portfolio> findPortfolioByExpertUserIdAndPortfolioId(Long expertUserId, Long portfolioId);
+
+	/**
+	 * 특정 전문가의 모든 대표 포트폴리오 해제 (Silent)
+	 * 예외를 던지지 않고 무조건 false로 초기화합니다.
+	 */
+	void resetRepresentativePortfolio(Long expertUserId);
+
 
 }

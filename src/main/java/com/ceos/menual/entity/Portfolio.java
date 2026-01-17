@@ -46,7 +46,7 @@ public class Portfolio extends BaseEntity {
 	// 대표 포트폴리오 여부
 	@Builder.Default
 	@Column(nullable = false)
-	private Boolean isRepresentative = false;
+	private boolean isRepresentative = false;
 
 	@OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default
@@ -62,4 +62,7 @@ public class Portfolio extends BaseEntity {
 		hashtags.remove(portfolioHashtag);
 	}
 
+	public void setIsRepresentative(boolean isRepresentative) {
+		this.isRepresentative = isRepresentative;
+	}
 }

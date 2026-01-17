@@ -6,6 +6,7 @@ import com.ceos.menual.domain.chat.repository.ChatroomRepository;
 import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.chat.service.ChatroomService;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
+import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.expert.service.zoom.ZoomMeetingService;
@@ -61,6 +62,7 @@ public class ReservationService {
     private final ChatMessageService chatMessageService;
     private final ChatroomRepository chatroomRepository;
     private final ZoomMeetingService zoomMeetingService;
+    private final com.ceos.menual.global.config.slack.SlackNotificationService slackNotificationService;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -155,6 +157,21 @@ public class ReservationService {
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
 
+        // TODO: 주석 풀기
+//        // Slack 알림 전송
+//        String memberName = reservation.getGeneralProfile().getUser().getNickname();
+//        String expertName = reservation.getExpertProfile().getUser().getNickname();
+//        Integer price = reservation.getPrice();
+//        String consultationType = reservation.getConsultationType().name();
+//        slackNotificationService.sendPaymentConfirmationNotification(
+//                reservationId,
+//                savedConsultation.getId(),
+//                memberName,
+//                expertName,
+//                price,
+//                consultationType
+//        );
+
         return CompletePaymentResponseDTO.from(savedConsultation, reservationId);
     }
 
@@ -238,6 +255,12 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
 
+        // TODO: 주석 풀기
+//        // Slack 알림 전송
+//        String username = reservation.getGeneralProfile().getUser().getNickname();
+//        String category = reservation.getCategory().name();
+//        slackNotificationService.sendFashionConcernUpdateNotification(reservationId, username, category);
+
         return UpdateReservationConcernResponseDTO.from(reservation, fashionConcern);
     }
 
@@ -318,6 +341,12 @@ public class ReservationService {
             log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
+
+        // TODO: 주석 풀기
+//        // Slack 알림 전송
+//        String username = reservation.getGeneralProfile().getUser().getNickname();
+//        String category = reservation.getCategory().name();
+//        slackNotificationService.sendHairConcernUpdateNotification(reservationId, username, category);
 
         return UpdateReservationConcernResponseDTO.from(reservation, hairConcern);
     }
@@ -1004,6 +1033,173 @@ public class ReservationService {
         return imagePaths.stream()
                 .map(oldPath -> imagePathMapping.getOrDefault(oldPath, oldPath))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 일반 사용자: 임시 예약(UNPAID) 취소
+     *
+     * 취소 가능한 상태:
+     * - UNPAID (임시 예약) - 관리자 승인 전 상태
+     *
+     * 권한:
+     * - 예약한 본인만 취소 가능
+     *
+     * 수행 작업:
+     * - 예약 상태를 CANCELLED로 변경
+     *
+     * 동시성 안전성:
+     * - PESSIMISTIC_WRITE 락으로 동일 reservationId에 대한 동시 취소를 직렬화
+     */
+    @Transactional
+    public void cancelTempReservation(Long reservationId, Long userId) {
+        log.info("임시 예약 취소 시작 - reservationId: {}, userId: {}", reservationId, userId);
+
+        // PESSIMISTIC_WRITE 락을 사용한 예약 조회
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 소유자 검증 (예약한 일반 회원과 현재 사용자가 동일한지 확인)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}", reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 예약 상태 검증 (UNPAID 상태만 취소 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 예약 상태를 CANCELLED로 변경
+        reservation.cancel();
+        reservationRepository.save(reservation);
+        log.info("임시 예약 취소 완료 - reservationId: {}, status: CANCELLED", reservationId);
+    }
+
+    /**
+     * 일반 사용자: 결제 완료 예약(PAID) 환불 요청
+     *
+     * 환불 요청 가능한 상태:
+     * - PAID (결제 완료된 예약)
+     *
+     * 권한:
+     * - 예약한 본인만 환불 요청 가능
+     *
+     * 수행 작업:
+     * - 예약 상태를 REFUND_REQUESTED로 변경
+     *
+     * 동시성 안전성:
+     * - PESSIMISTIC_WRITE 락으로 동일 reservationId에 대한 동시 요청을 직렬화
+     */
+    @Transactional
+    public void requestRefund(Long reservationId, Long userId) {
+        log.info("환불 요청 시작 - reservationId: {}, userId: {}", reservationId, userId);
+
+        // PESSIMISTIC_WRITE 락을 사용한 예약 조회
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 소유자 검증 (예약한 일반 회원과 현재 사용자가 동일한지 확인)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}", reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 예약 상태 검증 (PAID 상태만 환불 요청 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.PAID) {
+            log.warn("결제 완료 상태가 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 예약 상태를 REFUND_REQUESTED로 변경
+        reservation.requestRefund();
+        reservationRepository.save(reservation);
+        log.info("환불 요청 완료 - reservationId: {}, status: REFUND_REQUESTED", reservationId);
+
+        // TODO: 운영 시 주석 풀기
+//        // Slack 알림 전송
+//        String username = reservation.getGeneralProfile().getUser().getNickname();
+//        Integer price = reservation.getPrice();
+//        slackNotificationService.sendRefundRequestNotification(reservationId, username, price);
+    }
+
+    /**
+     * 관리자: 환불 승인 처리
+     *
+     * 환불 승인 가능한 상태:
+     * - REFUND_REQUESTED (사용자가 환불 요청한 상태)
+     *
+     * 권한:
+     * - 관리자만 승인 가능
+     *
+     * 수행 작업:
+     * - 예약 상태를 REFUNDED로 변경
+     * - Consultation 상태를 REJECTED로 변경
+     * - Consultation과 연결된 Chatroom을 비활성화 (isActive = false)
+     *
+     * 동시성 안전성:
+     * - PESSIMISTIC_WRITE 락으로 동일 reservationId에 대한 동시 승인을 직렬화
+     */
+    @Transactional
+    public void cancelPaidReservation(Long reservationId, Long adminUserId) {
+        log.info("환불 승인 처리 시작 - reservationId: {}, adminUserId: {}", reservationId, adminUserId);
+
+        // PESSIMISTIC_WRITE 락을 사용한 예약 조회
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 예약 상태 검증 (REFUND_REQUESTED 상태만 환불 승인 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.REFUND_REQUESTED) {
+            log.warn("환불 요청 상태가 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 예약 상태를 REFUNDED로 변경
+        reservation.refund();
+        reservationRepository.save(reservation);
+        log.info("예약 상태 변경 완료 - reservationId: {}, status: REFUNDED", reservationId);
+
+        // Consultation 처리 (REFUND_REQUESTED 상태는 항상 Consultation이 존재함)
+        Consultation consultation = reservation.getConsultation();
+        if (consultation == null) {
+            log.error("데이터 무결성 오류 - REFUND_REQUESTED 상태인데 Consultation이 없음 - reservationId: {}", reservationId);
+            throw new GlobalException(ConsultationErrorCode.CONSULTATION_NOT_FOUND);
+        }
+
+        log.info("상담 거절 처리 시작 - consultationId: {}", consultation.getId());
+
+        // Consultation 상태를 REJECTED로 변경
+        consultation.reject();
+        consultationRepository.save(consultation);
+        log.info("상담 상태 변경 완료 - consultationId: {}, status: REJECTED", consultation.getId());
+
+        // Consultation과 연결된 채팅방 비활성화
+        List<Chatroom> chatrooms = chatroomRepository.findByConsultationId(consultation.getId());
+        for (Chatroom chatroom : chatrooms) {
+            if (chatroom.isActive()) {
+                chatroom.deactivate();
+                chatroomRepository.save(chatroom);
+                log.info("채팅방 비활성화 완료 - chatroomId: {}, consultationId: {}",
+                        chatroom.getId(), consultation.getId());
+            }
+        }
+
+        log.info("환불 승인 처리 완료 - reservationId: {}, consultationId: {}, 비활성화된 채팅방 수: {}",
+                reservationId, consultation.getId(), chatrooms.size());
+
+        // TODO: 주석 풀기
+//        // Slack 알림 전송
+//        String memberName = reservation.getGeneralProfile().getUser().getNickname();
+//        Integer price = reservation.getPrice();
+//        slackNotificationService.sendRefundApprovalNotification(
+//                reservationId,
+//                consultation.getId(),
+//                memberName,
+//                price
+//        );
     }
 
 }

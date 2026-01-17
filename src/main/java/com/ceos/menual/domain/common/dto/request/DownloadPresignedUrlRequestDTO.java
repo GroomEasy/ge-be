@@ -17,8 +17,7 @@ public class DownloadPresignedUrlRequestDTO {
 	@NotBlank(message = "리소스 타입은 필수입니다.")
 	private String resourceType;
 
-	@Schema(description = "이미지 타입", example = "favorite")
-	@NotBlank(message = "이미지 타입은 필수입니다.")
+	@Schema(description = "이미지 타입 (consultation: hairstyle/front/left/right/favorite/difficulty/purpose/solution, solution 다운로드는 생략 가능(자동 solution), review: 사용 안 함, portfolio: before/after)", example = "favorite")
 	private String imageType;
 
 	@Schema(description = "리소스 ID", example = "123")

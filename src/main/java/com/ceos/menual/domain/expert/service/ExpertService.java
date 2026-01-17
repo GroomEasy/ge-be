@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
+import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
@@ -45,6 +46,7 @@ public class ExpertService {
 	private final UserRepository userRepository;
 	private final ExpertLikeRepository expertLikeRepository;
 	private final ConsultationScheduleRepository consultationScheduleRepository;
+	private final S3PresignedUrlService s3PresignedUrlService;
 
 
 	public PopularExpertsResponseDTO getTop3Overall() {
@@ -155,7 +157,69 @@ public class ExpertService {
 				.build();
 
 		// 저장 및 반환
-		return expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
+		ExpertPortfolioResponseDTO created = expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
+
+		// 이미지 이동: tmp/portfolio/expert-{expertId}/{before|after}/{fileName} -> final/portfolio/{portfolioId}/{before|after}/{fileName}
+		Long portfolioId = portfolio.getId();
+		String beforeFinalUrl = movePortfolioImageToFinalIfNeeded(expertUserId, portfolioId, requestDTO.getBeforeImage());
+		String afterFinalUrl = movePortfolioImageToFinalIfNeeded(expertUserId, portfolioId, requestDTO.getAfterImage());
+
+		if (beforeFinalUrl != null && !beforeFinalUrl.isBlank()) {
+			portfolio.updateBeforeImage(beforeFinalUrl);
+		}
+		if (afterFinalUrl != null && !afterFinalUrl.isBlank()) {
+			portfolio.updateAfterImage(afterFinalUrl);
+		}
+
+		return ExpertPortfolioResponseDTO.builder()
+				.id(created.getId())
+				.title(created.getTitle())
+				.concern(created.getConcern())
+				.solution(created.getSolution())
+				.isRepresentative(created.getIsRepresentative())
+				.beforeImage(portfolio.getBeforeImage())
+				.afterImage(portfolio.getAfterImage())
+				.hashtags(created.getHashtags())
+				.build();
+	}
+
+	private String movePortfolioImageToFinalIfNeeded(Long expertUserId, Long portfolioId, String imageKeyOrUrl) {
+		if (imageKeyOrUrl == null || imageKeyOrUrl.trim().isEmpty()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String s3Key = imageKeyOrUrl.trim();
+		if (!s3Key.startsWith("tmp/portfolio/")) {
+			// 키로 통일: URL/외부 URL/이미 final 키 등은 허용하지 않음
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String expectedPrefix = "tmp/portfolio/expert-" + expertUserId + "/";
+		if (!s3Key.startsWith(expectedPrefix)) {
+			log.warn("포트폴리오 이미지 키 소유권 불일치 - expertUserId: {}, key: {}", expertUserId, s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String[] parts = s3Key.split("/");
+		// tmp/portfolio/expert-{expertId}/{imageType}/{fileName}
+		if (parts.length < 5) {
+			log.warn("포트폴리오 이미지 키 형식 불일치 - key: {}", s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String imageType = parts[3]; // before|after
+		String fileName = parts[4];
+		if (!"before".equals(imageType) && !"after".equals(imageType)) {
+			log.warn("허용되지 않는 포트폴리오 이미지 타입 - type: {}, key: {}", imageType, s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+		if (fileName == null || fileName.isBlank()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String finalS3Key = String.format("final/portfolio/%d/%s/%s", portfolioId, imageType, fileName);
+		s3PresignedUrlService.moveImageFromTempToFinal(s3Key, finalS3Key);
+		return s3PresignedUrlService.generateS3Url(finalS3Key);
 	}
 
 	/**

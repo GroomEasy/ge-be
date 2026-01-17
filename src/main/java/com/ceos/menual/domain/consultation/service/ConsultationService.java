@@ -192,7 +192,7 @@ public class ConsultationService {
      * 솔루션 텍스트에서 tmp 이미지 경로를 final 공개 URL로 변환
      * 
      * HTML 이미지 태그의 src 속성에 있는 경로를 찾아서 변환
-     * tmp/consultation/reservation-{reservationId}/solution/{fileName} 
+     * tmp/consultation/consultation-{consultationId}/solution/{fileName}
      *     → https://bucket.s3.region.amazonaws.com/final/consultation/{consultationId}/solution/{fileName}
      * 
      * 프로세스:
@@ -207,8 +207,8 @@ public class ConsultationService {
      */
     private String convertTempImagePathsToFinalUrls(String solutionText, Long consultationId) {
         // HTML img 태그의 src 속성에서 경로 추출
-        // 패턴: src="...tmp/consultation/reservation-{resourceId}/solution/{fileName}"
-        Pattern pattern = Pattern.compile("src=[\"']([^\"']*tmp/consultation/[^\"']+/solution/[^\"']*)[\"']");
+        // 패턴: src="...tmp/consultation/consultation-{consultationId}/solution/{fileName}"
+        Pattern pattern = Pattern.compile("src=[\"']([^\"']*tmp/consultation/consultation-[^\"']+/solution/[^\"']*)[\"']");
         Matcher matcher = pattern.matcher(solutionText);
         
         StringBuffer result = new StringBuffer();

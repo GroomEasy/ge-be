@@ -40,8 +40,18 @@ public class S3PresignedUrlController {
 	 * @param request resourceType, imageType, fileName을 포함한 요청
 	 * @return 업로드용 Presigned URL과 S3 Key
 	 * 
-	 * 저장 경로: tmp/{resourceType}/user-{userId}/{imageType}/{fileName}
-	 * 결제 확인 후: final/{resourceType}/{resourceId}/{imageType}/{fileName}로 이동
+	 * 저장 경로:
+	 * - consultation: tmp/consultation/reservation-{reservationId}/{imageType}/{storedFileName}
+	 * - consultation(솔루션 이미지): tmp/consultation/consultation-{consultationId}/solution/{storedFileName}
+	 * - review: tmp/review/consultation-{consultationId}/{storedFileName}
+	 * - portfolio: tmp/portfolio/expert-{expertId}/{imageType}/{storedFileName}
+	 * - storedFileName은 서버에서 UUID 기반으로 생성됩니다.
+	 *
+	 * 최종 경로(도메인별로 이동 로직에서 결정됨):
+	 * - consultation(고민지 이미지): final/consultation/{consultationId}/{imageType}/{storedFileName}
+	 * - consultation(솔루션 이미지): final/consultation/{consultationId}/solution/{storedFileName}
+	 * - review: final/review/{reviewId}/{storedFileName}
+	 * - portfolio: final/portfolio/{portfolioId}/{imageType}/{storedFileName}
 	 * 
 	 * resourceType 예시: consultation, review, portfolio 등
 	 * imageType 예시:
@@ -53,6 +63,7 @@ public class S3PresignedUrlController {
 		summary = "업로드용 Presigned URL 발급",
 		description = "S3에 이미지를 임시로 업로드하기 위한 Presigned URL을 발급합니다. " +
 					"resourceType(consultation, review 등)과 imageType(hairstyle, favorite 등)을 지정합니다. " +
+					"서버는 원본 파일명의 확장자를 유지한 UUID 기반 파일명으로 S3 Key를 생성합니다. " +
 					"유효시간은 15분입니다."
 	)
 	public ResponseEntity<PresignedUrlResponseDTO> getUploadPresignedUrl(

@@ -62,4 +62,12 @@ public class Portfolio extends BaseEntity {
 		hashtags.remove(portfolioHashtag);
 	}
 
+	public void updateBeforeImage(String beforeImage) {
+		this.beforeImage = beforeImage;
+	}
+
+	public void updateAfterImage(String afterImage) {
+		this.afterImage = afterImage;
+	}
+
 }

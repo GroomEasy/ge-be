@@ -258,19 +258,26 @@ public class ReviewService {
 				// tmp 경로 파싱
 				String[] pathParts = tempImageUrl.split("/");
 
-				if (pathParts.length < 5) {
+				// 지원 포맷:
+				// - 신규: tmp/review/consultation-{consultationId}/{fileName}
+				// - 레거시(호환): tmp/review/consultation-{consultationId}/{imageType}/{fileName}
+				if (pathParts.length < 4) {
 					log.error("잘못된 이미지 경로 형식 - reviewId: {}, path: {}", reviewId, tempImageUrl);
 					throw new GlobalException(ReviewErrorCode.INVALID_IMAGE_PATH);
 				}
 
-				// 인덱스 3: imageType (front), 인덱스 4: fileName
-				String imageType = pathParts[3];
-				String fileName = pathParts[4];
+				final String finalS3Key;
 
-				// 최종 S3 경로 생성
-				// final/review/{reviewId}/{imageType}/{fileName}
-				String finalS3Key = String.format("final/review/%d/%s/%s",
-						reviewId, imageType, fileName);
+				if (pathParts.length >= 5) {
+					// 레거시: 인덱스 3: imageType, 인덱스 4: fileName
+					String imageType = pathParts[3];
+					String fileName = pathParts[4];
+					finalS3Key = String.format("final/review/%d/%s/%s", reviewId, imageType, fileName);
+				} else {
+					// 신규: 인덱스 3: fileName
+					String fileName = pathParts[3];
+					finalS3Key = String.format("final/review/%d/%s", reviewId, fileName);
+				}
 
 				// S3 이동 실행
 				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);

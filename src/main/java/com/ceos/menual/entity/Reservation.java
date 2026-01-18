@@ -1,8 +1,10 @@
 package com.ceos.menual.entity;
 
+import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationType;
 import com.ceos.menual.entity.enums.ReservationStatus;
+import com.ceos.menual.global.exception.GlobalException;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -44,6 +46,13 @@ public class Reservation extends BaseEntity {
 
     @Column(nullable = false)
     private Integer price;
+
+    // 포인트 사용
+    @Column(name = "points_to_use")
+    private Integer pointsToUse = 0;
+
+    @Column(name = "final_price")
+    private Integer finalPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "reservation_status", nullable = false, length = 30)
@@ -89,5 +98,35 @@ public class Reservation extends BaseEntity {
         return reservationStatus == ReservationStatus.UNPAID
                 && expiresAt != null
                 && LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    /**
+     * 포인트 적용/변경
+     * @param points 사용할 포인트
+     * @param availablePoints 사용 가능한 포인트
+     */
+    public void applyPoints(Integer points, Integer availablePoints) {
+        // null 체크
+        if (points == null) {
+            points = 0;
+        }
+
+        // 음수 체크
+        if (points < 0) {
+            throw new GlobalException(ReservationErrorCode.INVALID_POINTS_AMOUNT);
+        }
+
+        // 사용 가능한 포인트보다 많이 사용 불가
+        if (points > availablePoints) {
+            throw new GlobalException(ReservationErrorCode.INSUFFICIENT_POINTS);
+        }
+
+        // 결제 금액보다 많이 사용 불가 (자동 조정)
+        if (points > this.price) {
+            points = this.price;
+        }
+
+        this.pointsToUse = points;
+        this.finalPrice = this.price - points;
     }
 }

@@ -1261,4 +1261,66 @@ public class ReservationService {
 //        );
     }
 
+    /**
+     * 포인트 적용/변경
+     *
+     * 사용자가 예약에 포인트를 적용하거나 변경할 수 있습니다.
+     * - 전액 사용: pointsToUse = availablePoints
+     * - 부분 사용: pointsToUse = 원하는 포인트
+     * - 사용 취소: pointsToUse = 0
+     *
+     * @param reservationId 예약 ID
+     * @param userId 사용자 ID
+     * @param pointsToUse 사용할 포인트
+     * @return 포인트 적용 결과
+     */
+    @Transactional
+    public com.ceos.menual.domain.reservation.dto.response.PointApplicationResponseDTO applyPoints(
+            Long reservationId,
+            Long userId,
+            Integer pointsToUse
+    ) {
+        log.info("포인트 적용 시작 - reservationId: {}, userId: {}, pointsToUse: {}",
+                reservationId, userId, pointsToUse);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 권한 검증 (예약한 본인만 포인트 사용 가능)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}",
+                    reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 상태 검증 (UNPAID 상태만 포인트 적용 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 사용 가능한 포인트 계산
+        Integer totalPoints = reservation.getGeneralProfile().getTotalPoints();
+        if (totalPoints == null) {
+            totalPoints = 0;
+        }
+
+        // 포인트 적용
+        reservation.applyPoints(pointsToUse, totalPoints);
+        reservationRepository.save(reservation);
+
+        log.info("포인트 적용 완료 - reservationId: {}, pointsUsed: {}, finalPrice: {}",
+                reservationId, reservation.getPointsToUse(), reservation.getFinalPrice());
+
+        // 응답 생성
+        return com.ceos.menual.domain.reservation.dto.response.PointApplicationResponseDTO.builder()
+                .originalPrice(reservation.getPrice())
+                .pointsUsed(reservation.getPointsToUse())
+                .finalPrice(reservation.getFinalPrice())
+                .remainingPoints(totalPoints - reservation.getPointsToUse())
+                .build();
+    }
+
 }

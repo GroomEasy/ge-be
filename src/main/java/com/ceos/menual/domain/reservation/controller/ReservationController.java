@@ -194,4 +194,24 @@ public class ReservationController {
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 
+    /**
+     * 포인트 적용/변경 API
+     * 예약에 포인트를 적용하거나 변경합니다.
+     */
+    @Operation(
+            summary = "포인트 적용/변경",
+            description = "예약에 포인트를 적용하거나 변경합니다. 전액 사용, 부분 사용, 사용 취소가 가능합니다."
+    )
+    @PutMapping("/{reservationId}/points")
+    public ResponseEntity<CommonResponse<PointApplicationResponseDTO>> applyPoints(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @Valid @RequestBody com.ceos.menual.domain.reservation.dto.request.ApplyPointsRequestDTO request,
+            @AuthenticationPrincipal Long userId
+    ) {
+        PointApplicationResponseDTO response =
+                reservationService.applyPoints(reservationId, userId, request.getPointsToUse());
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
 }

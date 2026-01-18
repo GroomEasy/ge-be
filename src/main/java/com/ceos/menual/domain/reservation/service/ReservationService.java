@@ -1375,6 +1375,18 @@ public class ReservationService {
         reservationRepository.save(reservation);
 
         log.info("예약 주문서 제출 완료 - reservationId: {}, status: SUBMITTED", reservationId);
+
+        // Slack 알림 전송
+        // TODO: 프로덕션 배포 시 주석 해제
+        /*
+        slackNotificationService.sendReservationSubmittedNotification(
+                reservation.getId(),
+                reservation.getGeneralProfile().getUser().getUsername(),
+                reservation.getCategory().name(),
+                reservation.getConsultationType().name(),
+                reservation.getFinalPrice()
+        );
+        */
     }
 
 }

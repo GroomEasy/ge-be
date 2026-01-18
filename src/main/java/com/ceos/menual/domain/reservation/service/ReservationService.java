@@ -1453,8 +1453,7 @@ public class ReservationService {
 
         // PAID 상태인 예약 조회
         List<Reservation> paidReservations = reservationRepository.findPaymentHistoryByUserId(
-                userId,
-                ReservationStatus.PAID
+                userId
         );
 
         // DTO 변환
@@ -1492,7 +1491,6 @@ public class ReservationService {
         // PAID 상태이고 특정 카테고리인 예약 조회
         List<Reservation> paidReservations = reservationRepository.findPaymentHistoryByUserIdAndCategory(
                 userId,
-                ReservationStatus.PAID,
                 category
         );
 

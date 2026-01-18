@@ -82,7 +82,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      */
     @Modifying
     @Query("UPDATE Reservation r SET r.reservationStatus = 'PAID', " +
-            "r.consultation.id = :consultationId, r.expiresAt = null " +
+            "r.consultation.id = :consultationId, " +
+            "r.expiresAt = null, " +
+            "r.paidAt = CURRENT_TIMESTAMP " +
             "WHERE r.id = :reservationId AND r.reservationStatus = 'UNPAID'")
     int updateStatusToPaidIfUnpaid(
             @Param("reservationId") Long reservationId,
@@ -102,11 +104,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "JOIN FETCH r.expertProfile ep " +
             "JOIN FETCH ep.user " +
             "WHERE r.generalProfile.user.id = :userId " +
-            "AND r.reservationStatus = :status " +
-            "ORDER BY r.updatedAt DESC")
+            "AND r.reservationStatus IN ('PAID', 'REFUNDED') " +
+            "ORDER BY r.paidAt DESC, r.updatedAt DESC")
     List<Reservation> findPaymentHistoryByUserId(
-            @Param("userId") Long userId,
-            @Param("status") ReservationStatus status
+            @Param("userId") Long userId
     );
 
     /**
@@ -117,12 +118,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "JOIN FETCH r.expertProfile ep " +
             "JOIN FETCH ep.user " +
             "WHERE r.generalProfile.user.id = :userId " +
-            "AND r.reservationStatus = :status " +
+            "AND r.reservationStatus IN ('PAID', 'REFUNDED') " +
             "AND r.category = :category " +
-            "ORDER BY r.updatedAt DESC")
+            "ORDER BY r.paidAt DESC, r.updatedAt DESC")
     List<Reservation> findPaymentHistoryByUserIdAndCategory(
             @Param("userId") Long userId,
-            @Param("status") ReservationStatus status,
             @Param("category") com.ceos.menual.entity.enums.Category category
     );
 }

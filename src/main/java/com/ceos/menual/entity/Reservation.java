@@ -61,6 +61,10 @@ public class Reservation extends BaseEntity {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    // 결제 확정 일시
+    @Column
+    private LocalDateTime paidAt;
+
     // 결제 완료 후 생성
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "consultation_id")
@@ -80,6 +84,7 @@ public class Reservation extends BaseEntity {
         this.reservationStatus = ReservationStatus.PAID;
         this.consultation = consultation;
         this.expiresAt = null;
+        this.paidAt = LocalDateTime.now();
     }
 
     public void submit() {

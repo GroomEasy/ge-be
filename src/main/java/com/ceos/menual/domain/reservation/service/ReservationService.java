@@ -1224,6 +1224,17 @@ public class ReservationService {
         reservationRepository.save(reservation);
         log.info("예약 상태 변경 완료 - reservationId: {}, status: REFUNDED", reservationId);
 
+        // 포인트 원상복구
+        Integer pointsToRestore = reservation.getPointsToUse();
+        if (pointsToRestore != null && pointsToRestore > 0) {
+            GeneralProfile generalProfile = reservation.getGeneralProfile();
+            generalProfile.addPoints(pointsToRestore);
+            log.info("포인트 원상복구 완료 - reservationId: {}, restoredPoints: {}, newTotalPoints: {}",
+                    reservationId, pointsToRestore, generalProfile.getTotalPoints());
+        } else {
+            log.info("복구할 포인트 없음 - reservationId: {}, pointsToUse: {}", reservationId, pointsToRestore);
+        }
+
         // Consultation 처리 (REFUND_REQUESTED 상태는 항상 Consultation이 존재함)
         Consultation consultation = reservation.getConsultation();
         if (consultation == null) {
@@ -1359,11 +1370,12 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
 
-        // 고민지 작성 여부 검증 (필수)
-        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
-            log.warn("고민지 미작성 - reservationId: {}", reservationId);
-            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
-        }
+        // TODO: 개발 단계에서는 주석 처리
+//        // 고민지 작성 여부 검증
+//        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
+//            log.warn("고민지 미작성 - reservationId: {}", reservationId);
+//            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
+//        }
 
         // finalPrice 설정 (포인트를 사용하지 않은 경우)
         if (reservation.getFinalPrice() == null) {

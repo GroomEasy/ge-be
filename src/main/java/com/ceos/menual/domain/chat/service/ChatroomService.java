@@ -64,19 +64,28 @@ public class ChatroomService {
         ChatroomType chatroomType = request.getChatroomType();
 
         // 같은 타입의 활성 채팅방이 있는지 확인
-        Optional<Chatroom> activeChatroom = chatroomRepository
+        List<Chatroom> activeChatrooms = chatroomRepository
                 .findActiveChatroomByMemberAndExpertAndType(
                         memberUser.getId(),
                         expertUser.getId(),
                         chatroomType
                 );
 
-        // TODO: 개발 단계에서는 검증 X
-//        if (activeChatroom.isPresent()) {
-//            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, memberId: {}, expertId: {}",
-//                    chatroomType, activeChatroom.get().getId(), memberUser.getId(), expertUser.getId());
-//            throw new GlobalException(ChatErrorCode.CONSULTATION_ALREADY_IN_PROGRESS);
-//        }
+        // 이미 활성 채팅방이 존재하는 경우 처리
+        if (!activeChatrooms.isEmpty()) {
+            // 가장 최근에 생성된 방 하나를 가져옴 (0번째 인덱스)
+            Chatroom existingChatroom = activeChatrooms.get(0);
+
+            // consultationId 업데이트 및 저장
+            existingChatroom.updateConsultation(consultationId);
+            chatroomRepository.save(existingChatroom);
+
+            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, consultationId 업데이트: {}",
+                    chatroomType, existingChatroom.getId(), consultationId);
+
+            return makeChatroomResponse(existingChatroom, expertUser, memberUser, expertProfile);
+
+        }
 
         // 같은 타입의 비활성 채팅방이 있는지 확인
         List<Chatroom> inactiveChatrooms = chatroomRepository
@@ -224,6 +233,28 @@ public class ChatroomService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Chatroom 엔티티와 사용자 정보를 받아 Response DTO를 생성하는 헬퍼 메서드
+     */
+    private ChatroomResponseDTO makeChatroomResponse(
+            Chatroom chatroom,
+            User expertUser,
+            User memberUser,
+            ExpertProfile expertProfile
+    ) {
+        ChatroomResponseDTO.ExpertInfo expertInfo = ChatroomResponseDTO.ExpertInfo.builder()
+                .userId(expertUser.getId())
+                .nickname(expertUser.getNickname())
+                .category(expertProfile.getCategory().getDescription())
+                .build();
+
+        ChatroomResponseDTO.MemberInfo memberInfo = ChatroomResponseDTO.MemberInfo.builder()
+                .userId(memberUser.getId())
+                .nickname(memberUser.getNickname())
+                .build();
+
+        return ChatroomResponseDTO.of(chatroom, expertInfo, memberInfo);
+    }
 
     /**
      * Chatroom 엔티티를 DTO로 변환

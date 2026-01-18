@@ -38,13 +38,16 @@ public interface ChatroomRepository extends JpaRepository<Chatroom, Long> {
 
     /**
      * 회원과 전문가 간의 특정 타입의 활성 채팅방 조회
+     * - 중복 데이터가 있어도 에러가 나지 않도록 List로 변경
+     * - ORDER BY c.createdAt DESC 추가 (가장 최근 방이 0번 인덱스에 오도록)
      */
     @Query("SELECT c FROM Chatroom c " +
             "WHERE c.member.id = :memberId " +
             "AND c.expert.id = :expertId " +
             "AND c.chatroomType = :chatroomType " +
-            "AND c.isActive = true")
-    Optional<Chatroom> findActiveChatroomByMemberAndExpertAndType(
+            "AND c.isActive = true " +
+            "ORDER BY c.createdAt DESC")
+    List<Chatroom> findActiveChatroomByMemberAndExpertAndType(
             @Param("memberId") Long memberId,
             @Param("expertId") Long expertId,
             @Param("chatroomType") ChatroomType chatroomType

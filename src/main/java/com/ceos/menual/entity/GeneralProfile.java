@@ -33,4 +33,11 @@ public class GeneralProfile extends BaseEntity {
 		this.totalPoints += points;
 	}
 
+	public void deductPoints(int points) {
+		if (this.totalPoints == null) {
+			this.totalPoints = 0;
+		}
+		this.totalPoints -= points;
+	}
+
 }

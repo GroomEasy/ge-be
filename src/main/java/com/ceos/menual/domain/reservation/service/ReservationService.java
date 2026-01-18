@@ -145,6 +145,17 @@ public class ReservationService {
         reservationRepository.save(reservation);
         log.info("예약 상태 업데이트 완료 - UNPAID → PAID, reservationId: {}", reservationId);
 
+        // 포인트 차감 처리
+        Integer pointsToDeduct = reservation.getPointsToUse();
+        if (pointsToDeduct != null && pointsToDeduct > 0) {
+            GeneralProfile generalProfile = reservation.getGeneralProfile();
+            generalProfile.deductPoints(pointsToDeduct);
+            log.info("포인트 차감 완료 - reservationId: {}, deductedPoints: {}, remainingPoints: {}",
+                    reservationId, pointsToDeduct, generalProfile.getTotalPoints());
+        } else {
+            log.info("차감할 포인트 없음 - reservationId: {}, pointsToUse: {}", reservationId, pointsToDeduct);
+        }
+
         // S3 임시 이미지를 최종 위치로 이동
         moveImagesToFinalLocation(reservation, savedConsultation);
 

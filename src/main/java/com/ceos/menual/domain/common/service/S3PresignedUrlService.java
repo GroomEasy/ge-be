@@ -2,6 +2,7 @@ package com.ceos.menual.domain.common.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -59,24 +60,36 @@ public class S3PresignedUrlService {
 	/**
 	 * Presigned URL 발급 (업로드용 - 임시 저장)
 	 * 
-	 * 경로 구조: tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
+	 * 경로 구조:
+	 * - consultation(고민지 이미지): tmp/consultation/reservation-{reservationId}/{imageType}/{storedFileName}
+	 * - consultation(솔루션 이미지): tmp/consultation/consultation-{consultationId}/solution/{storedFileName}
+	 * - review: tmp/review/consultation-{consultationId}/{storedFileName}
+	 * - portfolio: tmp/portfolio/expert-{expertId}/{imageType}/{storedFileName}
+	 * - storedFileName은 서버에서 UUID 기반으로 생성 (확장자 유지)
 	 * 
 	 * @param resourceType 리소스 타입 (consultation, review 등)
-	 * @param resourceId 리소스 ID (예약/상담 ID)
+	 * @param resourceId 리소스 ID
+	 *   - consultation: 고민지 이미지는 reservationId, 솔루션 이미지는 consultationId
+	 *   - review: consultationId
+	 *   - portfolio: expertId
 	 * @param imageType 이미지 타입
 	 *   - 헤어: hairstyle, front, left, right, favorite, difficulty
 	 *   - 패션: front, left, right, favorite, purpose
-	 * @param fileName 파일명 (예: image.jpg, 1.jpg)
+	 *   - 포트폴리오: before, after
+	 *   - 솔루션: (생략 가능, 생략 시 solution으로 처리)
+	 * @param fileName 원본 파일명 (확장자 추출용, 예: image.jpg, 1.jpg)
 	 * @return Presigned URL과 S3 Key
 	 */
 	public GeneratePresignedUrlResponse generateUploadPresignedUrl(String resourceType, Long resourceId, String imageType, String fileName) {
 		Long userId = getCurrentUserId();
 
 		validateResourceType(resourceType);
-		validateImageType(imageType);
+		String normalizedImageType = normalizeImageType(resourceType, imageType);
+		validateImageType(resourceType, normalizedImageType);
 		validateFileName(fileName);
 
-		String s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), imageType, fileName);
+		String storedFileName = generateUuidFileNamePreservingExtension(fileName);
+		String s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), normalizedImageType, storedFileName);
 
 		log.debug("Presigned URL 발급 - 사용자: {}, S3 Key: {}", userId, s3Key);
 
@@ -101,10 +114,43 @@ public class S3PresignedUrlService {
 
 	/**
 	 * 임시 저장 경로 생성
-	 * tmp/{resourceType}/reservation-{resourceId}/{imageType}/{fileName}
+	 * tmp/{resourceType}/{ownerPrefix}-{resourceId}/{imageType?}/{storedFileName}
 	 */
 	private String buildTemporaryS3Key(Long userId, String resourceType, String resourceId, String imageType, String fileName) {
-		return String.format("tmp/%s/reservation-%s/%s/%s", resourceType, resourceId, imageType, fileName);
+		// review는 imageType을 사용하지 않음
+		if ("review".equals(resourceType)) {
+			return String.format("tmp/review/consultation-%s/%s", resourceId, fileName);
+		}
+
+		// consultation의 solution 이미지는 consultationId 기준으로 관리
+		if ("consultation".equals(resourceType) && "solution".equals(imageType)) {
+			return String.format("tmp/consultation/consultation-%s/solution/%s", resourceId, fileName);
+		}
+
+		// consultation(고민지 이미지 등): reservationId 기준
+		if ("consultation".equals(resourceType)) {
+			return String.format("tmp/consultation/reservation-%s/%s/%s", resourceId, imageType, fileName);
+		}
+
+		// portfolio: expertId 기준
+		if ("portfolio".equals(resourceType)) {
+			return String.format("tmp/portfolio/expert-%s/%s/%s", resourceId, imageType, fileName);
+		}
+
+		throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio만 가능)");
+	}
+
+	/**
+	 * 업로드 시 저장용 파일명 생성 (UUID + 원본 확장자 유지)
+	 *
+	 * 예: "한글 파일명.PNG" -> "{uuid}.png"
+	 */
+	private String generateUuidFileNamePreservingExtension(String originalFileName) {
+		// validateFileName()에서 null/empty 및 확장자 유효성은 이미 검증됨
+		String trimmed = originalFileName.trim();
+		int lastDotIndex = trimmed.lastIndexOf('.');
+		String extension = trimmed.substring(lastDotIndex + 1).toLowerCase();
+		return UUID.randomUUID() + "." + extension;
 	}
 
 	/**
@@ -120,11 +166,12 @@ public class S3PresignedUrlService {
 	 */
 	public GeneratePresignedUrlResponse generateDownloadPresignedUrl(String resourceType, String imageType, Long resourceId, String fileName) {
 		validateResourceType(resourceType);
-		validateImageType(imageType);
+		String normalizedImageType = normalizeImageType(resourceType, imageType);
+		validateImageType(resourceType, normalizedImageType);
 		validateFileName(fileName);
 
 		// S3 Key 생성 - imageType에 따라 경로 구조가 다름
-		String s3Key = buildFinalS3Key(resourceType, imageType, resourceId, fileName);
+		String s3Key = buildFinalS3Key(resourceType, normalizedImageType, resourceId, fileName);
 
 		GetObjectRequest getObjectRequest = GetObjectRequest.builder()
 			.bucket(bucketName)
@@ -150,7 +197,28 @@ public class S3PresignedUrlService {
 	 * final/consultation/{consultationId}/{imageType}/{fileName}
 	 */
 	private String buildFinalS3Key(String resourceType, String imageType, Long resourceId, String fileName) {
+		// review는 imageType을 사용하지 않음
+		if ("review".equals(resourceType)) {
+			return String.format("final/%s/%d/%s", resourceType, resourceId, fileName);
+		}
 		return String.format("final/%s/%d/%s/%s", resourceType, resourceId, imageType, fileName);
+	}
+
+	/**
+	 * 리소스별 imageType 정규화
+	 *
+	 * - review: imageType 미사용 (null 반환)
+	 * - consultation: imageType이 비어있으면 solution으로 간주
+	 * - portfolio: before/after 필수 (검증은 validateImageType에서 처리)
+	 */
+	private String normalizeImageType(String resourceType, String imageType) {
+		if ("review".equals(resourceType)) {
+			return null;
+		}
+		if ("consultation".equals(resourceType) && (imageType == null || imageType.trim().isEmpty())) {
+			return "solution";
+		}
+		return imageType;
 	}
 
 	/**
@@ -189,6 +257,56 @@ public class S3PresignedUrlService {
 			log.error("S3 이미지 이동 실패 - bucket: {}, tempS3Key: {}, finalS3Key: {}", bucketName, tempS3Key, finalS3Key, e);
 			throw new RuntimeException("S3 이미지 이동 중 오류가 발생했습니다", e);
 		}
+	}
+
+	/**
+	 * S3 객체 삭제 (보상/정리용)
+	 *
+	 * - 삭제 재시도 수행
+	 * - 모두 실패하면 정리 작업을 DB에 기록 (스케줄러가 재처리)
+	 *
+	 * @param s3Key 삭제할 S3 객체 키
+	 */
+	public void deleteObjectWithRetryOrEnqueue(String s3Key) {
+		if (s3Key == null || s3Key.trim().isEmpty()) {
+			return;
+		}
+
+		int attempt = 0;
+		Exception lastException = null;
+
+		log.info("S3 객체 삭제 시작 - bucket: {}, key: {}", bucketName, s3Key);
+
+		while (attempt < maxRetries) {
+			attempt++;
+			try {
+				DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+					.bucket(bucketName)
+					.key(s3Key)
+					.build();
+
+				s3Client.deleteObject(deleteObjectRequest);
+				log.info("S3 객체 삭제 성공 - bucket: {}, key: {}, attempt: {}/{}",
+					bucketName, s3Key, attempt, maxRetries);
+				return;
+			} catch (Exception e) {
+				lastException = e;
+				log.warn("S3 객체 삭제 실패 (재시도 가능) - bucket: {}, key: {}, attempt: {}/{}, error: {}",
+					bucketName, s3Key, attempt, maxRetries, e.getMessage());
+
+				if (attempt < maxRetries) {
+					try {
+						Thread.sleep(retryIntervalMs);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						log.warn("재시도 대기 중단됨", ie);
+					}
+				}
+			}
+		}
+
+		log.error("S3 객체 삭제 재시도 모두 실패 - 정리 작업 DB에 기록 - bucket: {}, key: {}", bucketName, s3Key);
+		persistCleanupTask(s3Key, null, lastException);
 	}
 
 	/**
@@ -314,19 +432,29 @@ public class S3PresignedUrlService {
 	/**
 	 * 이미지 타입 검증
 	 * 
-	 * 헤어 상담: hairstyle, front, left, right, favorite, difficulty
-	 * 패션 상담: front, left, right, favorite, purpose
-	 * 솔루션: solution
+	 * consultation: hairstyle, front, left, right, favorite, difficulty, purpose, solution
+	 * review: 사용 안 함
+	 * portfolio: before, after
 	 */
-	private void validateImageType(String imageType) {
+	private void validateImageType(String resourceType, String imageType) {
+		// review는 imageType을 사용하지 않음 (null/blank 허용)
+		if ("review".equals(resourceType)) {
+			return;
+		}
 		if (imageType == null || imageType.trim().isEmpty()) {
 			throw new IllegalArgumentException("이미지 타입은 필수입니다.");
 		}
 		if (!imageType.matches("^[a-z0-9\\-]+$")) {
 			throw new IllegalArgumentException("이미지 타입은 영문 소문자, 숫자, 하이픈만 허용됩니다.");
 		}
-		// 허용된 이미지 타입만 접수
-		String[] allowedTypes = {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose", "solution"};
+
+		// 허용된 이미지 타입만 접수 (리소스별로 상이)
+		final String[] allowedTypes;
+		if ("portfolio".equals(resourceType)) {
+			allowedTypes = new String[] {"before", "after"};
+		} else {
+			allowedTypes = new String[] {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose", "solution"};
+		}
 		boolean isValid = false;
 		for (String type : allowedTypes) {
 			if (imageType.equals(type)) {
@@ -335,7 +463,7 @@ public class S3PresignedUrlService {
 			}
 		}
 		if (!isValid) {
-			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다. (hairstyle, front, left, right, favorite, difficulty, purpose, solution만 가능)");
+			throw new IllegalArgumentException("허용되지 않는 이미지 타입입니다.");
 		}
 	}
 

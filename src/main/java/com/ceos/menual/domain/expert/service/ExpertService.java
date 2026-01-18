@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
+import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
@@ -45,6 +46,7 @@ public class ExpertService {
 	private final UserRepository userRepository;
 	private final ExpertLikeRepository expertLikeRepository;
 	private final ConsultationScheduleRepository consultationScheduleRepository;
+	private final S3PresignedUrlService s3PresignedUrlService;
 
 
 	public PopularExpertsResponseDTO getTop3Overall() {
@@ -155,7 +157,111 @@ public class ExpertService {
 				.build();
 
 		// 저장 및 반환
-		return expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
+		ExpertPortfolioResponseDTO created = expertRepository.savePortfolio(portfolio, requestDTO.getHashtags());
+
+		// 이미지 이동: tmp/portfolio/expert-{expertId}/{before|after}/{fileName} -> final/portfolio/{portfolioId}/{before|after}/{fileName}
+		Long portfolioId = portfolio.getId();
+		MovedPortfolioImages moved = moveBothPortfolioImagesOrRollback(
+				expertUserId,
+				portfolioId,
+				requestDTO.getBeforeImage(),
+				requestDTO.getAfterImage()
+		);
+
+		portfolio.updateBeforeImage(moved.beforeFinalUrl());
+		portfolio.updateAfterImage(moved.afterFinalUrl());
+
+		return ExpertPortfolioResponseDTO.builder()
+				.id(created.getId())
+				.title(created.getTitle())
+				.concern(created.getConcern())
+				.solution(created.getSolution())
+				.isRepresentative(created.getIsRepresentative())
+				.beforeImage(portfolio.getBeforeImage())
+				.afterImage(portfolio.getAfterImage())
+				.hashtags(created.getHashtags())
+				.build();
+	}
+
+	private String movePortfolioImageToFinalKey(Long expertUserId, Long portfolioId, String imageKeyOrUrl) {
+		if (imageKeyOrUrl == null || imageKeyOrUrl.trim().isEmpty()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String s3Key = imageKeyOrUrl.trim();
+		if (!s3Key.startsWith("tmp/portfolio/")) {
+			// 키로 통일: URL/외부 URL/이미 final 키 등은 허용하지 않음
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String expectedPrefix = "tmp/portfolio/expert-" + expertUserId + "/";
+		if (!s3Key.startsWith(expectedPrefix)) {
+			log.warn("포트폴리오 이미지 키 소유권 불일치 - expertUserId: {}, key: {}", expertUserId, s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String[] parts = s3Key.split("/");
+		// tmp/portfolio/expert-{expertId}/{imageType}/{fileName}
+		if (parts.length < 5) {
+			log.warn("포트폴리오 이미지 키 형식 불일치 - key: {}", s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String imageType = parts[3]; // before|after
+		String fileName = parts[4];
+		if (!"before".equals(imageType) && !"after".equals(imageType)) {
+			log.warn("허용되지 않는 포트폴리오 이미지 타입 - type: {}, key: {}", imageType, s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+		if (fileName == null || fileName.isBlank()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String finalS3Key = String.format("final/portfolio/%d/%s/%s", portfolioId, imageType, fileName);
+		s3PresignedUrlService.moveImageFromTempToFinal(s3Key, finalS3Key);
+		return finalS3Key;
+	}
+
+	private record MovedPortfolioImages(String beforeFinalUrl, String afterFinalUrl, String beforeFinalKey, String afterFinalKey) {}
+
+	private MovedPortfolioImages moveBothPortfolioImagesOrRollback(
+			Long expertUserId,
+			Long portfolioId,
+			String beforeTmpKey,
+			String afterTmpKey
+	) {
+		String beforeFinalKey = null;
+		String afterFinalKey = null;
+
+		try {
+			beforeFinalKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, beforeTmpKey);
+			afterFinalKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, afterTmpKey);
+
+			return new MovedPortfolioImages(
+					s3PresignedUrlService.generateS3Url(beforeFinalKey),
+					s3PresignedUrlService.generateS3Url(afterFinalKey),
+					beforeFinalKey,
+					afterFinalKey
+			);
+		} catch (Exception e) {
+			// 보상 정리: 이미 옮긴 final 객체가 있으면 삭제 시도 (실패하면 cleanup task 기록)
+			try {
+				if (beforeFinalKey != null) {
+					s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(beforeFinalKey);
+				}
+			} catch (Exception ignore) {
+				// 보상 실패는 원인 예외를 가리지 않도록 무시
+			}
+			try {
+				if (afterFinalKey != null) {
+					s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(afterFinalKey);
+				}
+			} catch (Exception ignore) {
+				// 보상 실패는 원인 예외를 가리지 않도록 무시
+			}
+
+			throw e;
+		}
 	}
 
 	/**

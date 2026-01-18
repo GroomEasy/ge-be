@@ -3,7 +3,6 @@ package com.ceos.menual.domain.expert.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -32,10 +31,12 @@ public class PortfolioCreateRequestDTO {
     @Schema(description = "해결 솔루션", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거", required = true)
     private String solution;
 
-    @Schema(description = "시술 전 이미지 URL", example = "https://image.com/before.jpg")
+    @Schema(description = "시술 전 이미지 S3 키 (tmp). 포트폴리오 저장 시 final로 이동 후 DB에는 공개 URL이 저장됩니다.", example = "tmp/portfolio/expert-123/before/550e8400-e29b-41d4-a716-446655440000.jpg", required = true)
+    @NotBlank(message = "시술 전 이미지는 필수입니다.")
     private String beforeImage;
 
-    @Schema(description = "시술 후 이미지 URL", example = "https://image.com/after.jpg")
+    @Schema(description = "시술 후 이미지 S3 키 (tmp). 포트폴리오 저장 시 final로 이동 후 DB에는 공개 URL이 저장됩니다.", example = "tmp/portfolio/expert-123/after/550e8400-e29b-41d4-a716-446655440000.jpg", required = true)
+    @NotBlank(message = "시술 후 이미지는 필수입니다.")
     private String afterImage;
 
     @Size(max = 10, message = "해시태그는 최대 10개까지 가능합니다.")

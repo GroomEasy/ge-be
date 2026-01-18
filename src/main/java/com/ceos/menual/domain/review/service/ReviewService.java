@@ -2,6 +2,7 @@ package com.ceos.menual.domain.review.service;
 
 import java.util.List;
 import java.util.UUID;
+import java.net.URI;
 
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
@@ -275,27 +276,37 @@ public class ReviewService {
 
 			try {
 				// tmp 경로 파싱
-				String[] pathParts = tempImageUrl.split("/");
+				// - key: tmp/review/consultation-{consultationId}/{fileName}
+				// - presigned URL: https://...amazonaws.com/tmp/review/consultation-{consultationId}/{fileName}?X-Amz-...
+				String normalizedTempKey = normalizeS3KeyFromMaybeUrl(tempImageUrl);
+				String[] pathParts = normalizedTempKey.split("/");
 
-				if (pathParts.length < 5) {
+				// 지원 포맷:
+				// - 신규: tmp/review/consultation-{consultationId}/{fileName}
+				// - 레거시(호환): tmp/review/consultation-{consultationId}/{imageType}/{fileName}
+				if (pathParts.length < 4) {
 					log.error("잘못된 이미지 경로 형식 - reviewId: {}, path: {}", reviewId, tempImageUrl);
 					throw new GlobalException(ReviewErrorCode.INVALID_IMAGE_PATH);
 				}
 
-				// 인덱스 3: imageType (front), 인덱스 4: fileName
-				String imageType = pathParts[3];
-				String fileName = pathParts[4];
+				final String finalS3Key;
 
-				// 최종 S3 경로 생성
-				// final/review/{reviewId}/{imageType}/{fileName}
-				String finalS3Key = String.format("final/review/%d/%s/%s",
-						reviewId, imageType, fileName);
+				if (pathParts.length >= 5) {
+					// 레거시: 인덱스 3: imageType, 인덱스 4: fileName
+					String imageType = pathParts[3];
+					String fileName = pathParts[4];
+					finalS3Key = String.format("final/review/%d/%s/%s", reviewId, imageType, fileName);
+				} else {
+					// 신규: 인덱스 3: fileName
+					String fileName = pathParts[3];
+					finalS3Key = String.format("final/review/%d/%s", reviewId, fileName);
+				}
 
 				// S3 이동 실행
-				s3PresignedUrlService.moveImageFromTempToFinal(tempImageUrl, finalS3Key);
+				s3PresignedUrlService.moveImageFromTempToFinal(normalizedTempKey, finalS3Key);
 
 				log.info("리뷰 이미지 이동 완료 - reviewId: {}, from: {}, to: {}",
-						reviewId, tempImageUrl, finalS3Key);
+						reviewId, normalizedTempKey, finalS3Key);
 
 				String finalImageUrl = s3PresignedUrlService.generateS3Url(finalS3Key);
 
@@ -316,6 +327,38 @@ public class ReviewService {
 				throw new GlobalException(ReviewErrorCode.IMAGE_PROCESSING_FAILED);
 			}
 		}
+	}
+
+	/**
+	 * 입력이 S3 key 또는 URL(일반/프리사인드)일 수 있으므로 S3 key로 정규화.
+	 *
+	 * - URL이면 URI.path만 추출하고 선행 "/" 제거
+	 * - key이면 그대로 반환
+	 */
+	private String normalizeS3KeyFromMaybeUrl(String keyOrUrl) {
+		if (keyOrUrl == null) {
+			return null;
+		}
+
+		String trimmed = keyOrUrl.trim();
+		if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+			try {
+				URI uri = URI.create(trimmed);
+				String path = uri.getPath(); // query/fragment 제외
+				if (path == null) {
+					return trimmed;
+				}
+				if (path.startsWith("/")) {
+					path = path.substring(1);
+				}
+				return path;
+			} catch (Exception e) {
+				// 파싱 실패 시 원문 그대로 사용 (기존 예외 처리 흐름으로 위임)
+				return trimmed;
+			}
+		}
+
+		return trimmed;
 	}
 
 

@@ -31,10 +31,10 @@ public class ExpertPortfolioResponseDTO {
     @Schema(description = "대표 이미지 여부", example = "false")
     private Boolean isRepresentative;
 
-    @Schema(description = "시술 전 이미지 URL", example = "https://image.com/before.jpg")
+    @Schema(description = "시술 전 이미지 공개 URL", example = "https://bucket.s3.region.amazonaws.com/final/portfolio/10/before/550e8400-e29b-41d4-a716-446655440000.jpg")
     private String beforeImage;
 
-    @Schema(description = "시술 후 이미지 URL", example = "https://image.com/after.jpg")
+    @Schema(description = "시술 후 이미지 공개 URL", example = "https://bucket.s3.region.amazonaws.com/final/portfolio/10/after/550e8400-e29b-41d4-a716-446655440000.jpg")
     private String afterImage;
 
     @Schema(description = "해시태그 리스트", example = "[\"레이어드컷\", \"복구펌\", \"가을헤어\"]")

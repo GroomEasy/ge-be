@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.common.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -17,8 +18,7 @@ public class DownloadPresignedUrlRequestDTO {
 	@NotBlank(message = "리소스 타입은 필수입니다.")
 	private String resourceType;
 
-	@Schema(description = "이미지 타입", example = "favorite")
-	@NotBlank(message = "이미지 타입은 필수입니다.")
+	@Schema(description = "이미지 타입 (consultation: hairstyle/front/left/right/favorite/difficulty/purpose/solution, solution 다운로드는 생략 가능(자동 solution), review: 사용 안 함, portfolio: before/after)", example = "favorite")
 	private String imageType;
 
 	@Schema(description = "리소스 ID", example = "123")
@@ -28,5 +28,17 @@ public class DownloadPresignedUrlRequestDTO {
 	@Schema(description = "파일명", example = "2.jpg")
 	@NotBlank(message = "파일명은 필수입니다.")
 	private String fileName;
+
+	@AssertTrue(message = "portfolio 다운로드 요청에서는 imageType(before/after)이 필수입니다.")
+	private boolean isImageTypeRequiredForPortfolio() {
+		if (resourceType == null) {
+			return true;
+		}
+		// resourceType은 소문자("portfolio")로 들어오는 형태를 사용 중
+		if (!"portfolio".equalsIgnoreCase(resourceType.trim())) {
+			return true;
+		}
+		return imageType != null && !imageType.trim().isEmpty();
+	}
 }
 

@@ -207,6 +207,37 @@ public class SlackNotificationService {
         }
     }
 
+    @Async
+    public void sendReservationSubmittedNotification(Long reservationId, String username, String category, String consultationType, Integer finalPrice) {
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("text", "📋 *예약 주문서가 제출되었습니다!*");
+
+            Map<String, Object> attachment = new HashMap<>();
+            attachment.put("color", "#9966ff"); // 보라색 띠
+            attachment.put("fields", new Object[]{
+                    createField("예약 ID", String.valueOf(reservationId)),
+                    createField("사용자", username),
+                    createField("카테고리", category),
+                    createField("상담 타입", consultationType),
+                    createField("결제 예정 금액", finalPrice + "원")
+            });
+
+            request.put("attachments", new Object[]{attachment});
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(slackWebhookUrl, entity, String.class);
+
+            log.info("Slack 예약 주문서 제출 알림 전송 완료 - reservationId: {}", reservationId);
+
+        } catch (Exception e) {
+            log.error("Slack 예약 주문서 제출 알림 전송 실패", e);
+        }
+    }
+
     private Map<String, Object> createField(String title, String value) {
         Map<String, Object> field = new HashMap<>();
         field.put("title", title);

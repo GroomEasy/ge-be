@@ -15,6 +15,7 @@ import com.ceos.menual.domain.review.exception.ReviewErrorCode;
 import com.ceos.menual.domain.review.repository.HashtagRepository;
 import com.ceos.menual.domain.review.repository.ReviewJpaRepository;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
+import com.ceos.menual.domain.user.repository.PointHistoryRepository;
 import com.ceos.menual.domain.user.repository.UserRepository;
 import com.ceos.menual.entity.*;
 import com.ceos.menual.entity.enums.Category;
@@ -41,6 +42,10 @@ public class ReviewService {
 	private final ReviewJpaRepository reviewJpaRepository;
 	private final HashtagRepository hashtagRepository;
 	private final S3PresignedUrlService s3PresignedUrlService;
+	private final PointHistoryRepository pointHistoryRepository;
+
+	private static final int REVIEW_REWARD_POINT = 1000;
+	private static final String REVIEW_REWARD_DESCRIPTION = "리뷰 작성 적립";
 
 	public List<ReviewSummaryResponseDTO> getRecentReviews(Category category, int page, int size) {
 		return reviewRepository.findRecentReviews(category, page, size);
@@ -158,6 +163,20 @@ public class ReviewService {
 
 		// Consultation의 reviewWritten을 true로 변경
 		consultation.markReviewAsWritten();
+
+		// GeneralProfile 포인트 증가 (Dirty Checking으로 자동 Update)
+		generalProfile.addPoints(REVIEW_REWARD_POINT);
+
+		// PointHistory 기록 생성 및 저장
+		PointHistory pointHistory = PointHistory.builder()
+				.user(user)
+				.point(REVIEW_REWARD_POINT)
+				.description(REVIEW_REWARD_DESCRIPTION)
+				.build();
+
+		pointHistoryRepository.save(pointHistory);
+
+		log.info("리뷰 포인트 지급 완료 - userId: {}, point: {}", userId, REVIEW_REWARD_POINT);
 
 		log.info("후기 작성 완료 - reviewId: {}", savedReview.getId());
 

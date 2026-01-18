@@ -5,11 +5,9 @@ import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationReque
 import com.ceos.menual.domain.reservation.dto.request.UpdateReservationConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.*;
 import com.ceos.menual.domain.reservation.service.ReservationService;
+import com.ceos.menual.entity.enums.ConsultationType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -170,4 +168,68 @@ public class ReservationController {
         reservationService.requestRefund(reservationId, userId);
         return ResponseEntity.ok(CommonResponse.success(null));
     }
+
+    /**
+     * 예약 주문서(결제 전 확인 페이지) 조회 API
+     */
+    @Operation(
+            summary = "예약 주문서 조회",
+            description = "결제 전 단계에서 전문가 정보, 상담 가격(서버 기준), 내 잔여 포인트, 계좌 정보 등을 조회합니다."
+    )
+    @GetMapping("/sheet")
+    public ResponseEntity<CommonResponse<ReservationSheetResponseDTO>> getReservationSheet(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Long userId,
+
+            @Parameter(description = "예약하려는 전문가의 ID", required = true, example = "3")
+            @RequestParam Long expertId,
+
+            @Parameter(description = "상담 유형 (VIDEO: 화상, MESSAGE: 문자)", required = true, example = "VIDEO")
+            @RequestParam ConsultationType type
+    ) {
+        // 서비스 호출
+        ReservationSheetResponseDTO response =
+                reservationService.getReservationSheet(userId, expertId, type);
+
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 포인트 적용/변경 API
+     * 예약에 포인트를 적용하거나 변경합니다.
+     */
+    @Operation(
+            summary = "포인트 적용/변경",
+            description = "예약에 포인트를 적용하거나 변경합니다. 전액 사용, 부분 사용, 사용 취소가 가능합니다."
+    )
+    @PutMapping("/{reservationId}/points")
+    public ResponseEntity<CommonResponse<PointApplicationResponseDTO>> applyPoints(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @Valid @RequestBody com.ceos.menual.domain.reservation.dto.request.ApplyPointsRequestDTO request,
+            @AuthenticationPrincipal Long userId
+    ) {
+        PointApplicationResponseDTO response =
+                reservationService.applyPoints(reservationId, userId, request.getPointsToUse());
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * Reservation Sheet 제출 API
+     * 예약 주문서를 제출하여 입금 대기 상태로 전환합니다.
+     */
+    @Operation(
+            summary = "예약 주문서 제출",
+            description = "고민지와 포인트 등을 모두 작성한 후 예약 주문서를 제출합니다. 제출 후에는 입금 대기 상태(SUBMITTED)로 변경되며, 포인트 변경이 불가능합니다."
+    )
+    @PostMapping("/{reservationId}/submit")
+    public ResponseEntity<CommonResponse<Void>> submitReservation(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        reservationService.submitReservation(reservationId, userId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
 }

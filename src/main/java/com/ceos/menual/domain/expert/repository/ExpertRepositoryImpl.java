@@ -41,6 +41,7 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 	private static final QReview r = QReview.review;
 	private static final QReviewImage ri = QReviewImage.reviewImage;
 	private static final QExpertLike el = QExpertLike.expertLike;
+	private static final QExpertBankAccount expertBankAccount = QExpertBankAccount.expertBankAccount;
 
 
 	@Override
@@ -288,6 +289,19 @@ public class ExpertRepositoryImpl implements ExpertRepository {
 
 		entityManager.flush();
 		entityManager.clear();
+	}
+
+	/**
+	 * 전문가 프로필 ID로 계좌 정보 조회
+	 */
+	@Override
+	public Optional<ExpertBankAccount> findBankAccountByExpertProfileId(Long expertProfileId) {
+		ExpertBankAccount result = queryFactory
+				.selectFrom(expertBankAccount)
+				.where(expertBankAccount.expertProfile.id.eq(expertProfileId))
+				.fetchOne();
+
+		return Optional.ofNullable(result);
 	}
 
 

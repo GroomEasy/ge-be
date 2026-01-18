@@ -9,6 +9,8 @@ import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
+import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
+import com.ceos.menual.domain.expert.repository.ExpertRepository;
 import com.ceos.menual.domain.expert.service.zoom.ZoomMeetingService;
 import com.ceos.menual.domain.reservation.dto.ConcernJsonDTO;
 import com.ceos.menual.domain.reservation.dto.FashionConcernJsonDTO;
@@ -19,11 +21,7 @@ import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.CreateTempReservationRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableDatesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.CompletePaymentResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.TempReservationResponseDTO;
-import com.ceos.menual.domain.reservation.dto.response.UpdateReservationConcernResponseDTO;
+import com.ceos.menual.domain.reservation.dto.response.*;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository;
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
@@ -63,6 +61,7 @@ public class ReservationService {
     private final ChatroomRepository chatroomRepository;
     private final ZoomMeetingService zoomMeetingService;
     private final com.ceos.menual.global.config.slack.SlackNotificationService slackNotificationService;
+    private final ExpertRepository expertRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -102,9 +101,10 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
 
-        // 예약 상태 검증 (UNPAID 상태만 결제 가능)
+        // 예약 상태 검증 (UNPAID 또는 SUBMITTED 상태만 결제 가능)
         // 락 획득 후 상태 재확인 (락 대기 중 다른 트랜잭션이 상태를 변경했을 수 있음)
-        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID
+                && reservation.getReservationStatus() != ReservationStatus.SUBMITTED) {
             log.warn("예약 상태 불일치 (동시성 처리됨) - reservationId: {}, status: {}",
                 reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
@@ -963,6 +963,66 @@ public class ReservationService {
     }
 
     /**
+     * 예약 주문서(결제 전 확인 페이지) 데이터 조회
+     */
+    public ReservationSheetResponseDTO getReservationSheet(Long userId, Long expertId, ConsultationType type) {
+
+        // 예약자(User - Payer) 조회 및 포인트 확인
+        User payer = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (payer.getGeneralProfile() == null) {
+            throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        // GeneralProfile.totalPoints는 Integer이므로 Long으로 변환
+        Long currentPoints = Long.valueOf(payer.getGeneralProfile().getTotalPoints());
+
+
+        // 전문가(Expert) 및 프로필 조회
+        User expertUser = userRepository.findById(expertId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        if (!expertUser.isExpert()) {
+            throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+        }
+        ExpertProfile expertProfile = expertUser.getExpertProfile();
+
+
+        // 전문가 계좌 정보 조회
+        ExpertBankAccount bankAccount = expertRepository.findBankAccountByExpertProfileId(expertProfile.getId())
+                .orElseThrow(() -> new GlobalException(ExpertErrorCode.NO_EXPERT_BANK_ACCOUNT));
+
+
+        // 가격 책정 로직
+        ConsultationSchedule schedule = consultationScheduleRepository
+                .findByExpertProfileIdAndConsultationTypeAndIsActiveTrue(expertProfile.getId(), type)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.CONSULTATION_TYPE_NOT_SUPPORTED));
+
+        Long price = Long.valueOf(schedule.getPrice());
+
+
+        // DTO 조립 및 반환
+        return ReservationSheetResponseDTO.builder()
+                .targetInfo(ReservationSheetResponseDTO.ReservationTargetInfo.builder()
+                        .expertNickname(expertUser.getNickname())
+                        .category(expertProfile.getCategory())
+                        .consultationType(type)
+                        .originalPrice(price) // 조회한 스케줄의 가격
+                        .build())
+                .payerInfo(ReservationSheetResponseDTO.PayerInfo.builder()
+                        .userNickname(payer.getNickname())
+                        .totalPoints(currentPoints)
+                        .build())
+                .accountInfo(ReservationSheetResponseDTO.PaymentAccountInfo.builder()
+                        .bankName(bankAccount.getBankName())
+                        .accountNumber(bankAccount.getAccountNumber())
+                        .accountHolder(bankAccount.getAccountHolder())
+                        .build())
+                .build();
+    }
+
+    /**
      * 관리자-전문가 알림 채팅방 생성 또는 조회
      */
     private Long createOrGetAdminChatroom(Long adminUserId, Long expertId) {
@@ -1036,10 +1096,11 @@ public class ReservationService {
     }
 
     /**
-     * 일반 사용자: 임시 예약(UNPAID) 취소
+     * 일반 사용자: 예약 취소 (UNPAID 또는 SUBMITTED)
      *
      * 취소 가능한 상태:
-     * - UNPAID (임시 예약) - 관리자 승인 전 상태
+     * - UNPAID (임시 예약) - 작성 중인 예약
+     * - SUBMITTED (제출 완료) - 입금 대기 중인 예약
      *
      * 권한:
      * - 예약한 본인만 취소 가능
@@ -1052,7 +1113,7 @@ public class ReservationService {
      */
     @Transactional
     public void cancelTempReservation(Long reservationId, Long userId) {
-        log.info("임시 예약 취소 시작 - reservationId: {}, userId: {}", reservationId, userId);
+        log.info("예약 취소 시작 - reservationId: {}, userId: {}", reservationId, userId);
 
         // PESSIMISTIC_WRITE 락을 사용한 예약 조회
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
@@ -1064,9 +1125,10 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
         }
 
-        // 예약 상태 검증 (UNPAID 상태만 취소 가능)
-        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
-            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+        // 예약 상태 검증 (UNPAID 또는 SUBMITTED 상태만 취소 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID
+                && reservation.getReservationStatus() != ReservationStatus.SUBMITTED) {
+            log.warn("취소 불가능한 상태 - reservationId: {}, status: {}",
                     reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -1074,7 +1136,7 @@ public class ReservationService {
         // 예약 상태를 CANCELLED로 변경
         reservation.cancel();
         reservationRepository.save(reservation);
-        log.info("임시 예약 취소 완료 - reservationId: {}, status: CANCELLED", reservationId);
+        log.info("예약 취소 완료 - reservationId: {}, status: CANCELLED", reservationId);
     }
 
     /**
@@ -1162,6 +1224,17 @@ public class ReservationService {
         reservationRepository.save(reservation);
         log.info("예약 상태 변경 완료 - reservationId: {}, status: REFUNDED", reservationId);
 
+        // 포인트 원상복구
+        Integer pointsToRestore = reservation.getPointsToUse();
+        if (pointsToRestore != null && pointsToRestore > 0) {
+            GeneralProfile generalProfile = reservation.getGeneralProfile();
+            generalProfile.addPoints(pointsToRestore);
+            log.info("포인트 원상복구 완료 - reservationId: {}, restoredPoints: {}, newTotalPoints: {}",
+                    reservationId, pointsToRestore, generalProfile.getTotalPoints());
+        } else {
+            log.info("복구할 포인트 없음 - reservationId: {}, pointsToUse: {}", reservationId, pointsToRestore);
+        }
+
         // Consultation 처리 (REFUND_REQUESTED 상태는 항상 Consultation이 존재함)
         Consultation consultation = reservation.getConsultation();
         if (consultation == null) {
@@ -1200,6 +1273,132 @@ public class ReservationService {
 //                memberName,
 //                price
 //        );
+    }
+
+    /**
+     * 포인트 적용/변경
+     *
+     * 사용자가 예약에 포인트를 적용하거나 변경할 수 있습니다.
+     * - 전액 사용: pointsToUse = availablePoints
+     * - 부분 사용: pointsToUse = 원하는 포인트
+     * - 사용 취소: pointsToUse = 0
+     *
+     * @param reservationId 예약 ID
+     * @param userId 사용자 ID
+     * @param pointsToUse 사용할 포인트
+     * @return 포인트 적용 결과
+     */
+    @Transactional
+    public com.ceos.menual.domain.reservation.dto.response.PointApplicationResponseDTO applyPoints(
+            Long reservationId,
+            Long userId,
+            Integer pointsToUse
+    ) {
+        log.info("포인트 적용 시작 - reservationId: {}, userId: {}, pointsToUse: {}",
+                reservationId, userId, pointsToUse);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 권한 검증 (예약한 본인만 포인트 사용 가능)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}",
+                    reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 상태 검증 (UNPAID 상태만 포인트 적용 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 사용 가능한 포인트 계산
+        Integer totalPoints = reservation.getGeneralProfile().getTotalPoints();
+        if (totalPoints == null) {
+            totalPoints = 0;
+        }
+
+        // 포인트 적용
+        reservation.applyPoints(pointsToUse, totalPoints);
+        reservationRepository.save(reservation);
+
+        log.info("포인트 적용 완료 - reservationId: {}, pointsUsed: {}, finalPrice: {}",
+                reservationId, reservation.getPointsToUse(), reservation.getFinalPrice());
+
+        // 응답 생성
+        return com.ceos.menual.domain.reservation.dto.response.PointApplicationResponseDTO.builder()
+                .originalPrice(reservation.getPrice())
+                .pointsUsed(reservation.getPointsToUse())
+                .finalPrice(reservation.getFinalPrice())
+                .remainingPoints(totalPoints - reservation.getPointsToUse())
+                .build();
+    }
+
+    /**
+     * Reservation Sheet 제출
+     *
+     * 사용자가 예약 주문서(고민지, 포인트 등)를 모두 작성한 후 제출합니다.
+     * - UNPAID → SUBMITTED로 상태 변경
+     * - 고민지 작성 여부 검증 (필수)
+     * - 제출 후에는 포인트 변경 불가
+     *
+     * @param reservationId 예약 ID
+     * @param userId 사용자 ID
+     */
+    @Transactional
+    public void submitReservation(Long reservationId, Long userId) {
+        log.info("예약 주문서 제출 시작 - reservationId: {}, userId: {}", reservationId, userId);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 권한 검증 (예약한 본인만 제출 가능)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}",
+                    reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 상태 검증 (UNPAID 상태만 제출 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // TODO: 개발 단계에서는 주석 처리
+//        // 고민지 작성 여부 검증
+//        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
+//            log.warn("고민지 미작성 - reservationId: {}", reservationId);
+//            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
+//        }
+
+        // finalPrice 설정 (포인트를 사용하지 않은 경우)
+        if (reservation.getFinalPrice() == null) {
+            reservation.applyPoints(0, 0); // finalPrice = price - 0
+        }
+
+        // SUBMITTED로 변경
+        reservation.submit();
+        reservationRepository.save(reservation);
+
+        log.info("예약 주문서 제출 완료 - reservationId: {}, status: SUBMITTED", reservationId);
+
+        // Slack 알림 전송
+        // TODO: 프로덕션 배포 시 주석 해제
+        /*
+        slackNotificationService.sendReservationSubmittedNotification(
+                reservation.getId(),
+                reservation.getGeneralProfile().getUser().getUsername(),
+                reservation.getCategory().name(),
+                reservation.getConsultationType().name(),
+                reservation.getFinalPrice()
+        );
+        */
     }
 
 }

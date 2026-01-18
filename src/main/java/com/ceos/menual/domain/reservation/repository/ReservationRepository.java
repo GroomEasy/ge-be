@@ -93,4 +93,36 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      * consultationId로 Reservation 조회
      */
     Optional<Reservation> findByConsultationId(Long consultationId);
+
+    /**
+     * 사용자의 결제 완료된 예약 내역 조회 (전체)
+     * PAID 상태인 예약만 조회, 최신순 정렬
+     */
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN FETCH r.expertProfile ep " +
+            "JOIN FETCH ep.user " +
+            "WHERE r.generalProfile.user.id = :userId " +
+            "AND r.reservationStatus = :status " +
+            "ORDER BY r.updatedAt DESC")
+    List<Reservation> findPaymentHistoryByUserId(
+            @Param("userId") Long userId,
+            @Param("status") ReservationStatus status
+    );
+
+    /**
+     * 사용자의 결제 완료된 예약 내역 조회 (카테고리별)
+     * PAID 상태이고 특정 카테고리인 예약만 조회, 최신순 정렬
+     */
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN FETCH r.expertProfile ep " +
+            "JOIN FETCH ep.user " +
+            "WHERE r.generalProfile.user.id = :userId " +
+            "AND r.reservationStatus = :status " +
+            "AND r.category = :category " +
+            "ORDER BY r.updatedAt DESC")
+    List<Reservation> findPaymentHistoryByUserIdAndCategory(
+            @Param("userId") Long userId,
+            @Param("status") ReservationStatus status,
+            @Param("category") com.ceos.menual.entity.enums.Category category
+    );
 }

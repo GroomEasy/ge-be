@@ -7,6 +7,7 @@ import com.ceos.menual.domain.reservation.dto.request.UpdateFashionConcernReques
 import com.ceos.menual.domain.reservation.dto.request.UpdateHairConcernRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.*;
 import com.ceos.menual.domain.reservation.service.ReservationService;
+import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -230,6 +231,33 @@ public class ReservationController {
     ) {
         reservationService.submitReservation(reservationId, userId);
         return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
+    /**
+     * 결제 내역 조회 API (전체 또는 카테고리별)
+     * 사용자의 결제 완료된 예약 내역을 조회합니다.
+     */
+    @Operation(
+            summary = "결제 내역 조회",
+            description = "사용자의 결제 완료된 예약 내역을 조회합니다. 카테고리를 지정하지 않으면 전체 내역을 조회하고, 카테고리를 지정하면 해당 카테고리의 내역만 조회합니다."
+    )
+    @GetMapping("/payments")
+    public ResponseEntity<CommonResponse<PaymentHistoryListResponseDTO>> getPaymentHistory(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Long userId,
+
+            @Parameter(description = "카테고리 필터 (선택) - HAIR, FASHION, SKIN, MAKEUP 중 하나", example = "HAIR")
+            @RequestParam(required = false) Category category
+    ) {
+        PaymentHistoryListResponseDTO response;
+
+        if (category != null) {
+            response = reservationService.getPaymentHistoryByCategory(userId, category);
+        } else {
+            response = reservationService.getPaymentHistory(userId);
+        }
+
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 
 }

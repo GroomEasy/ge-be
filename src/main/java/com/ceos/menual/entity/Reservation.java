@@ -82,6 +82,10 @@ public class Reservation extends BaseEntity {
         this.expiresAt = null;
     }
 
+    public void submit() {
+        this.reservationStatus = ReservationStatus.SUBMITTED;
+    }
+
     public void cancel() {
         this.reservationStatus = ReservationStatus.CANCELLED;
     }

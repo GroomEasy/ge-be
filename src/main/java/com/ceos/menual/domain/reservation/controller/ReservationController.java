@@ -214,4 +214,22 @@ public class ReservationController {
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 
+    /**
+     * Reservation Sheet 제출 API
+     * 예약 주문서를 제출하여 입금 대기 상태로 전환합니다.
+     */
+    @Operation(
+            summary = "예약 주문서 제출",
+            description = "고민지와 포인트 등을 모두 작성한 후 예약 주문서를 제출합니다. 제출 후에는 입금 대기 상태(SUBMITTED)로 변경되며, 포인트 변경이 불가능합니다."
+    )
+    @PostMapping("/{reservationId}/submit")
+    public ResponseEntity<CommonResponse<Void>> submitReservation(
+            @Parameter(description = "예약 ID", required = true, example = "1")
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        reservationService.submitReservation(reservationId, userId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
 }

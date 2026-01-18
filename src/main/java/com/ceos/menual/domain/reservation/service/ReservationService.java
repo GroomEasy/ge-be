@@ -101,9 +101,10 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
 
-        // 예약 상태 검증 (UNPAID 상태만 결제 가능)
+        // 예약 상태 검증 (UNPAID 또는 SUBMITTED 상태만 결제 가능)
         // 락 획득 후 상태 재확인 (락 대기 중 다른 트랜잭션이 상태를 변경했을 수 있음)
-        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID
+                && reservation.getReservationStatus() != ReservationStatus.SUBMITTED) {
             log.warn("예약 상태 불일치 (동시성 처리됨) - reservationId: {}, status: {}",
                 reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
@@ -1095,10 +1096,11 @@ public class ReservationService {
     }
 
     /**
-     * 일반 사용자: 임시 예약(UNPAID) 취소
+     * 일반 사용자: 예약 취소 (UNPAID 또는 SUBMITTED)
      *
      * 취소 가능한 상태:
-     * - UNPAID (임시 예약) - 관리자 승인 전 상태
+     * - UNPAID (임시 예약) - 작성 중인 예약
+     * - SUBMITTED (제출 완료) - 입금 대기 중인 예약
      *
      * 권한:
      * - 예약한 본인만 취소 가능
@@ -1111,7 +1113,7 @@ public class ReservationService {
      */
     @Transactional
     public void cancelTempReservation(Long reservationId, Long userId) {
-        log.info("임시 예약 취소 시작 - reservationId: {}, userId: {}", reservationId, userId);
+        log.info("예약 취소 시작 - reservationId: {}, userId: {}", reservationId, userId);
 
         // PESSIMISTIC_WRITE 락을 사용한 예약 조회
         Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
@@ -1123,9 +1125,10 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
         }
 
-        // 예약 상태 검증 (UNPAID 상태만 취소 가능)
-        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
-            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+        // 예약 상태 검증 (UNPAID 또는 SUBMITTED 상태만 취소 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID
+                && reservation.getReservationStatus() != ReservationStatus.SUBMITTED) {
+            log.warn("취소 불가능한 상태 - reservationId: {}, status: {}",
                     reservationId, reservation.getReservationStatus());
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
@@ -1133,7 +1136,7 @@ public class ReservationService {
         // 예약 상태를 CANCELLED로 변경
         reservation.cancel();
         reservationRepository.save(reservation);
-        log.info("임시 예약 취소 완료 - reservationId: {}, status: CANCELLED", reservationId);
+        log.info("예약 취소 완료 - reservationId: {}, status: CANCELLED", reservationId);
     }
 
     /**
@@ -1321,6 +1324,57 @@ public class ReservationService {
                 .finalPrice(reservation.getFinalPrice())
                 .remainingPoints(totalPoints - reservation.getPointsToUse())
                 .build();
+    }
+
+    /**
+     * Reservation Sheet 제출
+     *
+     * 사용자가 예약 주문서(고민지, 포인트 등)를 모두 작성한 후 제출합니다.
+     * - UNPAID → SUBMITTED로 상태 변경
+     * - 고민지 작성 여부 검증 (필수)
+     * - 제출 후에는 포인트 변경 불가
+     *
+     * @param reservationId 예약 ID
+     * @param userId 사용자 ID
+     */
+    @Transactional
+    public void submitReservation(Long reservationId, Long userId) {
+        log.info("예약 주문서 제출 시작 - reservationId: {}, userId: {}", reservationId, userId);
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new GlobalException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+
+        // 권한 검증 (예약한 본인만 제출 가능)
+        if (!reservation.getGeneralProfile().getUser().getId().equals(userId)) {
+            log.warn("권한 없음 - 예약 소유자가 아님 - reservationId: {}, userId: {}",
+                    reservationId, userId);
+            throw new GlobalException(ReservationErrorCode.UNAUTHORIZED_RESERVATION_ACCESS);
+        }
+
+        // 상태 검증 (UNPAID 상태만 제출 가능)
+        if (reservation.getReservationStatus() != ReservationStatus.UNPAID) {
+            log.warn("임시 예약이 아님 - reservationId: {}, status: {}",
+                    reservationId, reservation.getReservationStatus());
+            throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        // 고민지 작성 여부 검증 (필수)
+        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
+            log.warn("고민지 미작성 - reservationId: {}", reservationId);
+            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
+        }
+
+        // finalPrice 설정 (포인트를 사용하지 않은 경우)
+        if (reservation.getFinalPrice() == null) {
+            reservation.applyPoints(0, 0); // finalPrice = price - 0
+        }
+
+        // SUBMITTED로 변경
+        reservation.submit();
+        reservationRepository.save(reservation);
+
+        log.info("예약 주문서 제출 완료 - reservationId: {}, status: SUBMITTED", reservationId);
     }
 
 }

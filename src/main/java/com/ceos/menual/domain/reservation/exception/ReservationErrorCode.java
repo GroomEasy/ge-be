@@ -29,7 +29,8 @@ public enum ReservationErrorCode implements ResultCode {
     INVALID_CONSULTATION_TYPE(HttpStatus.BAD_REQUEST, 4018, "유효하지 않은 상담 유형입니다."),
     CONSULTATION_NOT_LINKED(HttpStatus.NOT_FOUND, 4019, "예약과 연결된 상담이 존재하지 않습니다."),
     INVALID_POINTS_AMOUNT(HttpStatus.BAD_REQUEST, 4020, "포인트는 0 이상이어야 합니다."),
-    INSUFFICIENT_POINTS(HttpStatus.BAD_REQUEST, 4021, "사용 가능한 포인트가 부족합니다.");
+    INSUFFICIENT_POINTS(HttpStatus.BAD_REQUEST, 4021, "사용 가능한 포인트가 부족합니다."),
+    MISSING_CONCERN_DATA(HttpStatus.BAD_REQUEST, 4022, "고민지 작성이 필요합니다.");
 
 
     private final HttpStatus status;

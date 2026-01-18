@@ -76,7 +76,12 @@ public class ChatroomService {
             // 가장 최근에 생성된 방 하나를 가져옴 (0번째 인덱스)
             Chatroom existingChatroom = activeChatrooms.get(0);
 
-            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}", chatroomType, existingChatroom.getId());
+            // consultationId 업데이트 및 저장
+            existingChatroom.updateConsultation(consultationId);
+            chatroomRepository.save(existingChatroom);
+
+            log.warn("이미 진행 중인 {} 상담이 있습니다 - chatroomId: {}, consultationId 업데이트: {}",
+                    chatroomType, existingChatroom.getId(), consultationId);
 
             return makeChatroomResponse(existingChatroom, expertUser, memberUser, expertProfile);
 

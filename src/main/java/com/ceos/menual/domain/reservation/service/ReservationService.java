@@ -1437,4 +1437,76 @@ public class ReservationService {
         */
     }
 
+    /**
+     * 결제 내역 조회 (전체)
+     *
+     * 사용자의 모든 결제 완료된 예약 내역을 조회합니다.
+     * - PAID 상태인 예약만 조회
+     * - 최신순 정렬 (updatedAt 기준)
+     *
+     * @param userId 사용자 ID
+     * @return 결제 내역 리스트
+     */
+    @Transactional(readOnly = true)
+    public com.ceos.menual.domain.reservation.dto.response.PaymentHistoryListResponseDTO getPaymentHistory(Long userId) {
+        log.info("결제 내역 조회 시작 - userId: {}", userId);
+
+        // PAID 상태인 예약 조회
+        List<Reservation> paidReservations = reservationRepository.findPaymentHistoryByUserId(
+                userId
+        );
+
+        // DTO 변환
+        List<com.ceos.menual.domain.reservation.dto.response.PaymentHistoryResponseDTO> historyDTOs =
+                paidReservations.stream()
+                        .map(com.ceos.menual.domain.reservation.dto.response.PaymentHistoryResponseDTO::from)
+                        .toList();
+
+        log.info("결제 내역 조회 완료 - userId: {}, count: {}", userId, historyDTOs.size());
+
+        return com.ceos.menual.domain.reservation.dto.response.PaymentHistoryListResponseDTO.builder()
+                .listCount(historyDTOs.size())
+                .payments(historyDTOs)
+                .build();
+    }
+
+    /**
+     * 결제 내역 조회 (카테고리별)
+     *
+     * 사용자의 특정 카테고리 결제 완료된 예약 내역을 조회합니다.
+     * - PAID 상태이고 특정 카테고리인 예약만 조회
+     * - 최신순 정렬 (updatedAt 기준)
+     *
+     * @param userId 사용자 ID
+     * @param category 카테고리 (HAIR, FASHION, SKIN, MAKEUP)
+     * @return 결제 내역 리스트
+     */
+    @Transactional(readOnly = true)
+    public com.ceos.menual.domain.reservation.dto.response.PaymentHistoryListResponseDTO getPaymentHistoryByCategory(
+            Long userId,
+            Category category
+    ) {
+        log.info("카테고리별 결제 내역 조회 시작 - userId: {}, category: {}", userId, category);
+
+        // PAID 상태이고 특정 카테고리인 예약 조회
+        List<Reservation> paidReservations = reservationRepository.findPaymentHistoryByUserIdAndCategory(
+                userId,
+                category
+        );
+
+        // DTO 변환
+        List<com.ceos.menual.domain.reservation.dto.response.PaymentHistoryResponseDTO> historyDTOs =
+                paidReservations.stream()
+                        .map(com.ceos.menual.domain.reservation.dto.response.PaymentHistoryResponseDTO::from)
+                        .toList();
+
+        log.info("카테고리별 결제 내역 조회 완료 - userId: {}, category: {}, count: {}",
+                userId, category, historyDTOs.size());
+
+        return com.ceos.menual.domain.reservation.dto.response.PaymentHistoryListResponseDTO.builder()
+                .listCount(historyDTOs.size())
+                .payments(historyDTOs)
+                .build();
+    }
+
 }

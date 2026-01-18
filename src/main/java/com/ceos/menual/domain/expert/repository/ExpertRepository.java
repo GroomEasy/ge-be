@@ -6,6 +6,7 @@ import java.util.Optional;
 import com.ceos.menual.domain.expert.dto.response.ExpertPortfolioResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertRankingResponseDTO;
 import com.ceos.menual.domain.expert.dto.response.ExpertSummaryResponseDTO;
+import com.ceos.menual.entity.ExpertBankAccount;
 import com.ceos.menual.entity.ExpertLike;
 import com.ceos.menual.entity.ExpertProfile;
 import com.ceos.menual.entity.Portfolio;
@@ -35,6 +36,8 @@ public interface ExpertRepository {
 	 * 예외를 던지지 않고 무조건 false로 초기화합니다.
 	 */
 	void resetRepresentativePortfolio(Long expertUserId);
+
+	Optional<ExpertBankAccount> findBankAccountByExpertProfileId(Long expertProfileId);
 
 
 }

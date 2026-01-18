@@ -88,4 +88,21 @@ public class UserController {
         ExpertConversionResponseDTO response = userService.convertToExpert(userId, requestDTO);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
+
+    /**
+     * 포인트 적립 내역 조회
+     */
+    @Operation(
+            summary = "포인트 적립 내역 조회",
+            description = "사용자의 포인트 적립 및 사용 내역을 조회합니다. 현재 보유 포인트와 히스토리를 반환합니다."
+    )
+    @GetMapping("/points/history")
+    public ResponseEntity<CommonResponse<com.ceos.menual.domain.user.dto.response.PointHistoryListResponseDTO>> getPointHistory(
+            @Parameter(description = "사용자 ID", required = true)
+            @AuthenticationPrincipal Long userId
+    ) {
+        com.ceos.menual.domain.user.dto.response.PointHistoryListResponseDTO response =
+                userService.getPointHistory(userId);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
 }

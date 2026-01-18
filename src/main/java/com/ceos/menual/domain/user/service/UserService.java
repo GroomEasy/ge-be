@@ -44,6 +44,7 @@ public class UserService {
     private final ReviewRepository reviewRepository;
     private final GeneralProfileRepository generalProfileRepository;
     private final ExpertProfileRepository expertProfileRepository;
+    private final com.ceos.menual.domain.user.repository.PointHistoryRepository pointHistoryRepository;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
@@ -272,5 +273,46 @@ public class UserService {
             reviewCount = reviewRepository.countByConsultationGeneralProfileId(gp.getId());
         }
         return UserInfoResponseDTO.of(user, expertLikeCount, reviewCount);
+    }
+
+    /**
+     * 포인트 히스토리 조회
+     *
+     * 사용자의 포인트 적립 및 사용 내역을 조회합니다.
+     *
+     * @param userId 사용자 ID
+     * @return 현재 보유 포인트와 포인트 히스토리 리스트
+     */
+    @Transactional(readOnly = true)
+    public com.ceos.menual.domain.user.dto.response.PointHistoryListResponseDTO getPointHistory(Long userId) {
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // GeneralProfile 조회
+        GeneralProfile generalProfile = user.getGeneralProfile();
+        if (generalProfile == null) {
+            throw new GlobalException(UserErrorCode.GENERAL_PROFILE_NOT_FOUND);
+        }
+
+        // 현재 보유 포인트
+        Integer totalPoints = generalProfile.getTotalPoints();
+        if (totalPoints == null) {
+            totalPoints = 0;
+        }
+
+        // 포인트 히스토리 조회 (최신순)
+        List<PointHistory> pointHistories = pointHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        // DTO 변환
+        List<com.ceos.menual.domain.user.dto.response.PointHistoryResponseDTO> historyDTOs =
+                pointHistories.stream()
+                        .map(com.ceos.menual.domain.user.dto.response.PointHistoryResponseDTO::from)
+                        .toList();
+
+        return com.ceos.menual.domain.user.dto.response.PointHistoryListResponseDTO.builder()
+                .totalPoints(totalPoints)
+                .history(historyDTOs)
+                .build();
     }
 }

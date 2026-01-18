@@ -62,6 +62,7 @@ public class ReservationService {
     private final ZoomMeetingService zoomMeetingService;
     private final com.ceos.menual.global.config.slack.SlackNotificationService slackNotificationService;
     private final ExpertRepository expertRepository;
+    private final com.ceos.menual.domain.user.repository.PointHistoryRepository pointHistoryRepository;
 
     private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
             List.of(ReservationStatus.UNPAID, ReservationStatus.PAID);
@@ -149,7 +150,19 @@ public class ReservationService {
         Integer pointsToDeduct = reservation.getPointsToUse();
         if (pointsToDeduct != null && pointsToDeduct > 0) {
             GeneralProfile generalProfile = reservation.getGeneralProfile();
+            User user = generalProfile.getUser();
+
+            // 포인트 차감
             generalProfile.deductPoints(pointsToDeduct);
+
+            // 포인트 히스토리 기록 (음수로 저장)
+            PointHistory pointHistory = PointHistory.builder()
+                    .user(user)
+                    .point(-pointsToDeduct)  // 차감은 음수로 기록
+                    .description("포인트 사용 (예약 ID: " + reservationId + ")")
+                    .build();
+            pointHistoryRepository.save(pointHistory);
+
             log.info("포인트 차감 완료 - reservationId: {}, deductedPoints: {}, remainingPoints: {}",
                     reservationId, pointsToDeduct, generalProfile.getTotalPoints());
         } else {
@@ -1239,7 +1252,19 @@ public class ReservationService {
         Integer pointsToRestore = reservation.getPointsToUse();
         if (pointsToRestore != null && pointsToRestore > 0) {
             GeneralProfile generalProfile = reservation.getGeneralProfile();
+            User user = generalProfile.getUser();
+
+            // 포인트 복구
             generalProfile.addPoints(pointsToRestore);
+
+            // 포인트 히스토리 기록 (양수로 저장)
+            PointHistory pointHistory = PointHistory.builder()
+                    .user(user)
+                    .point(pointsToRestore)  // 환불은 양수로 기록
+                    .description("포인트 환불")
+                    .build();
+            pointHistoryRepository.save(pointHistory);
+
             log.info("포인트 원상복구 완료 - reservationId: {}, restoredPoints: {}, newTotalPoints: {}",
                     reservationId, pointsToRestore, generalProfile.getTotalPoints());
         } else {

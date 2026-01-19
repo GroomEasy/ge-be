@@ -125,4 +125,25 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("userId") Long userId,
             @Param("category") com.ceos.menual.entity.enums.Category category
     );
+
+    /**
+     * 일반 회원의 진행 중인 예약 존재 여부 확인
+     * (UNPAID, SUBMITTED, PAID 상태 = 아직 완료되지 않은 예약)
+     */
+    @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
+            "WHERE r.generalProfile.id = :generalProfileId " +
+            "AND r.reservationStatus IN ('UNPAID', 'SUBMITTED', 'PAID')")
+    boolean existsActiveReservationByGeneralProfileId(
+            @Param("generalProfileId") Long generalProfileId
+    );
+
+    /**
+     * 전문가의 진행 중인 예약 존재 여부 확인
+     */
+    @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
+            "WHERE r.expertProfile.id = :expertProfileId " +
+            "AND r.reservationStatus IN ('UNPAID', 'SUBMITTED', 'PAID')")
+    boolean existsActiveReservationByExpertProfileId(
+            @Param("expertProfileId") Long expertProfileId
+    );
 }

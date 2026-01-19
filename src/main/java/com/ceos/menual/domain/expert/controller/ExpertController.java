@@ -1,10 +1,12 @@
 package com.ceos.menual.domain.expert.controller;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
+import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
+import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.expert.service.ExpertLikeService;
 import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.Valid;
@@ -197,6 +199,24 @@ public class ExpertController {
 			@Valid @RequestBody ConsultationScheduleUpdateRequestDTO requestDTO
 	) {
 		List<ConsultationScheduleResponseDTO> response = expertService.updateConsultationSchedules(expertUserId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 예약 가능 시간 수정(등록) API
+	 */
+	@Operation(
+			summary = "전문가 예약 가능 시간 수정",
+			description = "전문가가 특정 날짜의 예약 가능 시간을 설정합니다. 요청에 포함된 시간만 활성화되고, 기존에 등록된 다른 시간은 비활성화됩니다."
+	)
+	@PutMapping("/available-schedules")
+	public ResponseEntity<CommonResponse<AvailableTimesResponseDTO>> updateAvailableSchedules(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+
+			@Valid @RequestBody AvailableScheduleUpdateRequestDTO requestDTO
+	) {
+		AvailableTimesResponseDTO response = expertService.updateAvailableSchedules(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

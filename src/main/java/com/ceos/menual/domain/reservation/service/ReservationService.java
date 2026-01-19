@@ -833,24 +833,25 @@ public class ReservationService {
                     reservationId, imageKey, finalS3Key);
             }
 
-            // ConcernJsonDTO의 imageKeys를 최종 경로로 업데이트
+            // ConcernJsonDTO의 imageKeys를 최종 "공개 URL"로 업데이트
             // 모든 이미지 키는 이미 검증되었으므로 안전하게 변환
             // parts.length >= 5 보장됨 (위에서 < 5 체크하고 예외 발생)
-            List<String> finalImageKeys = imageKeys.stream()
+            List<String> finalImageUrls = imageKeys.stream()
                     .map(imageKey -> {
                         String[] parts = imageKey.split("/");
                         // parts = [tmp, consultation, reservation-{id}, {imageType}, {fileName}]
                         String imageType = parts[3];
                         String fileName = parts[4];
-                        return String.format("final/consultation/%d/%s/%s", 
+                        String finalS3Key = String.format("final/consultation/%d/%s/%s",
                             consultationId, imageType, fileName);
+                        return s3PresignedUrlService.generateS3Url(finalS3Key);
                     })
                     .collect(Collectors.toList());
 
             // 기존 ConcernJsonDTO 데이터를 유지하고 이미지 경로만 업데이트
             Map<String, String> imagePathMapping = new HashMap<>();
             for (int i = 0; i < imageKeys.size(); i++) {
-                imagePathMapping.put(imageKeys.get(i), finalImageKeys.get(i));
+                imagePathMapping.put(imageKeys.get(i), finalImageUrls.get(i));
             }
 
             if (concernJson.getFashion() != null && concernJson.getFashion().getImages() != null) {

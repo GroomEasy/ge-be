@@ -22,7 +22,11 @@ public enum UserErrorCode implements ResultCode {
     USER_ALREADY_EXPERT(HttpStatus.CONFLICT, 1110, "이미 전문가입니다."),
     INCOMPLETE_BANK_ACCOUNT_INFO(HttpStatus.BAD_REQUEST, 1111, "계좌 정보는 은행명, 계좌번호, 예금주명을 모두 입력해야 합니다."),
     PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1112, "사용자 프로필 정보를 찾을 수 없습니다."),
-    EXPERT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1113, "전문가 프로필이 존재하지 않습니다.");
+    EXPERT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1113, "전문가 프로필이 존재하지 않습니다."),
+    USER_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, 1114, "이미 탈퇴한 회원입니다."),
+    ACTIVE_RESERVATION_EXISTS(HttpStatus.CONFLICT, 1115, "진행 중인 예약이 있어 탈퇴할 수 없습니다."),
+    ACTIVE_CONSULTATION_EXISTS(HttpStatus.CONFLICT, 1116, "진행 중인 상담이 있어 탈퇴할 수 없습니다."),
+    USER_WITHDRAWN(HttpStatus.FORBIDDEN, 1117, "탈퇴한 회원은 이용할 수 없습니다.");
 
 
 

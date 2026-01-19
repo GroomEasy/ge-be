@@ -105,4 +105,19 @@ public class UserController {
                 userService.getPointHistory(userId);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
+
+    /**
+     * 회원 탈퇴
+     */
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "현재 로그인한 사용자의 계정을 탈퇴 처리합니다. 진행 중인 예약이나 상담이 있으면 탈퇴할 수 없습니다."
+    )
+    @DeleteMapping("/me")
+    public ResponseEntity<CommonResponse<Void>> withdraw(
+            @AuthenticationPrincipal Long userId
+    ) {
+        userService.withdraw(userId);
+        return ResponseEntity.ok(CommonResponse.success(null));
+    }
 }

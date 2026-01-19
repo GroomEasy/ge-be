@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -60,6 +61,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private Boolean agreePrivacy;
 
+    // 탈퇴 일시 (null이면 활성 회원)
+    private LocalDateTime deletedAt;
+
     public void updateSocialExtraInfo(String nickname, LocalDate birth, String email, Boolean agreeTerms, Boolean agreePrivacy) {
         this.nickname = nickname;
         this.birth = birth;
@@ -83,6 +87,14 @@ public class User extends BaseEntity {
     public void convertToExpert(ExpertProfile expertProfile) {
         this.userType = UserType.EXPERT;
         this.expertProfile = expertProfile;
+    }
+
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isWithdrawn() {
+        return this.deletedAt != null;
     }
 }
 

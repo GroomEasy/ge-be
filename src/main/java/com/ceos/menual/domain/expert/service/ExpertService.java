@@ -1,18 +1,21 @@
 package com.ceos.menual.domain.expert.service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
+import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
+import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
+import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository;
 import com.ceos.menual.domain.review.repository.ReviewRepository;
 import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
 import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
@@ -46,6 +49,7 @@ public class ExpertService {
 	private final UserRepository userRepository;
 	private final ExpertLikeRepository expertLikeRepository;
 	private final ConsultationScheduleRepository consultationScheduleRepository;
+	private final AvailableScheduleRepository availableScheduleRepository;
 	private final S3PresignedUrlService s3PresignedUrlService;
 
 
@@ -314,6 +318,151 @@ public class ExpertService {
 		return ToggleRepresentativePortfolioResponseDTO.builder()
 				.portfolioId(requestDTO.getPortfolioId())
 				.isRepresentative(finalState)
+				.build();
+	}
+
+	/**
+	 * 전문가 상담 스케줄 수정 (등록/업데이트)
+	 */
+	@Transactional
+	public List<ConsultationScheduleResponseDTO> updateConsultationSchedules(
+			Long expertUserId,
+			ConsultationScheduleUpdateRequestDTO requestDTO
+	) {
+		log.info("상담 스케줄 수정 요청 - 전문가 UserId: {}", expertUserId);
+
+		// 전문가 조회 및 검증
+		User expertUser = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!expertUser.isExpert() || expertUser.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
+		}
+
+		ExpertProfile profile = expertUser.getExpertProfile();
+		Long expertProfileId = profile.getId();
+
+		List<ConsultationSchedule> updatedSchedules = new ArrayList<>();
+
+		for (ConsultationScheduleUpdateRequestDTO.ScheduleItem item : requestDTO.getSchedules()) {
+			// 기존 스케줄 조회 (활성화 여부 무관)
+			ConsultationSchedule schedule = consultationScheduleRepository
+					.findByExpertProfileIdAndConsultationType(expertProfileId, item.getConsultationType())
+					.orElse(null);
+
+			if (schedule != null) {
+				// 기존 스케줄 업데이트
+				schedule.updatePrice(item.getPrice());
+				if (item.getIsActive()) {
+					schedule.activate();
+				} else {
+					schedule.deactivate();
+				}
+				updatedSchedules.add(schedule);
+				log.info("상담 스케줄 업데이트 - type: {}, price: {}, isActive: {}",
+						item.getConsultationType(), item.getPrice(), item.getIsActive());
+			} else {
+				// 새 스케줄 생성
+				ConsultationSchedule newSchedule = ConsultationSchedule.builder()
+						.consultationType(item.getConsultationType())
+						.price(item.getPrice())
+						.isActive(item.getIsActive())
+						.build();
+				profile.addConsultationSchedule(newSchedule);
+				consultationScheduleRepository.save(newSchedule);
+				updatedSchedules.add(newSchedule);
+				log.info("상담 스케줄 생성 - type: {}, price: {}, isActive: {}",
+						item.getConsultationType(), item.getPrice(), item.getIsActive());
+			}
+		}
+
+		log.info("상담 스케줄 수정 완료 - 전문가 UserId: {}, 수정된 스케줄 수: {}",
+				expertUserId, updatedSchedules.size());
+
+		return updatedSchedules.stream()
+				.map(ConsultationScheduleResponseDTO::from)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * 전문가 예약 가능 시간 수정 (등록/업데이트)
+	 * 특정 날짜의 예약 가능 시간을 설정합니다.
+	 * 기존에 등록된 시간은 비활성화하고, 요청된 시간들을 활성화합니다.
+	 */
+	@Transactional
+	public AvailableTimesResponseDTO updateAvailableSchedules(
+			Long expertUserId,
+			AvailableScheduleUpdateRequestDTO requestDTO
+	) {
+		log.info("예약 가능 시간 수정 요청 - 전문가 UserId: {}, 날짜: {}",
+				expertUserId, requestDTO.getAvailableDate());
+
+		// 전문가 조회 및 검증
+		User expertUser = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!expertUser.isExpert() || expertUser.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
+		}
+
+		ExpertProfile profile = expertUser.getExpertProfile();
+		Long expertProfileId = profile.getId();
+
+		// 해당 날짜의 기존 스케줄 모두 조회 (활성/비활성 모두)
+		List<AvailableSchedule> existingSchedules = availableScheduleRepository
+				.findAllByExpertProfileIdAndDate(expertProfileId, requestDTO.getAvailableDate());
+
+		// 기존 스케줄을 Map으로 변환 (시간 -> 스케줄)
+		Map<java.time.LocalTime, AvailableSchedule> existingScheduleMap = existingSchedules.stream()
+				.collect(Collectors.toMap(
+						AvailableSchedule::getAvailableTime,
+						schedule -> schedule
+				));
+
+		// 요청된 시간들을 Set으로 변환
+		Set<java.time.LocalTime> requestedTimes = new HashSet<>(requestDTO.getAvailableTimes());
+
+		List<java.time.LocalTime> resultTimes = new ArrayList<>();
+
+		// 1. 기존 스케줄 처리: 요청에 없으면 비활성화, 있으면 활성화
+		for (AvailableSchedule existingSchedule : existingSchedules) {
+			if (requestedTimes.contains(existingSchedule.getAvailableTime())) {
+				// 요청된 시간이면 활성화
+				existingSchedule.activate();
+				resultTimes.add(existingSchedule.getAvailableTime());
+				log.debug("기존 스케줄 활성화 - time: {}", existingSchedule.getAvailableTime());
+			} else {
+				// 요청에 없는 시간이면 비활성화
+				existingSchedule.deactivate();
+				log.debug("기존 스케줄 비활성화 - time: {}", existingSchedule.getAvailableTime());
+			}
+		}
+
+		// 2. 새로운 시간 추가: 기존에 없는 시간만 생성
+		for (java.time.LocalTime requestedTime : requestDTO.getAvailableTimes()) {
+			if (!existingScheduleMap.containsKey(requestedTime)) {
+				// 새로운 시간이면 생성
+				AvailableSchedule newSchedule = AvailableSchedule.builder()
+						.expertProfile(profile)
+						.availableDate(requestDTO.getAvailableDate())
+						.availableTime(requestedTime)
+						.isActive(true)
+						.build();
+				availableScheduleRepository.save(newSchedule);
+				resultTimes.add(requestedTime);
+				log.debug("새 스케줄 생성 - time: {}", requestedTime);
+			}
+		}
+
+		// 시간순 정렬
+		resultTimes.sort(java.time.LocalTime::compareTo);
+
+		log.info("예약 가능 시간 수정 완료 - 전문가 UserId: {}, 날짜: {}, 설정된 시간 수: {}",
+				expertUserId, requestDTO.getAvailableDate(), resultTimes.size());
+
+		return AvailableTimesResponseDTO.builder()
+				.date(requestDTO.getAvailableDate())
+				.availableTimes(resultTimes)
 				.build();
 	}
 }

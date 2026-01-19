@@ -1,6 +1,8 @@
 package com.ceos.menual.domain.user.service;
 
+import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
+import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.review.repository.ReviewRepository;
 import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
 import com.ceos.menual.domain.user.dto.request.SignUpRequestDTO;
@@ -45,6 +47,8 @@ public class UserService {
     private final GeneralProfileRepository generalProfileRepository;
     private final ExpertProfileRepository expertProfileRepository;
     private final com.ceos.menual.domain.user.repository.PointHistoryRepository pointHistoryRepository;
+    private final ReservationRepository reservationRepository;
+    private final ConsultationRepository consultationRepository;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
@@ -314,5 +318,56 @@ public class UserService {
                 .totalPoints(totalPoints)
                 .history(historyDTOs)
                 .build();
+    }
+
+    /**
+     * 회원 탈퇴
+     * - 진행 중인 예약/상담이 있으면 탈퇴 불가
+     * - Soft delete 방식으로 deletedAt 필드에 탈퇴 일시 저장
+     * - PESSIMISTIC_WRITE 락으로 동시성 문제 해결 (탈퇴 처리 중 예약/상담 생성 방지)
+     */
+    @Transactional
+    public void withdraw(Long userId) {
+        // PESSIMISTIC_WRITE 락으로 User 조회 - 동시 예약/상담 생성 방지
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 이미 탈퇴한 회원인지 확인
+        if (user.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_ALREADY_WITHDRAWN);
+        }
+
+        // 일반 회원인 경우 진행 중인 예약/상담 확인
+        if (user.getGeneralProfile() != null) {
+            Long generalProfileId = user.getGeneralProfile().getId();
+
+            // 진행 중인 예약 확인
+            if (reservationRepository.existsActiveReservationByGeneralProfileId(generalProfileId)) {
+                throw new GlobalException(UserErrorCode.ACTIVE_RESERVATION_EXISTS);
+            }
+
+            // 진행 중인 상담 확인
+            if (consultationRepository.existsActiveConsultationByGeneralProfileId(generalProfileId)) {
+                throw new GlobalException(UserErrorCode.ACTIVE_CONSULTATION_EXISTS);
+            }
+        }
+
+        // 전문가인 경우 진행 중인 예약/상담 확인
+        if (user.getExpertProfile() != null) {
+            Long expertProfileId = user.getExpertProfile().getId();
+
+            // 진행 중인 예약 확인
+            if (reservationRepository.existsActiveReservationByExpertProfileId(expertProfileId)) {
+                throw new GlobalException(UserErrorCode.ACTIVE_RESERVATION_EXISTS);
+            }
+
+            // 진행 중인 상담 확인
+            if (consultationRepository.existsActiveConsultationByExpertProfileId(expertProfileId)) {
+                throw new GlobalException(UserErrorCode.ACTIVE_CONSULTATION_EXISTS);
+            }
+        }
+
+        // 탈퇴 처리 (Soft delete)
+        user.withdraw();
     }
 }

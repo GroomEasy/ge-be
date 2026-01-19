@@ -73,4 +73,16 @@ public class Portfolio extends BaseEntity {
 	public void setIsRepresentative(boolean isRepresentative) {
 		this.isRepresentative = isRepresentative;
 	}
+
+	public void updateTitle(String title) {
+		this.title = title;
+	}
+
+	public void updateConcern(String concern) {
+		this.concern = concern;
+	}
+
+	public void updateSolution(String solution) {
+		this.solution = solution;
+	}
 }

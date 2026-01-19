@@ -4,6 +4,7 @@ import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResp
 import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.PortfolioUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
@@ -288,6 +289,35 @@ public class ExpertController {
 	) {
 		ExpertPortfolioResponseDTO response = expertService.createPortfolio(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	@Operation(
+			summary = "포트폴리오 수정",
+			description = "전문가가 본인의 포트폴리오를 수정합니다. 변경할 필드만 전달하면 됩니다."
+	)
+	@PutMapping("/portfolios/{portfolioId}")
+	public ResponseEntity<CommonResponse<ExpertPortfolioResponseDTO>> updatePortfolio(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+			@PathVariable Long portfolioId,
+			@Valid @RequestBody PortfolioUpdateRequestDTO requestDTO
+	) {
+		ExpertPortfolioResponseDTO response = expertService.updatePortfolio(expertUserId, portfolioId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	@Operation(
+			summary = "포트폴리오 삭제",
+			description = "전문가가 본인의 포트폴리오를 삭제합니다."
+	)
+	@DeleteMapping("/portfolios/{portfolioId}")
+	public ResponseEntity<CommonResponse<Void>> deletePortfolio(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+			@PathVariable Long portfolioId
+	) {
+		expertService.deletePortfolio(expertUserId, portfolioId);
+		return ResponseEntity.ok(CommonResponse.success(null));
 	}
 
 	/**

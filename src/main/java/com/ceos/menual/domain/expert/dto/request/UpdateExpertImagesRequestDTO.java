@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.expert.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
@@ -24,8 +25,9 @@ public class UpdateExpertImagesRequestDTO {
 	)
 	private String backgroundImageKey;
 
+	@JsonIgnore
 	@AssertTrue(message = "profileImageKey 또는 backgroundImageKey 중 하나는 필수입니다.")
-	private boolean isAtLeastOneProvided() {
+	public boolean isAtLeastOneProvided() {
 		return (profileImageKey != null && !profileImageKey.trim().isEmpty())
 			|| (backgroundImageKey != null && !backgroundImageKey.trim().isEmpty());
 	}

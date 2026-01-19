@@ -10,6 +10,8 @@ import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestD
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
@@ -87,6 +89,137 @@ public class ExpertService {
 		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());
 
 		return ExpertInfoResponseDTO.from(user, likeCount.intValue());
+	}
+
+	/**
+	 * 전문가 본인 프로필/배경 이미지 수정
+	 *
+	 * - 입력: S3 final key (final/expert/{expertId}/profile|background/{fileName})
+	 * - 처리: DB에는 공개 URL 저장 (이전 이미지가 있으면 best-effort로 삭제 시도)
+	 */
+	@Transactional
+	public ExpertInfoResponseDTO updateExpertImages(Long expertUserId, UpdateExpertImagesRequestDTO requestDTO) {
+		User user = userRepository.findById(expertUserId)
+			.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert() || user.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		ExpertProfile expertProfile = user.getExpertProfile();
+
+		if (requestDTO.getProfileImageKey() != null && !requestDTO.getProfileImageKey().trim().isEmpty()) {
+			String newProfileFinalKey = validateExpertFinalKey(expertUserId, requestDTO.getProfileImageKey(), "profile");
+			String oldProfileKey = extractS3KeyFromStoredUrl(user.getProfileImage());
+			if (oldProfileKey != null && oldProfileKey.startsWith("final/expert/")
+					&& !oldProfileKey.equals(newProfileFinalKey)) {
+				s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldProfileKey);
+			}
+			user.updateProfileImage(s3PresignedUrlService.generateS3Url(newProfileFinalKey));
+		}
+
+		if (requestDTO.getBackgroundImageKey() != null && !requestDTO.getBackgroundImageKey().trim().isEmpty()) {
+			String newBackgroundFinalKey = validateExpertFinalKey(expertUserId, requestDTO.getBackgroundImageKey(), "background");
+			String oldBackgroundKey = extractS3KeyFromStoredUrl(expertProfile.getBackgroundImage());
+			if (oldBackgroundKey != null && oldBackgroundKey.startsWith("final/expert/")
+					&& !oldBackgroundKey.equals(newBackgroundFinalKey)) {
+				s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldBackgroundKey);
+			}
+			expertProfile.updateBackgroundImage(s3PresignedUrlService.generateS3Url(newBackgroundFinalKey));
+		}
+
+		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());
+		return ExpertInfoResponseDTO.from(user, likeCount.intValue());
+	}
+
+	/**
+	 * 전문가 소개서 정보(한 줄 소개/인스타 링크/경력 정보) 수정
+	 */
+	@Transactional
+	public ExpertInfoResponseDTO updateExpertInfo(Long expertUserId, UpdateExpertInfoRequestDTO requestDTO) {
+		User user = userRepository.findById(expertUserId)
+			.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert() || user.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		ExpertProfile expertProfile = user.getExpertProfile();
+
+		if (requestDTO.getIntroduction() != null) {
+			String intro = requestDTO.getIntroduction().trim();
+			expertProfile.updateIntroduction(intro.isEmpty() ? null : intro);
+		}
+
+		if (requestDTO.getProfileLink() != null) {
+			String link = requestDTO.getProfileLink().trim();
+			expertProfile.updateProfileLink(link.isEmpty() ? null : link);
+		}
+
+		if (requestDTO.getCareerInfo() != null) {
+			String career = requestDTO.getCareerInfo().trim();
+			expertProfile.updateCareerInfo(career.isEmpty() ? null : career);
+		}
+
+		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());
+		return ExpertInfoResponseDTO.from(user, likeCount.intValue());
+	}
+
+	private String validateExpertFinalKey(Long expertUserId, String keyOrUrl, String expectedImageType) {
+		String s3Key = normalizeS3KeyFromMaybeUrl(keyOrUrl);
+		if (s3Key == null || s3Key.isBlank()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String expectedPrefix = "final/expert/" + expertUserId + "/";
+		if (!s3Key.startsWith(expectedPrefix)) {
+			log.warn("전문가 final 이미지 키 소유권 불일치 - expertUserId: {}, key: {}", expertUserId, s3Key);
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String[] parts = s3Key.split("/");
+		// final/expert/{expertId}/{imageType}/{fileName}
+		if (parts.length < 5) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		String imageType = parts[3];
+		String fileName = parts[4];
+		if (!expectedImageType.equals(imageType)) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+		if (fileName == null || fileName.isBlank()) {
+			throw new GlobalException(ExpertErrorCode.INVALID_IMAGE_KEY_FORMAT);
+		}
+
+		return s3Key;
+	}
+
+	private String extractS3KeyFromStoredUrl(String storedUrlOrKey) {
+		if (storedUrlOrKey == null) return null;
+		String trimmed = storedUrlOrKey.trim();
+		int finalIdx = trimmed.indexOf("final/");
+		if (finalIdx >= 0) return trimmed.substring(finalIdx);
+		return trimmed;
+	}
+
+	private String normalizeS3KeyFromMaybeUrl(String keyOrUrl) {
+		if (keyOrUrl == null) {
+			return null;
+		}
+		String trimmed = keyOrUrl.trim();
+		if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+			try {
+				java.net.URI uri = java.net.URI.create(trimmed);
+				String path = uri.getPath();
+				if (path == null) return trimmed;
+				if (path.startsWith("/")) path = path.substring(1);
+				return path;
+			} catch (Exception e) {
+				return trimmed;
+			}
+		}
+		return trimmed;
 	}
 
 	/**

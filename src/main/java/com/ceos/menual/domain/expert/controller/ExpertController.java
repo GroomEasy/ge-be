@@ -5,6 +5,8 @@ import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestD
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.expert.service.ExpertLikeService;
@@ -102,6 +104,38 @@ public class ExpertController {
 			@PathVariable Long userId
 	) {
 		ExpertInfoResponseDTO response = expertService.getExpertInfo(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 본인 프로필/배경 이미지 수정
+	 */
+	@Operation(
+			summary = "전문가 프로필/배경 이미지 수정",
+			description = "전문가가 본인의 프로필 이미지(User.profileImage)와 배경 이미지(ExpertProfile.backgroundImage)를 수정합니다. " +
+					"Presigned URL로 final 경로에 직접 업로드한 뒤(final key), 해당 key를 전달하면 서버가 DB에 공개 URL을 저장합니다."
+	)
+	@PutMapping("/me/images")
+	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> updateExpertImages(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+			@Valid @RequestBody UpdateExpertImagesRequestDTO requestDTO
+	) {
+		ExpertInfoResponseDTO response = expertService.updateExpertImages(expertUserId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	@Operation(
+			summary = "전문가 소개서 정보 수정",
+			description = "전문가가 본인의 한 줄 소개/인스타그램 링크/경력 정보를 수정합니다."
+	)
+	@PutMapping("/me/info")
+	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> updateExpertInfo(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+			@Valid @RequestBody UpdateExpertInfoRequestDTO requestDTO
+	) {
+		ExpertInfoResponseDTO response = expertService.updateExpertInfo(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

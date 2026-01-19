@@ -57,6 +57,9 @@ public class ExpertProfile extends BaseEntity {
 	//프로필 링크
 	private String profileLink;
 
+	// 배경 이미지
+	private String backgroundImage;
+
 	//경력정보
 	private String careerInfo;
 
@@ -98,6 +101,22 @@ public class ExpertProfile extends BaseEntity {
 		this.zoomAccessToken = accessToken;
 		this.zoomTokenExpiresAt = tokenExpiresAt;
 		if (this.isZoomConnected == null) this.isZoomConnected = true;
+	}
+
+	public void updateBackgroundImage(String backgroundImage) {
+		this.backgroundImage = backgroundImage;
+	}
+
+	public void updateIntroduction(String introduction) {
+		this.introduction = introduction;
+	}
+
+	public void updateProfileLink(String profileLink) {
+		this.profileLink = profileLink;
+	}
+
+	public void updateCareerInfo(String careerInfo) {
+		this.careerInfo = careerInfo;
 	}
 
 }

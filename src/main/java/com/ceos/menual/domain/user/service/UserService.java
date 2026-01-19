@@ -324,10 +324,12 @@ public class UserService {
      * 회원 탈퇴
      * - 진행 중인 예약/상담이 있으면 탈퇴 불가
      * - Soft delete 방식으로 deletedAt 필드에 탈퇴 일시 저장
+     * - PESSIMISTIC_WRITE 락으로 동시성 문제 해결 (탈퇴 처리 중 예약/상담 생성 방지)
      */
     @Transactional
     public void withdraw(Long userId) {
-        User user = userRepository.findById(userId)
+        // PESSIMISTIC_WRITE 락으로 User 조회 - 동시 예약/상담 생성 방지
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
         // 이미 탈퇴한 회원인지 확인

@@ -25,7 +25,8 @@ public enum UserErrorCode implements ResultCode {
     EXPERT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, 1113, "전문가 프로필이 존재하지 않습니다."),
     USER_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, 1114, "이미 탈퇴한 회원입니다."),
     ACTIVE_RESERVATION_EXISTS(HttpStatus.CONFLICT, 1115, "진행 중인 예약이 있어 탈퇴할 수 없습니다."),
-    ACTIVE_CONSULTATION_EXISTS(HttpStatus.CONFLICT, 1116, "진행 중인 상담이 있어 탈퇴할 수 없습니다.");
+    ACTIVE_CONSULTATION_EXISTS(HttpStatus.CONFLICT, 1116, "진행 중인 상담이 있어 탈퇴할 수 없습니다."),
+    USER_WITHDRAWN(HttpStatus.FORBIDDEN, 1117, "탈퇴한 회원은 이용할 수 없습니다.");
 
 
 

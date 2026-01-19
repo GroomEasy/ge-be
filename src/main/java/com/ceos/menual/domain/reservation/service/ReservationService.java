@@ -390,6 +390,11 @@ public class ReservationService {
         User expertUser = userRepository.findById(requestDTO.getExpertId())
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
+        // 전문가 탈퇴 여부 확인
+        if (expertUser.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
+        }
+
         if (expertUser.getUserType() != UserType.EXPERT || expertUser.getExpertProfile() == null) {
             throw new GlobalException(ReservationErrorCode.EXPERT_PROFILE_NOT_FOUND);
         }
@@ -399,6 +404,11 @@ public class ReservationService {
         // 일반 회원 조회
         User generalUser = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 일반 회원 탈퇴 여부 확인
+        if (generalUser.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
+        }
 
         if (generalUser.getGeneralProfile() == null) {
             throw new GlobalException(ReservationErrorCode.GENERAL_PROFILE_NOT_FOUND);
@@ -587,6 +597,11 @@ public class ReservationService {
     private User validateExpert(Long expertId) {
         User expertUser = userRepository.findById(expertId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 탈퇴 여부 확인
+        if (expertUser.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
+        }
 
         if (expertUser.getUserType() != UserType.EXPERT || expertUser.getExpertProfile() == null) {
             throw new GlobalException(ReservationErrorCode.EXPERT_PROFILE_NOT_FOUND);
@@ -995,6 +1010,11 @@ public class ReservationService {
         User payer = userRepository.findById(userId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
 
+        // 예약자 탈퇴 여부 확인
+        if (payer.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
+        }
+
         if (payer.getGeneralProfile() == null) {
             throw new GlobalException(UserErrorCode.USER_NOT_FOUND);
         }
@@ -1006,6 +1026,11 @@ public class ReservationService {
         // 전문가(Expert) 및 프로필 조회
         User expertUser = userRepository.findById(expertId)
                 .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // 전문가 탈퇴 여부 확인
+        if (expertUser.isWithdrawn()) {
+            throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
+        }
 
         if (!expertUser.isExpert()) {
             throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);

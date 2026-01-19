@@ -111,7 +111,8 @@ public class ExpertService {
 		if (requestDTO.getProfileImageKey() != null && !requestDTO.getProfileImageKey().trim().isEmpty()) {
 			String newProfileFinalKey = validateExpertFinalKey(expertUserId, requestDTO.getProfileImageKey(), "profile");
 			String oldProfileKey = extractS3KeyFromStoredUrl(user.getProfileImage());
-			if (oldProfileKey != null && oldProfileKey.startsWith("final/expert/")) {
+			if (oldProfileKey != null && oldProfileKey.startsWith("final/expert/")
+					&& !oldProfileKey.equals(newProfileFinalKey)) {
 				s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldProfileKey);
 			}
 			user.updateProfileImage(s3PresignedUrlService.generateS3Url(newProfileFinalKey));
@@ -120,7 +121,8 @@ public class ExpertService {
 		if (requestDTO.getBackgroundImageKey() != null && !requestDTO.getBackgroundImageKey().trim().isEmpty()) {
 			String newBackgroundFinalKey = validateExpertFinalKey(expertUserId, requestDTO.getBackgroundImageKey(), "background");
 			String oldBackgroundKey = extractS3KeyFromStoredUrl(expertProfile.getBackgroundImage());
-			if (oldBackgroundKey != null && oldBackgroundKey.startsWith("final/expert/")) {
+			if (oldBackgroundKey != null && oldBackgroundKey.startsWith("final/expert/")
+					&& !oldBackgroundKey.equals(newBackgroundFinalKey)) {
 				s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldBackgroundKey);
 			}
 			expertProfile.updateBackgroundImage(s3PresignedUrlService.generateS3Url(newBackgroundFinalKey));

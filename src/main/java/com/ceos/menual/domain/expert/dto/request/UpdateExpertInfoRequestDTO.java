@@ -1,5 +1,6 @@
 package com.ceos.menual.domain.expert.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
@@ -25,11 +26,10 @@ public class UpdateExpertInfoRequestDTO {
 	@Size(max = 500, message = "경력 정보는 500자 이내여야 합니다.")
 	private String careerInfo;
 
+	@JsonIgnore
 	@AssertTrue(message = "introduction, profileLink, careerInfo 중 최소 1개는 입력해야 합니다.")
-	private boolean isAtLeastOneProvided() {
-		return (introduction != null && !introduction.trim().isEmpty())
-			|| (profileLink != null && !profileLink.trim().isEmpty())
-			|| (careerInfo != null && !careerInfo.trim().isEmpty());
+	public boolean isAtLeastOneProvided() {
+		return introduction != null || profileLink != null || careerInfo != null;
 	}
 }
 

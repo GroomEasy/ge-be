@@ -14,4 +14,4 @@ spring:
     password: ${DB_PASSWORD}
 
 zoom:
-  redirect-uri: https://api.menual.site/api/experts/zoom/callback
+  redirect-uri: https://www.menual.site/api/experts/zoom/callback

@@ -9,15 +9,18 @@ import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.PortfolioUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
+import com.ceos.menual.domain.expert.repository.PortfolioJpaRepository;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
 import com.ceos.menual.domain.reservation.repository.AvailableScheduleRepository;
+import com.ceos.menual.domain.review.repository.HashtagRepository;
 import com.ceos.menual.domain.review.repository.ReviewRepository;
 import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
 import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
@@ -53,6 +56,8 @@ public class ExpertService {
 	private final ConsultationScheduleRepository consultationScheduleRepository;
 	private final AvailableScheduleRepository availableScheduleRepository;
 	private final S3PresignedUrlService s3PresignedUrlService;
+	private final PortfolioJpaRepository portfolioJpaRepository;
+	private final HashtagRepository hashtagRepository;
 
 
 	public PopularExpertsResponseDTO getTop3Overall() {
@@ -318,6 +323,152 @@ public class ExpertService {
 				.afterImage(portfolio.getAfterImage())
 				.hashtags(created.getHashtags())
 				.build();
+	}
+
+	/**
+	 * 포트폴리오 수정
+	 *
+	 * - 텍스트/해시태그는 부분 수정 가능
+	 * - before/after 이미지 키(tmp)가 전달되면 final로 이동 후 DB에는 final 공개 URL 저장
+	 */
+	@Transactional
+	public ExpertPortfolioResponseDTO updatePortfolio(Long expertUserId, Long portfolioId, PortfolioUpdateRequestDTO requestDTO) {
+		// 전문가 검증
+		User user = userRepository.findById(expertUserId)
+			.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		Portfolio portfolio = expertRepository.findPortfolioByExpertUserIdAndPortfolioId(expertUserId, portfolioId)
+			.orElseThrow(() -> new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND));
+
+		// 텍스트 필드 수정 (빈 문자열은 허용하지 않음: 컬럼 nullable=false)
+		if (requestDTO.getTitle() != null) {
+			String title = requestDTO.getTitle().trim();
+			if (title.isEmpty()) throw new IllegalArgumentException("시술명은 빈 값일 수 없습니다.");
+			portfolio.updateTitle(title);
+		}
+		if (requestDTO.getConcern() != null) {
+			String concern = requestDTO.getConcern().trim();
+			if (concern.isEmpty()) throw new IllegalArgumentException("고민은 빈 값일 수 없습니다.");
+			portfolio.updateConcern(concern);
+		}
+		if (requestDTO.getSolution() != null) {
+			String solution = requestDTO.getSolution().trim();
+			if (solution.isEmpty()) throw new IllegalArgumentException("솔루션은 빈 값일 수 없습니다.");
+			portfolio.updateSolution(solution);
+		}
+
+		// 이미지 수정 (둘 중 하나 또는 둘 다)
+		String oldBeforeKey = extractS3KeyFromStoredUrl(portfolio.getBeforeImage());
+		String oldAfterKey = extractS3KeyFromStoredUrl(portfolio.getAfterImage());
+
+		String newBeforeKey = null;
+		String newAfterKey = null;
+
+		try {
+			boolean updateBefore = requestDTO.getBeforeImage() != null && !requestDTO.getBeforeImage().trim().isEmpty();
+			boolean updateAfter = requestDTO.getAfterImage() != null && !requestDTO.getAfterImage().trim().isEmpty();
+
+			if (updateBefore && updateAfter) {
+				MovedPortfolioImages moved = moveBothPortfolioImagesOrRollback(
+					expertUserId,
+					portfolioId,
+					requestDTO.getBeforeImage(),
+					requestDTO.getAfterImage()
+				);
+				portfolio.updateBeforeImage(moved.beforeFinalUrl());
+				portfolio.updateAfterImage(moved.afterFinalUrl());
+				newBeforeKey = moved.beforeFinalKey();
+				newAfterKey = moved.afterFinalKey();
+			} else if (updateBefore) {
+				newBeforeKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, requestDTO.getBeforeImage());
+				portfolio.updateBeforeImage(s3PresignedUrlService.generateS3Url(newBeforeKey));
+			} else if (updateAfter) {
+				newAfterKey = movePortfolioImageToFinalKey(expertUserId, portfolioId, requestDTO.getAfterImage());
+				portfolio.updateAfterImage(s3PresignedUrlService.generateS3Url(newAfterKey));
+			}
+		} catch (Exception e) {
+			// 부분 성공 보상: 새로 옮긴 final 객체 삭제 시도
+			try {
+				if (newBeforeKey != null) s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(newBeforeKey);
+			} catch (Exception ignore) {}
+			try {
+				if (newAfterKey != null) s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(newAfterKey);
+			} catch (Exception ignore) {}
+			throw e;
+		}
+
+		// 기존 이미지 정리(best-effort): 교체된 경우에만
+		if (newBeforeKey != null && oldBeforeKey != null && oldBeforeKey.startsWith("final/portfolio/")) {
+			s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldBeforeKey);
+		}
+		if (newAfterKey != null && oldAfterKey != null && oldAfterKey.startsWith("final/portfolio/")) {
+			s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldAfterKey);
+		}
+
+		// 해시태그 수정: 전달되면 전체 교체
+		if (requestDTO.getHashtags() != null) {
+			portfolio.getHashtags().clear();
+
+			for (String raw : requestDTO.getHashtags()) {
+				String name = raw.trim();
+				if (name.isEmpty()) continue;
+
+				Hashtag hashtag = hashtagRepository.findByName(name)
+					.orElseGet(() -> hashtagRepository.save(Hashtag.builder().name(name).build()));
+
+				PortfolioHashtag portfolioHashtag = PortfolioHashtag.builder()
+					.hashtag(hashtag)
+					.build();
+
+				portfolio.addHashtag(portfolioHashtag);
+			}
+		}
+
+		List<String> hashtagNames = portfolio.getHashtags().stream()
+			.map(ph -> ph.getHashtag().getName())
+			.toList();
+
+		return ExpertPortfolioResponseDTO.builder()
+			.id(portfolio.getId())
+			.title(portfolio.getTitle())
+			.concern(portfolio.getConcern())
+			.solution(portfolio.getSolution())
+			.isRepresentative(portfolio.isRepresentative())
+			.beforeImage(portfolio.getBeforeImage())
+			.afterImage(portfolio.getAfterImage())
+			.hashtags(hashtagNames)
+			.build();
+	}
+
+	/**
+	 * 포트폴리오 삭제 (이미지 객체는 best-effort로 정리)
+	 */
+	@Transactional
+	public void deletePortfolio(Long expertUserId, Long portfolioId) {
+		// 전문가 검증
+		User user = userRepository.findById(expertUserId)
+			.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+		if (!user.isExpert()) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		Portfolio portfolio = expertRepository.findPortfolioByExpertUserIdAndPortfolioId(expertUserId, portfolioId)
+			.orElseThrow(() -> new GlobalException(ExpertErrorCode.PORTFOLIO_NOT_FOUND));
+
+		String beforeKey = extractS3KeyFromStoredUrl(portfolio.getBeforeImage());
+		String afterKey = extractS3KeyFromStoredUrl(portfolio.getAfterImage());
+
+		if (beforeKey != null && beforeKey.startsWith("final/portfolio/")) {
+			s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(beforeKey);
+		}
+		if (afterKey != null && afterKey.startsWith("final/portfolio/")) {
+			s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(afterKey);
+		}
+
+		portfolioJpaRepository.delete(portfolio);
 	}
 
 	private String movePortfolioImageToFinalKey(Long expertUserId, Long portfolioId, String imageKeyOrUrl) {

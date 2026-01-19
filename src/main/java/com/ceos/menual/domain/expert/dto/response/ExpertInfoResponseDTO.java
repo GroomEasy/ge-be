@@ -21,6 +21,7 @@ public class ExpertInfoResponseDTO {
     private Long userId;  // 전문가 ID
     private String nickname;
     private String profileImage;
+    private String backgroundImage;
     private Category category;
     private List<String> specialities;
     private String introduction;
@@ -40,6 +41,7 @@ public class ExpertInfoResponseDTO {
                 .userId(user.getId())
                 .nickname(user.getNickname())
                 .profileImage(user.getProfileImage())
+                .backgroundImage(expertProfile.getBackgroundImage())
                 .category(expertProfile.getCategory())
                 .specialities(expertProfile.getSpecialities())
                 .introduction(expertProfile.getIntroduction())

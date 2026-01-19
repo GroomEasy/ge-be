@@ -65,9 +65,10 @@ public class S3PresignedUrlService {
 	 * - consultation(솔루션 이미지): tmp/consultation/consultation-{consultationId}/solution/{storedFileName}
 	 * - review: tmp/review/consultation-{consultationId}/{storedFileName}
 	 * - portfolio: tmp/portfolio/expert-{expertId}/{imageType}/{storedFileName}
+	 * - expert(전문가 이미지): final/expert/{expertId}/{imageType}/{storedFileName} (바로 final로 업로드)
 	 * - storedFileName은 서버에서 UUID 기반으로 생성 (확장자 유지)
 	 * 
-	 * @param resourceType 리소스 타입 (consultation, review 등)
+	 * @param resourceType 리소스 타입 (consultation, review, portfolio, expert 등)
 	 * @param resourceId 리소스 ID
 	 *   - consultation: 고민지 이미지는 reservationId, 솔루션 이미지는 consultationId
 	 *   - review: consultationId
@@ -76,6 +77,7 @@ public class S3PresignedUrlService {
 	 *   - 헤어: hairstyle, front, left, right, favorite, difficulty
 	 *   - 패션: front, left, right, favorite, purpose
 	 *   - 포트폴리오: before, after
+	 *   - 전문가 이미지: profile, background
 	 *   - 솔루션: (생략 가능, 생략 시 solution으로 처리)
 	 * @param fileName 원본 파일명 (확장자 추출용, 예: image.jpg, 1.jpg)
 	 * @return Presigned URL과 S3 Key
@@ -89,7 +91,17 @@ public class S3PresignedUrlService {
 		validateFileName(fileName);
 
 		String storedFileName = generateUuidFileNamePreservingExtension(fileName);
-		String s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), normalizedImageType, storedFileName);
+
+		// expert는 단일 이미지이므로 tmp 없이 final로 바로 업로드 (오너십 검증 포함)
+		final String s3Key;
+		if ("expert".equals(resourceType)) {
+			if (!userId.equals(resourceId)) {
+				throw new IllegalArgumentException("본인 전문가 이미지만 업로드할 수 있습니다.");
+			}
+			s3Key = String.format("final/expert/%d/%s/%s", resourceId, normalizedImageType, storedFileName);
+		} else {
+			s3Key = buildTemporaryS3Key(userId, resourceType, String.valueOf(resourceId), normalizedImageType, storedFileName);
+		}
 
 		log.debug("Presigned URL 발급 - 사용자: {}, S3 Key: {}", userId, s3Key);
 
@@ -137,7 +149,7 @@ public class S3PresignedUrlService {
 			return String.format("tmp/portfolio/expert-%s/%s/%s", resourceId, imageType, fileName);
 		}
 
-		throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio만 가능)");
+		throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio, expert만 가능)");
 	}
 
 	/**
@@ -424,8 +436,8 @@ public class S3PresignedUrlService {
 			throw new IllegalArgumentException("리소스 타입은 영문 소문자만 허용됩니다.");
 		}
 		// 허용된 리소스 타입만 접수
-		if (!resourceType.equals("consultation") && !resourceType.equals("review") && !resourceType.equals("portfolio")) {
-			throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio만 가능)");
+		if (!resourceType.equals("consultation") && !resourceType.equals("review") && !resourceType.equals("portfolio") && !resourceType.equals("expert")) {
+			throw new IllegalArgumentException("허용되지 않는 리소스 타입입니다. (consultation, review, portfolio, expert만 가능)");
 		}
 	}
 
@@ -452,6 +464,8 @@ public class S3PresignedUrlService {
 		final String[] allowedTypes;
 		if ("portfolio".equals(resourceType)) {
 			allowedTypes = new String[] {"before", "after"};
+		} else if ("expert".equals(resourceType)) {
+			allowedTypes = new String[] {"profile", "background"};
 		} else {
 			allowedTypes = new String[] {"hairstyle", "front", "left", "right", "favorite", "difficulty", "purpose", "solution"};
 		}

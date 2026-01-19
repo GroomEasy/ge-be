@@ -346,17 +346,17 @@ public class ExpertService {
 		// 텍스트 필드 수정 (빈 문자열은 허용하지 않음: 컬럼 nullable=false)
 		if (requestDTO.getTitle() != null) {
 			String title = requestDTO.getTitle().trim();
-			if (title.isEmpty()) throw new IllegalArgumentException("시술명은 빈 값일 수 없습니다.");
+			if (title.isEmpty()) throw new GlobalException(ExpertErrorCode.INVALID_PORTFOLIO_FIELD);
 			portfolio.updateTitle(title);
 		}
 		if (requestDTO.getConcern() != null) {
 			String concern = requestDTO.getConcern().trim();
-			if (concern.isEmpty()) throw new IllegalArgumentException("고민은 빈 값일 수 없습니다.");
+			if (concern.isEmpty()) throw new GlobalException(ExpertErrorCode.INVALID_PORTFOLIO_FIELD);
 			portfolio.updateConcern(concern);
 		}
 		if (requestDTO.getSolution() != null) {
 			String solution = requestDTO.getSolution().trim();
-			if (solution.isEmpty()) throw new IllegalArgumentException("솔루션은 빈 값일 수 없습니다.");
+			if (solution.isEmpty()) throw new GlobalException(ExpertErrorCode.INVALID_PORTFOLIO_FIELD);
 			portfolio.updateSolution(solution);
 		}
 

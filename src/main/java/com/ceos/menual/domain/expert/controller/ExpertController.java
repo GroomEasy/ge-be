@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.expert.controller;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
@@ -178,6 +179,24 @@ public class ExpertController {
 			@PathVariable Long userId
 	) {
 		List<ConsultationScheduleResponseDTO> response = expertService.getConsultationSchedules(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 상담 스케줄 수정(등록) API
+	 */
+	@Operation(
+			summary = "전문가 상담 스케줄 수정",
+			description = "전문가가 자신의 상담 스케줄(가격, 활성화 여부)을 수정합니다. 기존 스케줄이 없으면 새로 생성됩니다."
+	)
+	@PutMapping("/schedules")
+	public ResponseEntity<CommonResponse<List<ConsultationScheduleResponseDTO>>> updateConsultationSchedules(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+
+			@Valid @RequestBody ConsultationScheduleUpdateRequestDTO requestDTO
+	) {
+		List<ConsultationScheduleResponseDTO> response = expertService.updateConsultationSchedules(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

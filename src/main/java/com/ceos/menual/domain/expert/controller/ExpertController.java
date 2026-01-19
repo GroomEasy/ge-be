@@ -5,6 +5,7 @@ import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestD
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
@@ -121,6 +122,20 @@ public class ExpertController {
 			@Valid @RequestBody UpdateExpertImagesRequestDTO requestDTO
 	) {
 		ExpertInfoResponseDTO response = expertService.updateExpertImages(expertUserId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	@Operation(
+			summary = "전문가 소개서 정보 수정",
+			description = "전문가가 본인의 한 줄 소개/인스타그램 링크/경력 정보를 수정합니다."
+	)
+	@PutMapping("/me/info")
+	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> updateExpertInfo(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+			@Valid @RequestBody UpdateExpertInfoRequestDTO requestDTO
+	) {
+		ExpertInfoResponseDTO response = expertService.updateExpertInfo(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

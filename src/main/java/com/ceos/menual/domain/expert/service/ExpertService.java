@@ -10,6 +10,7 @@ import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestD
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.UpdateExpertInfoRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.expert.exception.ExpertErrorCode;
@@ -123,6 +124,39 @@ public class ExpertService {
 				s3PresignedUrlService.deleteObjectWithRetryOrEnqueue(oldBackgroundKey);
 			}
 			expertProfile.updateBackgroundImage(s3PresignedUrlService.generateS3Url(newBackgroundFinalKey));
+		}
+
+		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());
+		return ExpertInfoResponseDTO.from(user, likeCount.intValue());
+	}
+
+	/**
+	 * 전문가 소개서 정보(한 줄 소개/인스타 링크/경력 정보) 수정
+	 */
+	@Transactional
+	public ExpertInfoResponseDTO updateExpertInfo(Long expertUserId, UpdateExpertInfoRequestDTO requestDTO) {
+		User user = userRepository.findById(expertUserId)
+			.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!user.isExpert() || user.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.USER_NOT_EXPERT);
+		}
+
+		ExpertProfile expertProfile = user.getExpertProfile();
+
+		if (requestDTO.getIntroduction() != null) {
+			String intro = requestDTO.getIntroduction().trim();
+			expertProfile.updateIntroduction(intro.isEmpty() ? null : intro);
+		}
+
+		if (requestDTO.getProfileLink() != null) {
+			String link = requestDTO.getProfileLink().trim();
+			expertProfile.updateProfileLink(link.isEmpty() ? null : link);
+		}
+
+		if (requestDTO.getCareerInfo() != null) {
+			String career = requestDTO.getCareerInfo().trim();
+			expertProfile.updateCareerInfo(career.isEmpty() ? null : career);
 		}
 
 		Long likeCount = expertLikeRepository.countByExpertProfileId(expertProfile.getId());

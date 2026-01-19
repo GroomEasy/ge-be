@@ -107,4 +107,16 @@ public class ExpertProfile extends BaseEntity {
 		this.backgroundImage = backgroundImage;
 	}
 
+	public void updateIntroduction(String introduction) {
+		this.introduction = introduction;
+	}
+
+	public void updateProfileLink(String profileLink) {
+		this.profileLink = profileLink;
+	}
+
+	public void updateCareerInfo(String careerInfo) {
+		this.careerInfo = careerInfo;
+	}
+
 }

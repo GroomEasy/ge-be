@@ -5,9 +5,17 @@ import com.ceos.menual.entity.enums.ConsultationType;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 public class ReservationSheetResponseDTO {
+
+    // 주문서 생성 시간
+    private LocalDateTime createdAt;
+
+    // 입금 기한 (생성 시간 + 24시간)
+    private LocalDateTime paymentDeadline;
 
     // 전문가 및 상담 상품 정보
     private ReservationTargetInfo targetInfo;

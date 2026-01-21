@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.consultation.repository;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationStatus;
 import com.querydsl.core.types.Projections;
@@ -86,5 +87,41 @@ public class ConsultationRepositoryImpl implements ConsultationRepositoryCustom 
      */
     private BooleanExpression isCompletedOrInProgress() {
         return consultation.status.in(ConsultationStatus.IN_PROGRESS, ConsultationStatus.COMPLETED);
+    }
+
+    @Override
+    public List<SolutionListResponseDTO> findSolutionList(
+            Long generalProfileId,
+            Category category
+    ) {
+        return queryFactory
+                .select(Projections.constructor(
+                        SolutionListResponseDTO.class,
+                        consultation.id,
+                        consultation.createdAt,
+                        user.nickname,
+                        reservation.category,
+                        consultation.type
+                ))
+                .from(consultation)
+                .join(consultation.expertProfile, expertProfile)
+                .join(expertProfile.user, user)
+                .join(reservation).on(reservation.consultation.eq(consultation))
+                .where(
+                        consultation.generalProfile.id.eq(generalProfileId),
+                        categoryEq(category),
+                        isCompletedOrInProgress(),
+                        hasSolution()
+                )
+                .orderBy(consultation.createdAt.desc())
+                .fetch();
+    }
+
+    /**
+     * 솔루션이 작성된 상담 필터
+     */
+    private BooleanExpression hasSolution() {
+        return consultation.solution.isNotNull()
+                .and(consultation.solution.isNotEmpty());
     }
 }

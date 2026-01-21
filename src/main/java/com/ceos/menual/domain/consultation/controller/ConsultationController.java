@@ -3,6 +3,7 @@ package com.ceos.menual.domain.consultation.controller;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConcernResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
@@ -182,6 +183,24 @@ public class ConsultationController {
             @RequestParam(required = false) Category category
     ) {
         List<ConsultationHistoryResponseDTO> response = consultationService.getConsultationHistory(userId, category);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 솔루션 목록 조회 API (전체/카테고리별)
+     * 솔루션지 조회 버튼 클릭 시 GET /api/consultations/{consultationId}/solution 호출
+     */
+    @Operation(
+            summary = "솔루션 목록 조회",
+            description = "사용자가 받은 솔루션 목록을 전체 또는 카테고리별로 조회합니다. 솔루션지 상세 조회는 GET /api/consultations/{consultationId}/solution API를 호출하세요."
+    )
+    @GetMapping("/solutions")
+    public ResponseEntity<CommonResponse<List<SolutionListResponseDTO>>> getSolutionList(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "카테고리 (HAIR, FASHION, MAKEUP, SKIN 중 선택, 미입력 시 전체 조회)")
+            @RequestParam(required = false) Category category
+    ) {
+        List<SolutionListResponseDTO> response = consultationService.getSolutionList(userId, category);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

@@ -1053,7 +1053,10 @@ public class ReservationService {
 
 
         // DTO 조립 및 반환
+        LocalDateTime now = LocalDateTime.now();
         return ReservationSheetResponseDTO.builder()
+                .createdAt(now)
+                .paymentDeadline(now.plusHours(24))
                 .targetInfo(ReservationSheetResponseDTO.ReservationTargetInfo.builder()
                         .expertNickname(expertUser.getNickname())
                         .category(expertProfile.getCategory())

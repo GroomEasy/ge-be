@@ -65,6 +65,10 @@ public class Consultation extends BaseEntity {
 
 	private Boolean isZoomMeetingCreated;
 
+	// Zoom 링크 메시지 전송 여부 (상담 10분 전 자동 전송)
+	@Builder.Default
+	private Boolean zoomLinkSent = false;
+
 	//솔루션 관련
 	@Column(columnDefinition = "TEXT")
 	private String solution;
@@ -102,5 +106,12 @@ public class Consultation extends BaseEntity {
 	 */
 	public void reject() {
 		this.status = ConsultationStatus.REJECTED;
+	}
+
+	/**
+	 * Zoom 링크 메시지 전송 완료 처리
+	 */
+	public void markZoomLinkSent() {
+		this.zoomLinkSent = true;
 	}
 }

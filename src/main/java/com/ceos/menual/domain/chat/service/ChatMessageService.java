@@ -168,6 +168,43 @@ public class ChatMessageService {
     }
 
     /**
+     * Zoom 링크 메시지 전송 (화상 상담용 - 전문가 → 회원)
+     */
+    @Transactional
+    public void sendZoomLinkMessage(Long chatroomId, Long expertId, String zoomJoinUrl, Long consultationId) {
+        log.info("Zoom 링크 메시지 전송 시작 - chatroomId: {}, expertId: {}", chatroomId, expertId);
+
+        // 채팅방 존재 확인
+        Chatroom chatroom = chatroomRepository.findById(chatroomId)
+                .orElseThrow(() -> new GlobalException(ChatErrorCode.CHATROOM_NOT_FOUND));
+
+        // 권한 확인 (전문가만 전송 가능)
+        if (!chatroom.getExpert().getId().equals(expertId)) {
+            throw new GlobalException(ChatErrorCode.CHATROOM_ACCESS_DENIED);
+        }
+
+        // Zoom 링크 메시지 생성 및 저장
+        Message zoomLinkMessage = Message.builder()
+                .chatroomId(chatroomId)
+                .senderId(expertId)
+                .content(zoomJoinUrl)
+                .messageType(MessageType.TEXT)
+                .relatedId(consultationId)
+                .build();
+
+        Message savedMessage = chatMessageRepository.save(zoomLinkMessage);
+
+        // WebSocket으로 실시간 전송
+        ChatMessageDTO messageDTO = savedMessage.toDTO();
+
+        SocketResponseDTO<ChatMessageDTO> response = SocketResponseDTO.message(chatroomId, messageDTO);
+        messagingTemplate.convertAndSend("/sub/chatrooms/" + chatroomId, response);
+
+        log.info("Zoom 링크 메시지 전송 완료 - messageId: {}, chatroomId: {}",
+                savedMessage.getId(), chatroomId);
+    }
+
+    /**
      * 예약 알림 메시지 포맷 생성
      */
     private String buildReservationNotification(
@@ -221,7 +258,6 @@ public class ChatMessageService {
 
         } else if (consultationType == ConsultationType.VIDEO) {
             // VIDEO 상담 안내
-            sb.append("• 상담 시작 10분 전, 줌 링크를 생성해 앱 내 채팅을 통해 고객에게 전달해 주세요.\n");
             sb.append("• 예약된 시간 내에 화상 상담을 진행해 주세요.\n");
             sb.append("• 상담 전 추가로 필요한 정보가 있다면 질문할 수 있어요.\n");
             sb.append("• 상담이 종료된 후, 솔루션지를 작성해 주세요.\n\n");

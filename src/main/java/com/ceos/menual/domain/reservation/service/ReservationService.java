@@ -188,9 +188,11 @@ public class ReservationService {
         // 채팅방 자동 생성 및 고민지 전송
         createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
 
-        // 화상 상담의 경우 Zoom 미팅 생성 및 링크 저장
+        // 화상 상담의 경우에만 Zoom 미팅 생성 및 링크 저장
         // (Zoom 링크 메시지는 상담 시간 10분 전에 ZoomLinkScheduler에서 자동 전송)
-        zoomMeetingService.createMeetingAndSave(savedConsultation.getId());
+        if (savedConsultation.getType() == ConsultationType.VIDEO) {
+            zoomMeetingService.createMeetingAndSave(savedConsultation.getId());
+        }
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());

@@ -31,4 +31,13 @@ public interface ReviewRepository {
 	void deleteByConsultationGeneralProfileId(Long generalProfileId);
 
 	Long countByConsultationExpertProfileId(Long expertProfileId);
+
+	/**
+	 * 특정 전문가의 후기 목록 조회
+	 * @param expertUserId 전문가 User ID
+	 * @param page 페이지 번호
+	 * @param size 페이지 사이즈
+	 * @return 전문가의 후기 목록
+	 */
+	List<ReviewSummaryResponseDTO> findReviewsByExpertUserId(Long expertUserId, int page, int size);
 }

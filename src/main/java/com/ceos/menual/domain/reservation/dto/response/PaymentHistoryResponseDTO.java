@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 public class PaymentHistoryResponseDTO {
 
     private Long reservationId;             // 예약 ID
+    private LocalDateTime createdAt;        // 예약 생성 날짜
     private LocalDateTime confirmedDate;    // 결제 확인 날짜
     private String expertNickname;          // 전문가 닉네임
     private Category category;              // 카테고리 (HAIR, FASHION, SKIN, MAKEUP)
@@ -28,6 +29,7 @@ public class PaymentHistoryResponseDTO {
     public static PaymentHistoryResponseDTO from(Reservation reservation) {
         return PaymentHistoryResponseDTO.builder()
                 .reservationId(reservation.getId())
+                .createdAt(reservation.getCreatedAt())
                 .confirmedDate(reservation.getPaidAt() != null ? reservation.getPaidAt() : reservation.getUpdatedAt())
                 .expertNickname(reservation.getExpertProfile().getUser().getNickname())
                 .category(reservation.getCategory())

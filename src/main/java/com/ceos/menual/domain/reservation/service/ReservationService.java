@@ -128,14 +128,27 @@ public class ReservationService {
         }
 
         // Consultation 생성
-        Consultation consultation = Consultation.builder()
+        Consultation.ConsultationBuilder consultationBuilder = Consultation.builder()
                 .expertProfile(reservation.getExpertProfile())
                 .generalProfile(reservation.getGeneralProfile())
                 .type(reservation.getConsultationType())
                 .status(initialStatus)  // 상담 타입에 따른 초기 상태
                 .scheduleTime(reservation.getScheduledDateTime())
-                .reviewWritten(false)
-                .build();
+                .reviewWritten(false);
+
+        // 화상 상담인 경우 상담 시간 정보 설정
+        if (reservation.getConsultationType() == ConsultationType.VIDEO) {
+            LocalDateTime videoStart = reservation.getScheduledDateTime();
+            int duration = 20;
+            LocalDateTime videoEnd = videoStart.plusMinutes(duration);
+
+            consultationBuilder
+                    .videoStartTime(videoStart)
+                    .videoEndTime(videoEnd)
+                    .durationMinutes(duration);
+        }
+
+        Consultation consultation = consultationBuilder.build();
 
         Consultation savedConsultation = consultationRepository.save(consultation);
         log.info("Consultation 생성 완료 - consultationId: {}, reservationId: {}",
@@ -176,6 +189,7 @@ public class ReservationService {
         createChatroomsAndSendConcern(savedConsultation, reservation, adminUserId);
 
         // 화상 상담의 경우 Zoom 미팅 생성 및 링크 저장
+        // (Zoom 링크 메시지는 상담 시간 10분 전에 ZoomLinkScheduler에서 자동 전송)
         zoomMeetingService.createMeetingAndSave(savedConsultation.getId());
 
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",

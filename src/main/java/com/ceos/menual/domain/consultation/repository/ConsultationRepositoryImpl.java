@@ -34,6 +34,7 @@ public class ConsultationRepositoryImpl implements ConsultationRepositoryCustom 
                         ConsultationHistoryResponseDTO.class,
                         consultation.id,
                         reservation.id,
+                        user.id,
                         user.nickname,
                         user.profileImage,
                         reservation.category,
@@ -60,6 +61,7 @@ public class ConsultationRepositoryImpl implements ConsultationRepositoryCustom 
                 .groupBy(
                         consultation.id,
                         reservation.id,
+                        user.id,
                         user.nickname,
                         user.profileImage,
                         reservation.category,
@@ -99,6 +101,7 @@ public class ConsultationRepositoryImpl implements ConsultationRepositoryCustom 
                         SolutionListResponseDTO.class,
                         consultation.id,
                         consultation.createdAt,
+                        user.id,
                         user.nickname,
                         reservation.category,
                         consultation.type

@@ -11,6 +11,8 @@ import com.ceos.menual.domain.expert.dto.request.UpdateExpertImagesRequestDTO;
 import com.ceos.menual.domain.expert.dto.response.*;
 import com.ceos.menual.domain.reservation.dto.response.AvailableTimesResponseDTO;
 import com.ceos.menual.domain.expert.service.ExpertLikeService;
+import com.ceos.menual.domain.review.dto.response.ReviewSummaryResponseDTO;
+import com.ceos.menual.domain.review.service.ReviewService;
 import com.ceos.menual.entity.enums.Category;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -37,6 +39,7 @@ public class ExpertController {
 
 	private final ExpertService expertService;
 	private final ExpertLikeService expertLikeService;
+	private final ReviewService reviewService;
 
 //	API 폐기
 //	/**
@@ -105,6 +108,28 @@ public class ExpertController {
 			@PathVariable Long userId
 	) {
 		ExpertInfoResponseDTO response = expertService.getExpertInfo(userId);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가별 후기 조회 API
+	 */
+	@Operation(
+			summary = "전문가별 후기 조회",
+			description = "특정 전문가의 후기 목록을 조회합니다."
+	)
+	@GetMapping("/{userId}/reviews")
+	public ResponseEntity<CommonResponse<List<ReviewSummaryResponseDTO>>> getExpertReviews(
+			@Parameter(description = "전문가 UserId", required = true)
+			@PathVariable Long userId,
+
+			@Parameter(description = "페이지 번호 (0부터 시작)")
+			@RequestParam(defaultValue = "0") @Min(0) int page,
+
+			@Parameter(description = "페이지 크기")
+			@RequestParam(defaultValue = "10") @Min(1) @Max(100) int size
+	) {
+		List<ReviewSummaryResponseDTO> response = reviewService.getExpertReviews(userId, page, size);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

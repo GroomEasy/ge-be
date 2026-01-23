@@ -56,6 +56,19 @@ public class ReviewService {
 	}
 
 	/**
+	 * 특정 전문가의 후기 목록 조회
+	 */
+	public List<ReviewSummaryResponseDTO> getExpertReviews(Long expertUserId, int page, int size) {
+		log.info("전문가별 후기 조회 시작 - expertUserId: {}, page: {}, size: {}", expertUserId, page, size);
+
+		List<ReviewSummaryResponseDTO> reviews = reviewRepository.findReviewsByExpertUserId(expertUserId, page, size);
+
+		log.info("전문가별 후기 조회 완료 - 개수: {}", reviews.size());
+
+		return reviews;
+	}
+
+	/**
 	 * 작성 가능한 후기 목록 조회
 	 */
 	public List<AvailableReviewResponseDTO> getAvailableReviews(Long userId) {

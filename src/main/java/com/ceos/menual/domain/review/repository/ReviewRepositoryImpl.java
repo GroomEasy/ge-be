@@ -368,4 +368,71 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	private BooleanExpression categoryEq(Category category) {
 		return category != null ? ep.category.eq(category) : null;
 	}
+
+	@Override
+	public List<ReviewSummaryResponseDTO> findReviewsByExpertUserId(Long expertUserId, int page, int size) {
+
+		List<Tuple> results = queryFactory
+				.select(
+						r.id,
+						r.rating,
+						r.content,
+						ep.category,
+						r.createdAt,
+						u.nickname,
+						u.profileImage,
+						ep.id
+				)
+				.from(r)
+				.join(r.consultation, c)
+				.join(c.expertProfile, ep)
+				.join(ep.user, u)
+				.where(u.id.eq(expertUserId))
+				.orderBy(r.createdAt.desc())
+				.offset((long) page * size)
+				.limit(size)
+				.fetch();
+
+		if (results.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<Long> reviewIds = results.stream()
+				.map(t -> t.get(r.id))
+				.collect(Collectors.toList());
+
+		List<Long> expertIds = results.stream()
+				.map(t -> t.get(ep.id))
+				.distinct()
+				.collect(Collectors.toList());
+
+		Map<Long, List<String>> imagesMap = getReviewImagesInBatch(reviewIds);
+
+		Map<Long, Double> expertRatingsMap = getExpertRatingsInBatch(expertIds);
+
+		return results.stream()
+				.map(tuple -> {
+					List<String> mediaUrls = imagesMap.getOrDefault(
+							tuple.get(r.id),
+							Collections.emptyList()
+					);
+
+					Category cat = tuple.get(ep.category);
+					LocalDateTime createdAt = tuple.get(r.createdAt);
+					Long expertId = tuple.get(ep.id);
+
+					return ReviewSummaryResponseDTO.builder()
+							.reviewId(tuple.get(r.id))
+							.rating(tuple.get(r.rating))
+							.content(tuple.get(r.content))
+							.mediaUrls(mediaUrls)
+							.category(cat != null ? cat.name() : null)
+							.createdAt(createdAt != null ? createdAt.toString() : null)
+							.expertNickname(tuple.get(u.nickname))
+							.expertProfileImage(tuple.get(u.profileImage))
+							.expertRatingAverage(expertRatingsMap.getOrDefault(expertId, 0.0))
+							.build();
+				})
+				.collect(Collectors.toList());
+	}
 }

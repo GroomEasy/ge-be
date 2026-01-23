@@ -75,4 +75,14 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime
     );
+
+    /**
+     * 시작 시간이 되어 IN_PROGRESS로 변경해야 하는 화상 상담 조회
+     * 조건: VIDEO 타입, READY 상태, videoStartTime이 현재 시간 이전
+     */
+    @Query("SELECT c FROM Consultation c " +
+            "WHERE c.type = 'VIDEO' " +
+            "AND c.status = 'READY' " +
+            "AND c.videoStartTime <= :now")
+    List<Consultation> findVideoConsultationsToStart(@Param("now") LocalDateTime now);
 }

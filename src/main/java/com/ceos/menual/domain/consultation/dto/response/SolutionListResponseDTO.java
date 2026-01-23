@@ -16,6 +16,7 @@ public class SolutionListResponseDTO {
 
     private Long consultationId;
     private LocalDateTime date;
+    private Long expertUserId;
     private String expertName;
     private Category category;
     private ConsultationType consultationType;
@@ -26,12 +27,14 @@ public class SolutionListResponseDTO {
     public SolutionListResponseDTO(
             Long consultationId,
             LocalDateTime date,
+            Long expertUserId,
             String expertName,
             Category category,
             ConsultationType consultationType
     ) {
         this.consultationId = consultationId;
         this.date = date;
+        this.expertUserId = expertUserId;
         this.expertName = expertName;
         this.category = category;
         this.consultationType = consultationType;

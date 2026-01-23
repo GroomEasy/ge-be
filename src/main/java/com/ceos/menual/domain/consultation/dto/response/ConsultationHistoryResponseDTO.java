@@ -19,6 +19,7 @@ public class ConsultationHistoryResponseDTO {
     private Long reservationId;
 
     // 전문가 정보
+    private Long expertUserId;
     private String expertNickname;
     private String expertProfileImage;
     private Category category;
@@ -41,6 +42,7 @@ public class ConsultationHistoryResponseDTO {
     public ConsultationHistoryResponseDTO(
             Long consultationId,
             Long reservationId,
+            Long expertUserId,
             String expertNickname,
             String expertProfileImage,
             Category category,
@@ -53,6 +55,7 @@ public class ConsultationHistoryResponseDTO {
     ) {
         this.consultationId = consultationId;
         this.reservationId = reservationId;
+        this.expertUserId = expertUserId;
         this.expertNickname = expertNickname;
         this.expertProfileImage = expertProfileImage;
         this.category = category;

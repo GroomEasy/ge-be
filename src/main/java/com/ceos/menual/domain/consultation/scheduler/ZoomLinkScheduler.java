@@ -92,4 +92,36 @@ public class ZoomLinkScheduler {
         log.info("Zoom 링크 메시지 전송 완료 - consultationId: {}, chatroomId: {}, scheduleTime: {}",
                 consultationId, chatroom.getId(), consultation.getScheduleTime());
     }
+
+    /**
+     * 매 분마다 시작 시간이 된 화상 상담의 상태를 READY → IN_PROGRESS로 변경
+     */
+    @Scheduled(cron = "0 * * * * *")
+    @Transactional
+    public void startVideoConsultations() {
+        log.debug("화상 상담 시작 스케줄러 실행");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Consultation> consultations = consultationRepository
+                .findVideoConsultationsToStart(now);
+
+        if (consultations.isEmpty()) {
+            log.debug("시작 대상 화상 상담 없음");
+            return;
+        }
+
+        log.info("시작 대상 화상 상담 {}건 발견", consultations.size());
+
+        for (Consultation consultation : consultations) {
+            try {
+                consultation.startConsultation();
+                consultationRepository.save(consultation);
+                log.info("화상 상담 시작 처리 완료 - consultationId: {}, videoStartTime: {}",
+                        consultation.getId(), consultation.getVideoStartTime());
+            } catch (Exception e) {
+                log.error("화상 상담 시작 처리 실패 - consultationId: {}", consultation.getId(), e);
+            }
+        }
+    }
 }

@@ -114,4 +114,11 @@ public class Consultation extends BaseEntity {
 	public void markZoomLinkSent() {
 		this.zoomLinkSent = true;
 	}
+
+	/**
+	 * 상담 시작 처리 (READY → IN_PROGRESS)
+	 */
+	public void startConsultation() {
+		this.status = ConsultationStatus.IN_PROGRESS;
+	}
 }

@@ -6,12 +6,13 @@ import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
 import com.ceos.menual.entity.Chatroom;
 import com.ceos.menual.entity.Consultation;
 import com.ceos.menual.entity.enums.ChatroomType;
-import com.ceos.menual.global.config.redis.DistributedLockService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -19,20 +20,32 @@ import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ZoomLinkScheduler {
 
     private final ConsultationRepository consultationRepository;
     private final ChatroomRepository chatroomRepository;
     private final ChatMessageService chatMessageService;
-    private final DistributedLockService distributedLockService;
+    private final TransactionTemplate readOnlyTransactionTemplate;
+    private final TransactionTemplate transactionTemplate;
 
-    // 분산 락 키
-    private static final String ZOOM_LINK_SEND_LOCK = "zoom-link-send";
-    private static final String VIDEO_CONSULTATION_START_LOCK = "video-consultation-start";
+    public ZoomLinkScheduler(
+            ConsultationRepository consultationRepository,
+            ChatroomRepository chatroomRepository,
+            ChatMessageService chatMessageService,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.consultationRepository = consultationRepository;
+        this.chatroomRepository = chatroomRepository;
+        this.chatMessageService = chatMessageService;
 
-    // 락 TTL (초) - 스케줄러 실행 간격보다 짧게 설정
-    private static final long LOCK_TTL_SECONDS = 50;
+        // Read-only transaction template for collecting payloads
+        this.readOnlyTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.readOnlyTransactionTemplate.setReadOnly(true);
+
+        // Default transaction template for marking as sent
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     /**
      * Zoom 링크 전송에 필요한 정보를 담는 내부 DTO
@@ -48,9 +61,6 @@ public class ZoomLinkScheduler {
     /**
      * 매 분마다 상담 시간 10분 전인 화상 상담에 Zoom 링크 메시지 자동 전송
      *
-     * 분산 환경 안전성:
-     * - 분산 락을 사용하여 여러 인스턴스 중 하나만 실행
-     *
      * 트랜잭션 분리:
      * 1. DB 조회 및 페이로드 수집 (트랜잭션 내)
      * 2. 외부 메시지 전송 (트랜잭션 외부)
@@ -58,57 +68,49 @@ public class ZoomLinkScheduler {
      */
     @Scheduled(cron = "0 * * * * *")
     public void sendZoomLinkMessages() {
-        // 분산 락 획득 시도
-        if (!distributedLockService.tryLock(ZOOM_LINK_SEND_LOCK, LOCK_TTL_SECONDS)) {
-            log.debug("Zoom 링크 전송 스케줄러 - 다른 인스턴스가 실행 중, 스킵");
+        log.debug("Zoom 링크 메시지 전송 스케줄러 실행");
+
+        // 1. 트랜잭션 내에서 전송 대상 조회 및 페이로드 수집 (TransactionTemplate 사용)
+        List<ZoomLinkSendPayload> payloads = readOnlyTransactionTemplate.execute(
+                status -> collectZoomLinkPayloadsInternal()
+        );
+
+        if (payloads == null || payloads.isEmpty()) {
+            log.debug("Zoom 링크 전송 대상 상담 없음");
             return;
         }
 
-        try {
-            log.debug("Zoom 링크 메시지 전송 스케줄러 실행");
+        log.info("Zoom 링크 전송 대상 상담 {}건 발견", payloads.size());
 
-            // 1. 트랜잭션 내에서 전송 대상 조회 및 페이로드 수집
-            List<ZoomLinkSendPayload> payloads = collectZoomLinkPayloads();
+        // 2. 트랜잭션 외부에서 메시지 전송 및 플래그 업데이트
+        for (ZoomLinkSendPayload payload : payloads) {
+            try {
+                // 외부 메시지 전송 (트랜잭션 외부)
+                chatMessageService.sendZoomLinkMessage(
+                        payload.chatroomId(),
+                        payload.expertId(),
+                        payload.zoomJoinUrl(),
+                        payload.consultationId()
+                );
 
-            if (payloads.isEmpty()) {
-                log.debug("Zoom 링크 전송 대상 상담 없음");
-                return;
+                // 전송 성공 후 플래그 업데이트 (개별 트랜잭션 - TransactionTemplate 사용)
+                transactionTemplate.executeWithoutResult(
+                        status -> markZoomLinkSentInternal(payload.consultationId())
+                );
+
+                log.info("Zoom 링크 메시지 전송 완료 - consultationId: {}, chatroomId: {}, scheduleTime: {}",
+                        payload.consultationId(), payload.chatroomId(), payload.scheduleTime());
+
+            } catch (Exception e) {
+                log.error("Zoom 링크 메시지 전송 실패 - consultationId: {}", payload.consultationId(), e);
             }
-
-            log.info("Zoom 링크 전송 대상 상담 {}건 발견", payloads.size());
-
-            // 2. 트랜잭션 외부에서 메시지 전송 및 플래그 업데이트
-            for (ZoomLinkSendPayload payload : payloads) {
-                try {
-                    // 외부 메시지 전송 (트랜잭션 외부)
-                    chatMessageService.sendZoomLinkMessage(
-                            payload.chatroomId(),
-                            payload.expertId(),
-                            payload.zoomJoinUrl(),
-                            payload.consultationId()
-                    );
-
-                    // 전송 성공 후 플래그 업데이트 (개별 트랜잭션)
-                    markZoomLinkSent(payload.consultationId());
-
-                    log.info("Zoom 링크 메시지 전송 완료 - consultationId: {}, chatroomId: {}, scheduleTime: {}",
-                            payload.consultationId(), payload.chatroomId(), payload.scheduleTime());
-
-                } catch (Exception e) {
-                    log.error("Zoom 링크 메시지 전송 실패 - consultationId: {}", payload.consultationId(), e);
-                }
-            }
-        } finally {
-            // 락 해제
-            distributedLockService.unlock(ZOOM_LINK_SEND_LOCK);
         }
     }
 
     /**
-     * 트랜잭션 내에서 전송 대상 조회 및 페이로드 수집
+     * 전송 대상 조회 및 페이로드 수집 (내부 헬퍼 메서드)
      */
-    @Transactional(readOnly = true)
-    public List<ZoomLinkSendPayload> collectZoomLinkPayloads() {
+    private List<ZoomLinkSendPayload> collectZoomLinkPayloadsInternal() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = now.plusMinutes(9);
         LocalDateTime endTime = now.plusMinutes(11);
@@ -151,10 +153,9 @@ public class ZoomLinkScheduler {
     }
 
     /**
-     * 전송 완료 플래그 업데이트 (개별 트랜잭션)
+     * 전송 완료 플래그 업데이트 (내부 헬퍼 메서드)
      */
-    @Transactional
-    public void markZoomLinkSent(Long consultationId) {
+    private void markZoomLinkSentInternal(Long consultationId) {
         consultationRepository.findById(consultationId).ifPresent(consultation -> {
             consultation.markZoomLinkSent();
             consultationRepository.save(consultation);
@@ -163,33 +164,12 @@ public class ZoomLinkScheduler {
 
     /**
      * 매 분마다 시작 시간이 된 화상 상담의 상태를 READY → IN_PROGRESS로 변경
-     *
-     * 분산 환경 안전성:
-     * - 분산 락을 사용하여 여러 인스턴스 중 하나만 실행
      */
     @Scheduled(cron = "0 * * * * *")
-    public void startVideoConsultations() {
-        // 분산 락 획득 시도
-        if (!distributedLockService.tryLock(VIDEO_CONSULTATION_START_LOCK, LOCK_TTL_SECONDS)) {
-            log.debug("화상 상담 시작 스케줄러 - 다른 인스턴스가 실행 중, 스킵");
-            return;
-        }
-
-        try {
-            log.debug("화상 상담 시작 스케줄러 실행");
-
-            startVideoConsultationsInternal();
-        } finally {
-            // 락 해제
-            distributedLockService.unlock(VIDEO_CONSULTATION_START_LOCK);
-        }
-    }
-
-    /**
-     * 화상 상담 시작 처리 (내부 트랜잭션 메서드)
-     */
     @Transactional
-    public void startVideoConsultationsInternal() {
+    public void startVideoConsultations() {
+        log.debug("화상 상담 시작 스케줄러 실행");
+
         LocalDateTime now = LocalDateTime.now();
 
         List<Consultation> consultations = consultationRepository

@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.consultation.repository;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.ExpertConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 
@@ -29,4 +30,11 @@ public interface ConsultationRepositoryCustom {
             Long generalProfileId,
             Category category
     );
+
+    /**
+     * 전문가의 상담 내역 조회
+     * @param expertProfileId 전문가 프로필 ID
+     * @return 전문가 상담 내역 리스트
+     */
+    List<ExpertConsultationHistoryResponseDTO> findExpertConsultationHistory(Long expertProfileId);
 }

@@ -7,7 +7,9 @@ import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResp
 import com.ceos.menual.domain.consultation.repository.ConsultationScheduleRepository;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationPriceUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationTypeUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
@@ -661,6 +663,126 @@ public class ExpertService {
 		}
 
 		log.info("상담 스케줄 수정 완료 - 전문가 UserId: {}, 수정된 스케줄 수: {}",
+				expertUserId, updatedSchedules.size());
+
+		return updatedSchedules.stream()
+				.map(ConsultationScheduleResponseDTO::from)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * 상담 유형 활성화/비활성화 수정
+	 */
+	@Transactional
+	public List<ConsultationScheduleResponseDTO> updateConsultationTypes(
+			Long expertUserId,
+			ConsultationTypeUpdateRequestDTO requestDTO
+	) {
+		log.info("상담 유형 활성화/비활성화 수정 요청 - 전문가 UserId: {}", expertUserId);
+
+		// 전문가 조회 및 검증
+		User expertUser = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!expertUser.isExpert() || expertUser.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
+		}
+
+		ExpertProfile profile = expertUser.getExpertProfile();
+		Long expertProfileId = profile.getId();
+
+		List<ConsultationSchedule> updatedSchedules = new ArrayList<>();
+
+		for (ConsultationTypeUpdateRequestDTO.TypeItem item : requestDTO.getTypes()) {
+			// 기존 스케줄 조회
+			ConsultationSchedule schedule = consultationScheduleRepository
+					.findByExpertProfileIdAndConsultationType(expertProfileId, item.getConsultationType())
+					.orElse(null);
+
+			if (schedule != null) {
+				// 기존 스케줄 업데이트
+				if (item.getIsActive()) {
+					schedule.activate();
+				} else {
+					schedule.deactivate();
+				}
+				updatedSchedules.add(schedule);
+				log.info("상담 유형 업데이트 - type: {}, isActive: {}",
+						item.getConsultationType(), item.getIsActive());
+			} else {
+				// 새 스케줄 생성 (가격은 기본값 0으로 설정)
+				ConsultationSchedule newSchedule = ConsultationSchedule.builder()
+						.consultationType(item.getConsultationType())
+						.price(0)
+						.isActive(item.getIsActive())
+						.build();
+				profile.addConsultationSchedule(newSchedule);
+				consultationScheduleRepository.save(newSchedule);
+				updatedSchedules.add(newSchedule);
+				log.info("상담 유형 생성 - type: {}, isActive: {}",
+						item.getConsultationType(), item.getIsActive());
+			}
+		}
+
+		log.info("상담 유형 수정 완료 - 전문가 UserId: {}, 수정된 스케줄 수: {}",
+				expertUserId, updatedSchedules.size());
+
+		return updatedSchedules.stream()
+				.map(ConsultationScheduleResponseDTO::from)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * 상담 가격 수정
+	 */
+	@Transactional
+	public List<ConsultationScheduleResponseDTO> updateConsultationPrices(
+			Long expertUserId,
+			ConsultationPriceUpdateRequestDTO requestDTO
+	) {
+		log.info("상담 가격 수정 요청 - 전문가 UserId: {}", expertUserId);
+
+		// 전문가 조회 및 검증
+		User expertUser = userRepository.findById(expertUserId)
+				.orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+		if (!expertUser.isExpert() || expertUser.getExpertProfile() == null) {
+			throw new GlobalException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
+		}
+
+		ExpertProfile profile = expertUser.getExpertProfile();
+		Long expertProfileId = profile.getId();
+
+		List<ConsultationSchedule> updatedSchedules = new ArrayList<>();
+
+		for (ConsultationPriceUpdateRequestDTO.PriceItem item : requestDTO.getPrices()) {
+			// 기존 스케줄 조회
+			ConsultationSchedule schedule = consultationScheduleRepository
+					.findByExpertProfileIdAndConsultationType(expertProfileId, item.getConsultationType())
+					.orElse(null);
+
+			if (schedule != null) {
+				// 기존 스케줄 가격 업데이트
+				schedule.updatePrice(item.getPrice());
+				updatedSchedules.add(schedule);
+				log.info("상담 가격 업데이트 - type: {}, price: {}",
+						item.getConsultationType(), item.getPrice());
+			} else {
+				// 새 스케줄 생성 (비활성화 상태로 생성)
+				ConsultationSchedule newSchedule = ConsultationSchedule.builder()
+						.consultationType(item.getConsultationType())
+						.price(item.getPrice())
+						.isActive(false)
+						.build();
+				profile.addConsultationSchedule(newSchedule);
+				consultationScheduleRepository.save(newSchedule);
+				updatedSchedules.add(newSchedule);
+				log.info("상담 가격 생성 - type: {}, price: {}",
+						item.getConsultationType(), item.getPrice());
+			}
+		}
+
+		log.info("상담 가격 수정 완료 - 전문가 UserId: {}, 수정된 스케줄 수: {}",
 				expertUserId, updatedSchedules.size());
 
 		return updatedSchedules.stream()

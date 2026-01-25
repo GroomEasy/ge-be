@@ -2,7 +2,9 @@ package com.ceos.menual.domain.expert.controller;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationScheduleResponseDTO;
 import com.ceos.menual.domain.expert.dto.request.AvailableScheduleUpdateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationPriceUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.ConsultationScheduleUpdateRequestDTO;
+import com.ceos.menual.domain.expert.dto.request.ConsultationTypeUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioCreateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.PortfolioUpdateRequestDTO;
 import com.ceos.menual.domain.expert.dto.request.SetRepresentativePortfolioRequestDTO;
@@ -259,6 +261,42 @@ public class ExpertController {
 			@Valid @RequestBody ConsultationScheduleUpdateRequestDTO requestDTO
 	) {
 		List<ConsultationScheduleResponseDTO> response = expertService.updateConsultationSchedules(expertUserId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 상담 유형 활성화/비활성화 API
+	 */
+	@Operation(
+			summary = "전문가 상담 유형 활성화/비활성화",
+			description = "전문가가 제공 가능한 상담 유형(VIDEO, MESSAGE)을 활성화/비활성화합니다."
+	)
+	@PutMapping("/schedules/types")
+	public ResponseEntity<CommonResponse<List<ConsultationScheduleResponseDTO>>> updateConsultationTypes(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+
+			@Valid @RequestBody ConsultationTypeUpdateRequestDTO requestDTO
+	) {
+		List<ConsultationScheduleResponseDTO> response = expertService.updateConsultationTypes(expertUserId, requestDTO);
+		return ResponseEntity.ok(CommonResponse.success(response));
+	}
+
+	/**
+	 * 전문가 상담 가격 수정 API
+	 */
+	@Operation(
+			summary = "전문가 상담 가격 수정",
+			description = "전문가가 상담 유형별 가격을 수정합니다."
+	)
+	@PutMapping("/schedules/prices")
+	public ResponseEntity<CommonResponse<List<ConsultationScheduleResponseDTO>>> updateConsultationPrices(
+			@Parameter(hidden = true)
+			@AuthenticationPrincipal Long expertUserId,
+
+			@Valid @RequestBody ConsultationPriceUpdateRequestDTO requestDTO
+	) {
+		List<ConsultationScheduleResponseDTO> response = expertService.updateConsultationPrices(expertUserId, requestDTO);
 		return ResponseEntity.ok(CommonResponse.success(response));
 	}
 

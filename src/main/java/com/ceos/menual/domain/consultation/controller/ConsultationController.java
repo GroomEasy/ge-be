@@ -3,9 +3,10 @@ package com.ceos.menual.domain.consultation.controller;
 import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConcernResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.ExpertConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.domain.consultation.exception.ConsultationErrorCode;
-import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.service.ConsultationService;
 import com.ceos.menual.domain.user.exception.UserErrorCode;
 import com.ceos.menual.domain.user.repository.UserRepository;
@@ -201,6 +202,22 @@ public class ConsultationController {
             @RequestParam(required = false) Category category
     ) {
         List<SolutionListResponseDTO> response = consultationService.getSolutionList(userId, category);
+        return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    /**
+     * 전문가용 상담 내역 조회 API
+     */
+    @Operation(
+            summary = "전문가용 상담 내역 조회",
+            description = "전문가가 진행한 상담 내역을 조회합니다. (전문가만 접근 가능)"
+    )
+    @PreAuthorize("hasRole('ROLE_EXPERT')")
+    @GetMapping("/expert/history")
+    public ResponseEntity<CommonResponse<List<ExpertConsultationHistoryResponseDTO>>> getExpertConsultationHistory(
+            @AuthenticationPrincipal Long userId
+    ) {
+        List<ExpertConsultationHistoryResponseDTO> response = consultationService.getExpertConsultationHistory(userId);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

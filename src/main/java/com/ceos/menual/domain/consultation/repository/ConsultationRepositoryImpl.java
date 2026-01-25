@@ -1,6 +1,7 @@
 package com.ceos.menual.domain.consultation.repository;
 
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.ExpertConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.entity.enums.Category;
 import com.ceos.menual.entity.enums.ConsultationStatus;
@@ -13,9 +14,11 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static com.ceos.menual.entity.QChatroom.chatroom;
 import static com.ceos.menual.entity.QConsultation.consultation;
 import static com.ceos.menual.entity.QExpertLike.expertLike;
 import static com.ceos.menual.entity.QExpertProfile.expertProfile;
+import static com.ceos.menual.entity.QGeneralProfile.generalProfile;
 import static com.ceos.menual.entity.QReservation.reservation;
 import static com.ceos.menual.entity.QUser.user;
 
@@ -126,5 +129,40 @@ public class ConsultationRepositoryImpl implements ConsultationRepositoryCustom 
     private BooleanExpression hasSolution() {
         return consultation.solution.isNotNull()
                 .and(consultation.solution.isNotEmpty());
+    }
+
+    @Override
+    public List<ExpertConsultationHistoryResponseDTO> findExpertConsultationHistory(Long expertProfileId) {
+        return queryFactory
+                .select(Projections.constructor(
+                        ExpertConsultationHistoryResponseDTO.class,
+                        consultation.id,
+                        reservation.id,
+                        chatroom.id,
+                        user.id,
+                        user.nickname,
+                        user.profileImage,
+                        reservation.category,
+                        consultation.type,
+                        consultation.scheduleTime,
+                        reservation.price,
+                        new CaseBuilder()
+                                .when(consultation.solution.isNotNull()
+                                        .and(consultation.solution.isNotEmpty()))
+                                .then(true)
+                                .otherwise(false),
+                        consultation.reviewWritten
+                ))
+                .from(consultation)
+                .join(consultation.generalProfile, generalProfile)
+                .join(generalProfile.user, user)
+                .join(reservation).on(reservation.consultation.eq(consultation))
+                .leftJoin(chatroom).on(chatroom.consultationId.eq(consultation.id))
+                .where(
+                        consultation.expertProfile.id.eq(expertProfileId),
+                        isCompletedOrInProgress()
+                )
+                .orderBy(consultation.scheduleTime.desc())
+                .fetch();
     }
 }

@@ -6,6 +6,7 @@ import com.ceos.menual.domain.chat.service.ChatMessageService;
 import com.ceos.menual.domain.consultation.dto.request.SolutionRequestDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConcernResponseDTO;
 import com.ceos.menual.domain.consultation.dto.response.ConsultationHistoryResponseDTO;
+import com.ceos.menual.domain.consultation.dto.response.ExpertConsultationHistoryResponseDTO;
 import com.ceos.menual.domain.consultation.dto.response.SolutionListResponseDTO;
 import com.ceos.menual.domain.common.service.S3PresignedUrlService;
 import com.ceos.menual.domain.reservation.exception.ReservationErrorCode;
@@ -66,6 +67,34 @@ public class ConsultationService {
 
         return consultations;
     }
+
+    /**
+     * 전문가의 상담 내역 조회
+     * - IN_PROGRESS 또는 COMPLETED 상태의 상담만 조회
+     */
+    public List<ExpertConsultationHistoryResponseDTO> getExpertConsultationHistory(Long userId) {
+        log.info("전문가 상담 내역 조회 시작 - userId: {}", userId);
+
+        // 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+
+        // ExpertProfile 조회 (전문가만 조회 가능)
+        if (user.getExpertProfile() == null) {
+            throw new GlobalException(ConsultationErrorCode.EXPERT_PROFILE_NOT_FOUND);
+        }
+
+        ExpertProfile expertProfile = user.getExpertProfile();
+
+        // 전문가 상담 내역 조회 (QueryDSL)
+        List<ExpertConsultationHistoryResponseDTO> consultations =
+                consultationRepository.findExpertConsultationHistory(expertProfile.getId());
+
+        log.info("전문가 상담 내역 조회 완료 - 조회된 개수: {}", consultations.size());
+
+        return consultations;
+    }
+
     /**
      * 고민지 조회 - 해당 전문가 또는 상담 회원만 가능
      */

@@ -31,6 +31,8 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 	private static final QExpertProfile ep = QExpertProfile.expertProfile;
 	private static final QReviewImage ri = QReviewImage.reviewImage;
 	private static final QUser u = QUser.user;
+	private static final QGeneralProfile gp = QGeneralProfile.generalProfile;
+	private static final QUser reviewerUser = new QUser("reviewerUser");
 
 
 	@Override
@@ -56,12 +58,15 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						r.createdAt,
 						u.nickname,
 						u.profileImage,
-						ep.id
+						ep.id,
+						reviewerUser.nickname
 				)
 				.from(r)
 				.join(r.consultation, c)
 				.join(c.expertProfile, ep)
 				.join(ep.user, u)
+				.join(c.generalProfile, gp)
+				.join(gp.user, reviewerUser)
 				.where(categoryEq(category))
 				.orderBy(r.createdAt.desc())
 				.offset((long) page * size)
@@ -98,6 +103,7 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 					return ReviewSummaryResponseDTO.builder()
 							.reviewId(tuple.get(r.id))
+							.reviewerNickname(tuple.get(reviewerUser.nickname))
 							.rating(tuple.get(r.rating))
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)
@@ -381,12 +387,15 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 						r.createdAt,
 						u.nickname,
 						u.profileImage,
-						ep.id
+						ep.id,
+						reviewerUser.nickname
 				)
 				.from(r)
 				.join(r.consultation, c)
 				.join(c.expertProfile, ep)
 				.join(ep.user, u)
+				.join(c.generalProfile, gp)
+				.join(gp.user, reviewerUser)
 				.where(u.id.eq(expertUserId))
 				.orderBy(r.createdAt.desc())
 				.offset((long) page * size)
@@ -423,6 +432,7 @@ public class ReviewRepositoryImpl implements ReviewRepository {
 
 					return ReviewSummaryResponseDTO.builder()
 							.reviewId(tuple.get(r.id))
+							.reviewerNickname(tuple.get(reviewerUser.nickname))
 							.rating(tuple.get(r.rating))
 							.content(tuple.get(r.content))
 							.mediaUrls(mediaUrls)

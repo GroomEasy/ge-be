@@ -15,6 +15,10 @@ import java.util.List;
 @Schema(description = "전문가 전환 요청 DTO")
 public class ExpertConversionRequestDTO {
 
+    @NotNull(message = "사용자 ID는 필수입니다.")
+    @Schema(description = "전환할 사용자 ID", example = "1", required = true)
+    private Long userId;
+
     @NotNull(message = "카테고리는 필수입니다.")
     @Schema(description = "전문가 카테고리", example = "HAIR", required = true)
     private Category category;
@@ -30,28 +34,4 @@ public class ExpertConversionRequestDTO {
 
     @Schema(description = "경력정보 (선택)", example = "준O헤어 근무\n...")
     private String careerInfo;
-
-    // ExpertBankAccount 관련 필드 (선택)
-    @Schema(description = "은행명 (선택)", example = "국민은행")
-    private String bankName;
-
-    @Schema(description = "계좌번호 (선택)", example = "123456-78-901234")
-    private String accountNumber;
-
-    @Schema(description = "예금주명 (선택)", example = "홍길동")
-    private String accountHolder;
-
-    // 계좌 정보가 모두 입력되었는지 확인하는 메서드
-    public boolean hasCompleteBankAccountInfo() {
-        return bankName != null && accountNumber != null && accountHolder != null;
-    }
-
-    // 계좌 정보가 일부만 입력되었는지 확인하는 메서드
-    public boolean hasPartialBankAccountInfo() {
-        int count = 0;
-        if (bankName != null) count++;
-        if (accountNumber != null) count++;
-        if (accountHolder != null) count++;
-        return count > 0 && count < 3;
-    }
 }

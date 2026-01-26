@@ -87,6 +87,7 @@ public class User extends BaseEntity {
     public void convertToExpert(ExpertProfile expertProfile) {
         this.userType = UserType.EXPERT;
         this.expertProfile = expertProfile;
+        this.nickname = this.nickname + " 전문가";
     }
 
     public void withdraw() {

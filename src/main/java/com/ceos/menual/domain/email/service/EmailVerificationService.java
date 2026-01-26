@@ -54,7 +54,7 @@ public class EmailVerificationService {
         // 이메일 전송
         sendVerificationEmail(email, code);
 
-        log.info("Verification code sent. email={}", email);
+        log.info("Verification code sent. email={}", maskEmail(email));
 
         return EmailVerificationResponseDTO.codeSent(email);
     }
@@ -84,7 +84,7 @@ public class EmailVerificationService {
         // 인증번호 삭제
         verificationStore.deleteCode(email);
 
-        log.info("Email verified successfully. email={}", email);
+        log.info("Email verified successfully. email={}", maskEmail(email));
 
         return EmailVerificationResponseDTO.verified(email);
     }
@@ -125,6 +125,20 @@ public class EmailVerificationService {
         String body = buildEmailBody(code);
 
         emailSender.sendEmail(email, subject, body);
+    }
+
+    /**
+     * 이메일 마스킹 (PII 보호)
+     */
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return "***";
+        }
+        int atIndex = email.indexOf('@');
+        String localPart = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        int visibleChars = Math.min(2, localPart.length());
+        return localPart.substring(0, visibleChars) + "***" + domain;
     }
 
     /**

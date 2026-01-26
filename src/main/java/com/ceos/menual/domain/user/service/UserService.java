@@ -1,6 +1,8 @@
 package com.ceos.menual.domain.user.service;
 
 import com.ceos.menual.domain.consultation.repository.ConsultationRepository;
+import com.ceos.menual.domain.email.exception.EmailErrorCode;
+import com.ceos.menual.domain.email.service.EmailVerificationService;
 import com.ceos.menual.domain.expert.repository.ExpertLikeRepository;
 import com.ceos.menual.domain.reservation.repository.ReservationRepository;
 import com.ceos.menual.domain.review.repository.ReviewRepository;
@@ -49,9 +51,15 @@ public class UserService {
     private final com.ceos.menual.domain.user.repository.PointHistoryRepository pointHistoryRepository;
     private final ReservationRepository reservationRepository;
     private final ConsultationRepository consultationRepository;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
+        // 이메일 인증 여부 확인
+        if (!emailVerificationService.isEmailVerified(request.getEmail())) {
+            throw new GlobalException(EmailErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
         // 비밀번호 일치 검증
         if (!request.isPasswordMatch()) {
             throw new GlobalException(UserErrorCode.INVALID_PASSWORD);
@@ -85,6 +93,9 @@ public class UserService {
                 .build();
 
         generalProfileRepository.save(generalProfile);
+
+        // 이메일 인증 상태 삭제
+        emailVerificationService.clearVerifiedStatus(request.getEmail());
 
         // 응답 생성
         return SignUpResponseDTO.builder()

@@ -96,6 +96,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else if ("MEMBER".equals(userType)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_MEMBER"));
             log.debug("ROLE_MEMBER 권한 추가됨 - userId: {}", userId);
+        } else if ("TMP_USER".equals(userType)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_TMP_USER"));
+            log.debug("ROLE_TMP_USER 권한 추가됨 - userId: {}", userId);
         } else {
             // 알려지지 않은 userType: 인증 설정하지 않음 (fail-closed)
             log.warn("알려지지 않은 사용자 타입으로 인증 설정 거부 - userId: {}, userType: {}", userId, userType);

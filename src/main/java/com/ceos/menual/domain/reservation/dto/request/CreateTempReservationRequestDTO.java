@@ -41,6 +41,5 @@ public class CreateTempReservationRequestDTO {
     // TODO: 프론트와 협의하에 삭제
     @Schema(description = "상담 가격", example = "40000", required = true)
     @NotNull(message = "가격은 필수입니다")
-    @Positive(message = "가격은 0보다 커야 합니다")
     private Integer price;
 }

@@ -26,7 +26,6 @@ public class ConsultationSchedule extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ConsultationType consultationType;  // VIDEO, MESSAGE
 
-    @Positive(message = "가격은 0보다 커야 합니다")
     @Column(nullable = false)
     private Integer price;
 

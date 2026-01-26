@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -73,19 +74,18 @@ public class UserController {
     }
 
     /**
-     * 전문가 전환
+     * 전문가 전환 (관리자 전용)
      */
     @Operation(
-            summary = "전문가 전환",
-            description = "일반 회원이 전문가로 전환합니다. GeneralProfile이 삭제되고 ExpertProfile이 생성됩니다."
+            summary = "전문가 전환 (관리자 전용)",
+            description = "관리자가 일반 회원을 전문가로 전환합니다. GeneralProfile이 삭제되고 ExpertProfile이 생성됩니다."
     )
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/conversion")
     public ResponseEntity<CommonResponse<ExpertConversionResponseDTO>> convertToExpert(
-            @Parameter(description = "사용자 ID", required = true)
-            @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ExpertConversionRequestDTO requestDTO
     ) {
-        ExpertConversionResponseDTO response = userService.convertToExpert(userId, requestDTO);
+        ExpertConversionResponseDTO response = userService.convertToExpert(requestDTO.getUserId(), requestDTO);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 

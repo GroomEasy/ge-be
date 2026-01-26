@@ -157,11 +157,6 @@ public class UserService {
             throw new GlobalException(UserErrorCode.USER_ALREADY_EXPERT);
         }
 
-        // 계좌 정보 일부만 입력된 경우 예외 처리
-        if (requestDTO.hasPartialBankAccountInfo()) {
-            throw new GlobalException(UserErrorCode.INCOMPLETE_BANK_ACCOUNT_INFO);
-        }
-
         // GeneralProfile 조회 및 연관 데이터 삭제
         GeneralProfile generalProfile = user.getGeneralProfile();
         if (generalProfile != null) {
@@ -187,36 +182,19 @@ public class UserService {
         }
 
         // ExpertProfile 생성 및 저장
-        ExpertProfile.ExpertProfileBuilder expertProfileBuilder = ExpertProfile.builder()
+        ExpertProfile expertProfile = ExpertProfile.builder()
                 .user(user)
                 .category(requestDTO.getCategory())
                 .specialities(requestDTO.getSpecialities() != null ? requestDTO.getSpecialities() : new ArrayList<>())
                 .introduction(requestDTO.getIntroduction())
                 .profileLink(requestDTO.getProfileLink())
                 .careerInfo(requestDTO.getCareerInfo())
-                .consultationSchedules(new ArrayList<>());
-
-        // ExpertBankAccount 생성 (정보가 완전히 입력된 경우에만)
-        if (requestDTO.hasCompleteBankAccountInfo()) {
-            ExpertBankAccount bankAccount = ExpertBankAccount.builder()
-                    .bankName(requestDTO.getBankName())
-                    .accountNumber(requestDTO.getAccountNumber())
-                    .accountHolder(requestDTO.getAccountHolder())
-                    .build();
-
-            expertProfileBuilder.expertBankAccount(bankAccount);
-        }
-
-        ExpertProfile expertProfile = expertProfileBuilder.build();
-
-        // ExpertBankAccount가 있으면 양방향 관계 설정
-        if (expertProfile.getExpertBankAccount() != null) {
-            expertProfile.getExpertBankAccount().setExpertProfile(expertProfile);
-        }
+                .consultationSchedules(new ArrayList<>())
+                .build();
 
         ExpertProfile savedExpertProfile = expertProfileRepository.save(expertProfile);
 
-        // UserType 변경 + ExpertProfile 설정 (한 번에 처리)
+        // UserType 변경 + ExpertProfile 설정 + 닉네임 변경 (한 번에 처리)
         user.convertToExpert(savedExpertProfile);
 
         // 응답 생성

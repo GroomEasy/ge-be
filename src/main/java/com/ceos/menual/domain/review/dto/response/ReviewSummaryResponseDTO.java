@@ -16,6 +16,9 @@ public class ReviewSummaryResponseDTO {
 	@Schema(description = "리뷰 ID")
 	private Long reviewId;
 
+	@Schema(description = "리뷰 작성자 닉네임")
+	private String reviewerNickname;
+
 	@Schema(description = "전문가 닉네임")
 	private String expertNickname;
 

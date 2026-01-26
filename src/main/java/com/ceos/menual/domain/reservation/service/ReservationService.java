@@ -197,20 +197,19 @@ public class ReservationService {
         log.info("관리자 결제 확인 및 상담 생성 완료 - reservationId: {}, consultationId: {}",
                 reservationId, savedConsultation.getId());
 
-        // TODO: 주석 풀기
-//        // Slack 알림 전송
-//        String memberName = reservation.getGeneralProfile().getUser().getNickname();
-//        String expertName = reservation.getExpertProfile().getUser().getNickname();
-//        Integer price = reservation.getPrice();
-//        String consultationType = reservation.getConsultationType().name();
-//        slackNotificationService.sendPaymentConfirmationNotification(
-//                reservationId,
-//                savedConsultation.getId(),
-//                memberName,
-//                expertName,
-//                price,
-//                consultationType
-//        );
+        // Slack 알림 전송
+        String memberName = reservation.getGeneralProfile().getUser().getNickname();
+        String expertName = reservation.getExpertProfile().getUser().getNickname();
+        Integer price = reservation.getPrice();
+        String consultationType = reservation.getConsultationType().name();
+        slackNotificationService.sendPaymentConfirmationNotification(
+                reservationId,
+                savedConsultation.getId(),
+                memberName,
+                expertName,
+                price,
+                consultationType
+        );
 
         return CompletePaymentResponseDTO.from(savedConsultation, reservationId);
     }
@@ -295,11 +294,10 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
 
-        // TODO: 주석 풀기
-//        // Slack 알림 전송
-//        String username = reservation.getGeneralProfile().getUser().getNickname();
-//        String category = reservation.getCategory().name();
-//        slackNotificationService.sendFashionConcernUpdateNotification(reservationId, username, category);
+        // Slack 알림 전송
+        String username = reservation.getGeneralProfile().getUser().getNickname();
+        String category = reservation.getCategory().name();
+        slackNotificationService.sendFashionConcernUpdateNotification(reservationId, username, category);
 
         return UpdateReservationConcernResponseDTO.from(reservation, fashionConcern);
     }
@@ -381,12 +379,6 @@ public class ReservationService {
             log.error("고민지 JSON 변환 실패 - reservationId: {}", reservationId, e);
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
-
-        // TODO: 주석 풀기
-//        // Slack 알림 전송
-//        String username = reservation.getGeneralProfile().getUser().getNickname();
-//        String category = reservation.getCategory().name();
-//        slackNotificationService.sendHairConcernUpdateNotification(reservationId, username, category);
 
         return UpdateReservationConcernResponseDTO.from(reservation, hairConcern);
     }
@@ -1249,11 +1241,10 @@ public class ReservationService {
         reservationRepository.save(reservation);
         log.info("환불 요청 완료 - reservationId: {}, status: REFUND_REQUESTED", reservationId);
 
-        // TODO: 운영 시 주석 풀기
-//        // Slack 알림 전송
-//        String username = reservation.getGeneralProfile().getUser().getNickname();
-//        Integer price = reservation.getPrice();
-//        slackNotificationService.sendRefundRequestNotification(reservationId, username, price);
+        // Slack 알림 전송
+        String username = reservation.getGeneralProfile().getUser().getNickname();
+        Integer price = reservation.getPrice();
+        slackNotificationService.sendRefundRequestNotification(reservationId, username, price);
     }
 
     /**
@@ -1344,16 +1335,15 @@ public class ReservationService {
         log.info("환불 승인 처리 완료 - reservationId: {}, consultationId: {}, 비활성화된 채팅방 수: {}",
                 reservationId, consultation.getId(), chatrooms.size());
 
-        // TODO: 주석 풀기
-//        // Slack 알림 전송
-//        String memberName = reservation.getGeneralProfile().getUser().getNickname();
-//        Integer price = reservation.getPrice();
-//        slackNotificationService.sendRefundApprovalNotification(
-//                reservationId,
-//                consultation.getId(),
-//                memberName,
-//                price
-//        );
+        // Slack 알림 전송
+        String memberName = reservation.getGeneralProfile().getUser().getNickname();
+        Integer price = reservation.getPrice();
+        slackNotificationService.sendRefundApprovalNotification(
+                reservationId,
+                consultation.getId(),
+                memberName,
+                price
+        );
     }
 
     /**

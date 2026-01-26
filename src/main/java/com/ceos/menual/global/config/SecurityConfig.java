@@ -70,6 +70,9 @@ public class SecurityConfig {
                                 "/api/user/signup",
                                 "/api/user/social-signup",
 
+                                // 이메일 인증
+                                "/api/email/verification/**",
+
                                 // Swagger
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",

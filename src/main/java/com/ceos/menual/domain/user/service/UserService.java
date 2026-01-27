@@ -157,7 +157,7 @@ public class UserService {
             throw new GlobalException(UserErrorCode.USER_ALREADY_EXPERT);
         }
 
-        // GeneralProfile 조회 및 연관 데이터 삭제
+        // GeneralProfile 연관 데이터 삭제
         GeneralProfile generalProfile = user.getGeneralProfile();
         if (generalProfile != null) {
             Long generalProfileId = generalProfile.getId();
@@ -177,7 +177,8 @@ public class UserService {
             // ExpertLike 삭제
             expertLikeRepository.deleteByGeneralProfileId(generalProfileId);
 
-            // GeneralProfile 삭제
+            // GeneralProfile 명시적 삭제
+            user.clearGeneralProfile();
             generalProfileRepository.delete(generalProfile);
         }
 

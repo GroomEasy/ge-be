@@ -46,7 +46,7 @@ public class User extends BaseEntity {
     private String profileImage;
 
     // 회원 프로필
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private GeneralProfile generalProfile;
 
     // 전문가 프로필 (회원은 null)
@@ -93,6 +93,10 @@ public class User extends BaseEntity {
         this.userType = UserType.EXPERT;
         this.expertProfile = expertProfile;
         this.nickname = this.nickname + " 전문가";
+    }
+
+    public void clearGeneralProfile() {
+        this.generalProfile = null;
     }
 
     public void withdraw() {

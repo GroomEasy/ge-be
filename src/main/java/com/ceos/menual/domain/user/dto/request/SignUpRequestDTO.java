@@ -29,7 +29,6 @@ public class SignUpRequestDTO {
     @NotNull(message = "이용약관 동의는 필수입니다.")
     @AssertTrue(message = "이용약관에 동의해야 합니다.")
     private Boolean agreeTerms;
-
     @NotNull(message = "개인정보 처리방침 동의는 필수입니다.")
     @AssertTrue(message = "개인정보 처리방침에 동의해야 합니다.")
     private Boolean agreePrivacy;

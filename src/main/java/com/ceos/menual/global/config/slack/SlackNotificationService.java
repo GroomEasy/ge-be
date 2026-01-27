@@ -238,6 +238,35 @@ public class SlackNotificationService {
         }
     }
 
+    @Async
+    public void sendExpertConversionNotification(Long userId, String nickname, String category) {
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("text", "🎓 *전문가 전환이 완료되었습니다!*");
+
+            Map<String, Object> attachment = new HashMap<>();
+            attachment.put("color", "#ff6600"); // 주황색 띠
+            attachment.put("fields", new Object[]{
+                    createField("사용자 ID", String.valueOf(userId)),
+                    createField("닉네임", nickname),
+                    createField("카테고리", category)
+            });
+
+            request.put("attachments", new Object[]{attachment});
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(slackWebhookUrl, entity, String.class);
+
+            log.info("Slack 전문가 전환 알림 전송 완료 - userId: {}", userId);
+
+        } catch (Exception e) {
+            log.error("Slack 전문가 전환 알림 전송 실패", e);
+        }
+    }
+
     private Map<String, Object> createField(String title, String value) {
         Map<String, Object> field = new HashMap<>();
         field.put("title", title);

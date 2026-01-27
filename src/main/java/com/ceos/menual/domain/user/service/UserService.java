@@ -22,10 +22,8 @@ import com.ceos.menual.entity.enums.AuthProvider;
 
 import com.ceos.menual.entity.enums.UserType;
 import com.ceos.menual.global.exception.GlobalException;
-import com.querydsl.core.QueryFactory;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,13 +32,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
-
-    private final JPAQueryFactory queryFactory;
-    private final EntityManager entityManager;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -52,16 +48,21 @@ public class UserService {
     private final ReservationRepository reservationRepository;
     private final ConsultationRepository consultationRepository;
     private final EmailVerificationService emailVerificationService;
+    private final com.ceos.menual.global.config.slack.SlackNotificationService slackNotificationService;
 
     @Transactional
     public SignUpResponseDTO signUp(SignUpRequestDTO request) {
+        log.info("회원가입 시작 - email: {}, nickname: {}", request.getEmail(), request.getNickname());
+
         // 이메일 인증 여부 확인
         if (!emailVerificationService.isEmailVerified(request.getEmail())) {
+            log.warn("회원가입 실패 - 이메일 미인증 - email: {}", request.getEmail());
             throw new GlobalException(EmailErrorCode.EMAIL_NOT_VERIFIED);
         }
 
         // 비밀번호 일치 검증
         if (!request.isPasswordMatch()) {
+            log.warn("회원가입 실패 - 비밀번호 불일치 - email: {}", request.getEmail());
             throw new GlobalException(UserErrorCode.INVALID_PASSWORD);
         }
 
@@ -85,6 +86,7 @@ public class UserService {
 
         // 저장
         User savedUser = userRepository.save(user);
+        log.info("User 저장 완료 - userId: {}, email: {}", savedUser.getId(), savedUser.getEmail());
 
         // GeneralProfile 생성
         GeneralProfile generalProfile = GeneralProfile.builder()
@@ -93,9 +95,13 @@ public class UserService {
                 .build();
 
         generalProfileRepository.save(generalProfile);
+        log.info("GeneralProfile 생성 완료 - userId: {}", savedUser.getId());
 
         // 이메일 인증 상태 삭제
         emailVerificationService.clearVerifiedStatus(request.getEmail());
+
+        log.info("회원가입 완료 - userId: {}, email: {}, nickname: {}",
+                savedUser.getId(), savedUser.getEmail(), savedUser.getNickname());
 
         // 응답 생성
         return SignUpResponseDTO.builder()
@@ -109,9 +115,15 @@ public class UserService {
 
     @Transactional
     public SocialSignUpResponseDTO socialSignUp(Long userId, SocialSignUpRequestDTO request) {
+        log.info("소셜 회원가입 시작 - userId: {}, email: {}, nickname: {}",
+                userId, request.getEmail(), request.getNickname());
+
         // 소셜 로그인 시 생성된 유저인지 검증
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> {
+                log.warn("소셜 회원가입 실패 - 사용자 없음 - userId: {}", userId);
+                return new GlobalException(UserErrorCode.USER_NOT_FOUND);
+            });
 
         // 이메일 중복 검사
         validateDuplicateEmail(request.getEmail());
@@ -127,6 +139,7 @@ public class UserService {
             request.getAgreeTerms(),
             request.getAgreePrivacy()
         );
+        log.info("소셜 회원 정보 업데이트 완료 - userId: {}", userId);
 
         // GeneralProfile 생성 (소셜 로그인 추가 정보 입력 시점에 생성)
         if (user.getGeneralProfile() == null) {
@@ -136,7 +149,11 @@ public class UserService {
                     .build();
 
             generalProfileRepository.save(generalProfile);
+            log.info("GeneralProfile 생성 완료 - userId: {}", userId);
         }
+
+        log.info("소셜 회원가입 완료 - userId: {}, email: {}, nickname: {}",
+                userId, user.getEmail(), user.getNickname());
 
         // 저장 후 응답 반환
         return SocialSignUpResponseDTO.builder()
@@ -148,38 +165,23 @@ public class UserService {
 
     @Transactional
     public ExpertConversionResponseDTO convertToExpert(Long userId, ExpertConversionRequestDTO requestDTO) {
+        log.info("전문가 전환 시작 - userId: {}, category: {}", userId, requestDTO.getCategory());
+
         // 사용자 조회
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GlobalException(UserErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.warn("전문가 전환 실패 - 사용자 없음 - userId: {}", userId);
+                    return new GlobalException(UserErrorCode.USER_NOT_FOUND);
+                });
 
         // 이미 전문가인지 확인
         if (user.getUserType() == UserType.EXPERT) {
+            log.warn("전문가 전환 실패 - 이미 전문가 - userId: {}", userId);
             throw new GlobalException(UserErrorCode.USER_ALREADY_EXPERT);
         }
 
-        // GeneralProfile 조회 및 연관 데이터 삭제
-        GeneralProfile generalProfile = user.getGeneralProfile();
-        if (generalProfile != null) {
-            Long generalProfileId = generalProfile.getId();
-
-            // 연관 데이터 삭제 (JPA 방식 사용)
-            QReview review = QReview.review;
-            QConsultation consultation = QConsultation.consultation;
-
-            List<Review> reviews = queryFactory
-                    .selectFrom(review)
-                    .join(review.consultation, consultation).fetchJoin()
-                    .where(consultation.generalProfile.id.eq(generalProfileId))
-                    .fetch();
-
-            reviews.forEach(entityManager::remove);
-
-            // ExpertLike 삭제
-            expertLikeRepository.deleteByGeneralProfileId(generalProfileId);
-
-            // GeneralProfile 삭제
-            generalProfileRepository.delete(generalProfile);
-        }
+        // GeneralProfile은 유지 (과거 상담 기록 보존, FK 제약 해결)
+        // 전문가의 예약은 ReservationService에서 UserType 체크로 차단
 
         // ExpertProfile 생성 및 저장
         ExpertProfile expertProfile = ExpertProfile.builder()
@@ -197,6 +199,16 @@ public class UserService {
         // UserType 변경 + ExpertProfile 설정 + 닉네임 변경 (한 번에 처리)
         user.convertToExpert(savedExpertProfile);
 
+        log.info("전문가 전환 완료 - userId: {}, nickname: {}, category: {}",
+                userId, user.getNickname(), savedExpertProfile.getCategory());
+
+        // Slack 알림 전송
+        slackNotificationService.sendExpertConversionNotification(
+                userId,
+                user.getNickname(),
+                savedExpertProfile.getCategory().name()
+        );
+
         // 응답 생성
         return ExpertConversionResponseDTO.builder()
                 .expertProfileId(savedExpertProfile.getId())
@@ -210,12 +222,14 @@ public class UserService {
 
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
+            log.warn("회원가입 실패 - 이메일 중복 - email: {}", email);
             throw new GlobalException(UserErrorCode.DUPLICATE_EMAIL);
         }
     }
 
     private void validateDuplicateNickname(String nickname) {
         if (userRepository.existsByNickname(nickname)) {
+            log.warn("회원가입 실패 - 닉네임 중복 - nickname: {}", nickname);
             throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
         }
     }

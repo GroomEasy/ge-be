@@ -4,6 +4,9 @@ import com.ceos.menual.domain.common.dto.response.CommonResponse;
 import com.ceos.menual.domain.reservation.dto.request.CompletePaymentRequestDTO;
 import com.ceos.menual.domain.reservation.dto.response.CompletePaymentResponseDTO;
 import com.ceos.menual.domain.reservation.service.ReservationService;
+import com.ceos.menual.domain.user.dto.request.ExpertConversionRequestDTO;
+import com.ceos.menual.domain.user.dto.response.ExpertConversionResponseDTO;
+import com.ceos.menual.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminReservationController {
 
     private final ReservationService reservationService;
+    private final UserService userService;
 
     /**
      * 관리자: 결제 확인 및 Consultation 생성 API
@@ -64,6 +68,24 @@ public class AdminReservationController {
     ) {
         reservationService.cancelPaidReservation(reservationId, adminUserId);
         return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
+    /**
+     * 전문가 전환 (관리자 전용)
+     */
+    @Operation(
+            summary = "전문가 전환",
+            description = "관리자가 일반 회원을 전문가로 전환합니다. GeneralProfile이 삭제되고 ExpertProfile이 생성됩니다."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/users/{userId}/convert-to-expert")
+    public ResponseEntity<CommonResponse<ExpertConversionResponseDTO>> convertToExpert(
+            @Parameter(description = "전환할 사용자 ID", required = true, example = "1")
+            @PathVariable Long userId,
+            @Valid @RequestBody ExpertConversionRequestDTO requestDTO
+    ) {
+        ExpertConversionResponseDTO response = userService.convertToExpert(userId, requestDTO);
+        return ResponseEntity.ok(CommonResponse.success(response));
     }
 }
 

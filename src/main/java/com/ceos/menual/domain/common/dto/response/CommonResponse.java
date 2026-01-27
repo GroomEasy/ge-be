@@ -15,7 +15,6 @@ public class CommonResponse<T> {
 	private final String message;
 
 	@Schema(description = "데이터")
-	@JsonInclude(JsonInclude.Include.NON_EMPTY)
 	private T data;
 
 	// 오류 등 데이터 없는 경우 사용

@@ -418,6 +418,12 @@ public class ReservationService {
             throw new GlobalException(UserErrorCode.USER_WITHDRAWN);
         }
 
+        // 전문가는 상담 예약 불가
+        if (generalUser.getUserType() == UserType.EXPERT) {
+            log.warn("예약 생성 실패 - 전문가는 예약 불가 - userId: {}", userId);
+            throw new GlobalException(ReservationErrorCode.EXPERT_CANNOT_RESERVE);
+        }
+
         if (generalUser.getGeneralProfile() == null) {
             throw new GlobalException(ReservationErrorCode.GENERAL_PROFILE_NOT_FOUND);
         }
@@ -1441,12 +1447,11 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
 
-        // TODO: 개발 단계에서는 주석 처리
-//        // 고민지 작성 여부 검증
-//        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
-//            log.warn("고민지 미작성 - reservationId: {}", reservationId);
-//            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
-//        }
+        // 고민지 작성 여부 검증
+        if (reservation.getConcernsJson() == null || reservation.getConcernsJson().isEmpty()) {
+            log.warn("고민지 미작성 - reservationId: {}", reservationId);
+            throw new GlobalException(ReservationErrorCode.MISSING_CONCERN_DATA);
+        }
 
         // finalPrice 설정 (포인트를 사용하지 않은 경우)
         if (reservation.getFinalPrice() == null) {
@@ -1460,16 +1465,13 @@ public class ReservationService {
         log.info("예약 주문서 제출 완료 - reservationId: {}, status: SUBMITTED", reservationId);
 
         // Slack 알림 전송
-        // TODO: 프로덕션 배포 시 주석 해제
-        /*
         slackNotificationService.sendReservationSubmittedNotification(
                 reservation.getId(),
-                reservation.getGeneralProfile().getUser().getUsername(),
+                reservation.getGeneralProfile().getUser().getNickname(),
                 reservation.getCategory().name(),
                 reservation.getConsultationType().name(),
                 reservation.getFinalPrice()
         );
-        */
     }
 
     /**

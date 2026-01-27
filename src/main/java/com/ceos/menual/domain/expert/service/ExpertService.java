@@ -153,6 +153,19 @@ public class ExpertService {
 
 		ExpertProfile expertProfile = user.getExpertProfile();
 
+		if (requestDTO.getNickname() != null) {
+			String nickname = requestDTO.getNickname().trim();
+			if (nickname.isEmpty()) {
+				throw new GlobalException(UserErrorCode.INVALID_NICKNAME);
+			}
+			if (!nickname.equals(user.getNickname())) {
+				if (userRepository.existsByNickname(nickname)) {
+					throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
+				}
+				user.updateNickname(nickname);
+			}
+		}
+
 		if (requestDTO.getIntroduction() != null) {
 			String intro = requestDTO.getIntroduction().trim();
 			expertProfile.updateIntroduction(intro.isEmpty() ? null : intro);

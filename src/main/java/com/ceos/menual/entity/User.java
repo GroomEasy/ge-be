@@ -84,6 +84,10 @@ public class User extends BaseEntity {
         this.profileImage = profileImage;
     }
 
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
     public void convertToExpert(ExpertProfile expertProfile) {
         this.userType = UserType.EXPERT;
         this.expertProfile = expertProfile;

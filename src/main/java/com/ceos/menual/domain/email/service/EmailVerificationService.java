@@ -146,7 +146,6 @@ public class EmailVerificationService {
      */
     private String buildEmailBody(String code) {
         return """
-                안녕하세요.
                 Menual 회원가입을 위한 인증번호입니다.
 
                 인증번호: %s

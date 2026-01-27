@@ -37,6 +37,7 @@ import com.ceos.menual.global.exception.GlobalException;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -159,10 +160,18 @@ public class ExpertService {
 				throw new GlobalException(UserErrorCode.INVALID_NICKNAME);
 			}
 			if (!nickname.equals(user.getNickname())) {
+				// 사전 체크는 UX 개선용(선택). 최종 가드는 DB unique 제약 + 예외 매핑.
 				if (userRepository.existsByNickname(nickname)) {
 					throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
 				}
-				user.updateNickname(nickname);
+
+				try {
+					user.updateNickname(nickname);
+					// 커밋 시점까지 미루지 않고 여기서 flush하여 중복키를 즉시 감지
+					userRepository.flush();
+				} catch (DataIntegrityViolationException e) {
+					throw new GlobalException(UserErrorCode.DUPLICATE_NICKNAME);
+				}
 			}
 		}
 

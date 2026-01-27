@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class UpdateExpertInfoRequestDTO {
 
 	@Schema(description = "닉네임. 공백 문자열은 허용하지 않습니다.", example = "미루")
+	@Size(max = 30, message = "닉네임은 30자 이내여야 합니다.")
 	private String nickname;
 
 	@Schema(description = "한 줄 소개(최대 100자). 빈 문자열 전달 시 삭제 처리.", example = "손상모 복구/레이어드 전문입니다.")

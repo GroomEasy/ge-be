@@ -24,8 +24,8 @@ public class PortfolioUpdateRequestDTO {
 	@Size(max = 500, message = "고민은 500자 이내여야 합니다.")
 	private String concern;
 
-	@Schema(description = "해결 솔루션(최대 500자)", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거")
-	@Size(max = 500, message = "솔루션은 500자 이내여야 합니다.")
+	@Schema(description = "해결 솔루션(최대 1000자)", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거")
+	@Size(max = 1000, message = "솔루션은 1000자 이내여야 합니다.")
 	private String solution;
 
 	@Schema(

@@ -26,21 +26,23 @@ public class Portfolio extends BaseEntity {
 	private ExpertProfile expertProfile;
 
 	// 시술명
-	@Column(nullable = false)
+	@Column(nullable = false, length = 100)
 	private String title;
 
 	// 고민
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String concern;
 
 	// 솔루션
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String solution;
 
 	// 시술 전 이미지
+	@Column(columnDefinition = "TEXT")
 	private String beforeImage;
 
 	// 시술 후 이미지
+	@Column(columnDefinition = "TEXT")
 	private String afterImage;
 
 	// 대표 포트폴리오 여부

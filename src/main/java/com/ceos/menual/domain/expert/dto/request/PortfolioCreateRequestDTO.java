@@ -27,8 +27,8 @@ public class PortfolioCreateRequestDTO {
     private String concern;
 
     @NotBlank(message = "솔루션은 필수입니다.")
-    @Size(max = 500, message = "솔루션은 500자 이내여야 합니다.")
-    @Schema(description = "해결 솔루션", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거", required = true)
+    @Size(max = 1000, message = "솔루션은 1000자 이내여야 합니다.")
+    @Schema(description = "해결 솔루션(최대 1000자)", example = "단백질 케어와 함께 레이어드 컷으로 손상 부위 제거", required = true)
     private String solution;
 
     @Schema(description = "시술 전 이미지 S3 키 (tmp). 포트폴리오 저장 시 final로 이동 후 DB에는 공개 URL이 저장됩니다.", example = "tmp/portfolio/expert-123/before/550e8400-e29b-41d4-a716-446655440000.jpg", required = true)

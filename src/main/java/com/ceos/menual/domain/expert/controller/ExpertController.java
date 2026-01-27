@@ -155,7 +155,7 @@ public class ExpertController {
 
 	@Operation(
 			summary = "전문가 소개서 정보 수정",
-			description = "전문가가 본인의 한 줄 소개/인스타그램 링크/경력 정보를 수정합니다."
+			description = "전문가가 본인의 닉네임/한 줄 소개/인스타그램 링크/경력 정보를 수정합니다."
 	)
 	@PutMapping("/me/info")
 	public ResponseEntity<CommonResponse<ExpertInfoResponseDTO>> updateExpertInfo(

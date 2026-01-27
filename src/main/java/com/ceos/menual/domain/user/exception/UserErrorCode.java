@@ -26,7 +26,8 @@ public enum UserErrorCode implements ResultCode {
     USER_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, 1114, "이미 탈퇴한 회원입니다."),
     ACTIVE_RESERVATION_EXISTS(HttpStatus.CONFLICT, 1115, "진행 중인 예약이 있어 탈퇴할 수 없습니다."),
     ACTIVE_CONSULTATION_EXISTS(HttpStatus.CONFLICT, 1116, "진행 중인 상담이 있어 탈퇴할 수 없습니다."),
-    USER_WITHDRAWN(HttpStatus.FORBIDDEN, 1117, "탈퇴한 회원은 이용할 수 없습니다.");
+    USER_WITHDRAWN(HttpStatus.FORBIDDEN, 1117, "탈퇴한 회원은 이용할 수 없습니다."),
+    INVALID_NICKNAME(HttpStatus.BAD_REQUEST, 1118, "올바르지 않은 닉네임입니다.");
 
 
 

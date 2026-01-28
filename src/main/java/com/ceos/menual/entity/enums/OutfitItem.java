@@ -12,7 +12,7 @@ public enum OutfitItem {
     TOP("상의", "Top"),
     BOTTOM("하의", "Bottom"),
     SHOES("신발", "Shoes"),
-    ACCESSORY("악세사리", "Accessory"),
+    ACCESSORY("악세서리", "Accessory"),
     BAG("가방", "Bag");
 
     private final String korean;

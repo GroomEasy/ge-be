@@ -17,7 +17,8 @@ public enum BodyTypeDisadvantage {
     SLENDER_BODY("얄상한몸", "Slender body"),
     HEIGHT("키", "Height"),
     UPPER_LOWER_BODY_RATIO("상하체비율", "Upper lower body ratio"),
-    HEAD_SIZE("머리크기", "Head size");
+    HEAD_SIZE("머리크기", "Head size"),
+    OTHER("기타", "Other");
 
     private final String korean;
     private final String english;

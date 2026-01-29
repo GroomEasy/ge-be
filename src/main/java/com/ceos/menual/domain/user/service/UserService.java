@@ -164,19 +164,19 @@ public class UserService {
 
 
     @Transactional
-    public ExpertConversionResponseDTO convertToExpert(Long userId, ExpertConversionRequestDTO requestDTO) {
-        log.info("전문가 전환 시작 - userId: {}, category: {}", userId, requestDTO.getCategory());
+    public ExpertConversionResponseDTO convertToExpert(String email, ExpertConversionRequestDTO requestDTO) {
+        log.info("전문가 전환 시작 - email: {}, category: {}", email, requestDTO.getCategory());
 
         // 사용자 조회
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.warn("전문가 전환 실패 - 사용자 없음 - userId: {}", userId);
+                    log.warn("전문가 전환 실패 - 사용자 없음 - email: {}", email);
                     return new GlobalException(UserErrorCode.USER_NOT_FOUND);
                 });
 
         // 이미 전문가인지 확인
         if (user.getUserType() == UserType.EXPERT) {
-            log.warn("전문가 전환 실패 - 이미 전문가 - userId: {}", userId);
+            log.warn("전문가 전환 실패 - 이미 전문가 - email: {}", email);
             throw new GlobalException(UserErrorCode.USER_ALREADY_EXPERT);
         }
 
@@ -200,11 +200,11 @@ public class UserService {
         user.convertToExpert(savedExpertProfile);
 
         log.info("전문가 전환 완료 - userId: {}, nickname: {}, category: {}",
-                userId, user.getNickname(), savedExpertProfile.getCategory());
+                user.getId(), user.getNickname(), savedExpertProfile.getCategory());
 
         // Slack 알림 전송
         slackNotificationService.sendExpertConversionNotification(
-                userId,
+                user.getId(),
                 user.getNickname(),
                 savedExpertProfile.getCategory().name()
         );
@@ -244,6 +244,29 @@ public class UserService {
         } catch (Exception e) {
             throw new GlobalException(UserErrorCode.INVALID_BIRTH_FORMAT);
         }
+    }
+
+    // 이메일 마스킹 (te**@example.com)
+    private String maskEmail(String email) {
+        if (email == null || email.length() < 3) {
+            return "***";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 2) {
+            return "***" + email.substring(atIndex);
+        }
+        return email.substring(0, 2) + "***" + email.substring(atIndex);
+    }
+
+    // 닉네임 마스킹 (홍**)
+    private String maskNickname(String nickname) {
+        if (nickname == null || nickname.isEmpty()) {
+            return "***";
+        }
+        if (nickname.length() == 1) {
+            return nickname + "**";
+        }
+        return nickname.substring(0, 1) + "**";
     }
 
     /**

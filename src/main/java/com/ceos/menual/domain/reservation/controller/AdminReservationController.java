@@ -78,13 +78,13 @@ public class AdminReservationController {
             description = "관리자가 일반 회원을 전문가로 전환합니다. GeneralProfile이 삭제되고 ExpertProfile이 생성됩니다."
     )
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/users/{userId}/convert-to-expert")
+    @PostMapping("/users/convert-to-expert")
     public ResponseEntity<CommonResponse<ExpertConversionResponseDTO>> convertToExpert(
-            @Parameter(description = "전환할 사용자 ID", required = true, example = "1")
-            @PathVariable Long userId,
+            @Parameter(description = "전환할 사용자 이메일", required = true, example = "user@example.com")
+            @RequestParam String email,
             @Valid @RequestBody ExpertConversionRequestDTO requestDTO
     ) {
-        ExpertConversionResponseDTO response = userService.convertToExpert(userId, requestDTO);
+        ExpertConversionResponseDTO response = userService.convertToExpert(email, requestDTO);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

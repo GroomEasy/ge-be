@@ -80,11 +80,9 @@ public class AdminReservationController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users/convert-to-expert")
     public ResponseEntity<CommonResponse<ExpertConversionResponseDTO>> convertToExpert(
-            @Parameter(description = "전환할 사용자 이메일", required = true, example = "user@example.com")
-            @RequestParam String email,
             @Valid @RequestBody ExpertConversionRequestDTO requestDTO
     ) {
-        ExpertConversionResponseDTO response = userService.convertToExpert(email, requestDTO);
+        ExpertConversionResponseDTO response = userService.convertToExpert(requestDTO.getEmail(), requestDTO);
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 }

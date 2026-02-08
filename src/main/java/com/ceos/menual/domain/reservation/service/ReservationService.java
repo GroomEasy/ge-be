@@ -294,11 +294,6 @@ public class ReservationService {
             throw new GlobalException(ReservationErrorCode.CONCERN_JSON_CONVERSION_ERROR);
         }
 
-        // Slack 알림 전송
-        String username = reservation.getGeneralProfile().getUser().getNickname();
-        String category = reservation.getCategory().name();
-        slackNotificationService.sendFashionConcernUpdateNotification(reservationId, username, category);
-
         return UpdateReservationConcernResponseDTO.from(reservation, fashionConcern);
     }
 
